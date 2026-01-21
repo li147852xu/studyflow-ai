@@ -1,0 +1,17 @@
+[project]
+name = "studyflow-ai"
+version = "0.0.1"
+description = "StudyFlow-AI V0.0.1 skeleton"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+  "requests>=2.31.0",
+  "streamlit>=1.32.0",
+]
+
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+packages = ["app", "app.pages", "core", "core.llm", "core.llm.providers", "infra", "service"]
