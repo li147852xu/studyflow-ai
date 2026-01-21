@@ -41,6 +41,13 @@ Upload a PDF on any page and the UI will show:
 After ingesting, click "Build/Refresh Vector Index" to create the vector index.
 In Chat, toggle "Use Retrieval (V0.0.3)" to see retrieval hits and citations.
 
+## Cleanup + Verification
+Before running version verification, clean local workspaces:
+`python scripts/cleanup_workspaces.py`
+
+V0.0.3 real flow example:
+`python scripts/real_flow_v0_0_3.py`
+
 ## Real Flow Check (Optional)
 To run a real flow that downloads the "Attention Is All You Need" PDF and calls
 the LLM, set `STUDYFLOW_RUN_REAL_FLOW=1` and then run:

@@ -4,7 +4,12 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from core.ingest.cite import build_citation
-from core.retrieval.embedder import EmbeddingError, EmbeddingSettings, build_embedding_settings, embed_texts
+from core.retrieval.embedder import (
+    EmbeddingError,
+    EmbeddingSettings,
+    build_embedding_settings,
+    embed_texts,
+)
 from core.retrieval.retriever import Hit, retrieve
 from core.retrieval.vector_store import VectorStore, VectorStoreSettings
 from infra.db import get_connection, get_workspaces_dir
@@ -80,7 +85,10 @@ def build_or_refresh_index(
     if not chunks:
         raise RetrievalError("No chunks available. Please ingest a PDF first.")
 
-    embed_settings = build_embedding_settings()
+    try:
+        embed_settings = build_embedding_settings()
+    except EmbeddingError as exc:
+        raise RetrievalError(str(exc)) from exc
     store = _build_store(workspace_id)
     if reset:
         store.reset()
@@ -90,7 +98,10 @@ def build_or_refresh_index(
     for start in range(0, total, batch_size):
         batch = chunks[start : start + batch_size]
         texts = [item["text"] for item in batch]
-        embeddings = embed_texts(texts, embed_settings)
+        try:
+            embeddings = embed_texts(texts, embed_settings)
+        except EmbeddingError as exc:
+            raise RetrievalError(str(exc)) from exc
         store.upsert(
             ids=[item["chunk_id"] for item in batch],
             embeddings=embeddings,
@@ -131,9 +142,17 @@ def retrieve_hits(
     top_k: int = 8,
 ) -> list[Hit]:
     ensure_index(workspace_id)
-    embed_settings = build_embedding_settings()
+    try:
+        embed_settings = build_embedding_settings()
+    except EmbeddingError as exc:
+        raise RetrievalError(str(exc)) from exc
     store = _build_store(workspace_id)
-    return retrieve(query=query, embed_settings=embed_settings, store=store, top_k=top_k)
+    try:
+        return retrieve(
+            query=query, embed_settings=embed_settings, store=store, top_k=top_k
+        )
+    except EmbeddingError as exc:
+        raise RetrievalError(str(exc)) from exc
 
 
 def _build_context(hits: list[Hit], max_chars: int = 3500) -> str:

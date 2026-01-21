@@ -4,6 +4,7 @@
 - Added vector retrieval modules (embeddings + Chroma)
 - Added retrieval service and UI toggle for RAG-lite answers
 - Added verify script for vector retrieval
+- Added workspace cleanup and real-flow script for V0.0.3
 - Verification: `python scripts/verify_v0_0_3.py`, `python -m compileall .`, `streamlit run app/main.py --server.headless true`
 
 ## V0.0.2

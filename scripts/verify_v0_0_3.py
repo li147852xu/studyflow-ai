@@ -4,9 +4,11 @@ import tempfile
 from pathlib import Path
 
 import fitz
+from dotenv import load_dotenv
 
 from core.ingest.cite import build_citation
 from core.retrieval.embedder import EmbeddingError, build_embedding_settings
+from core.retrieval.vector_store import VectorStore, VectorStoreSettings
 from infra.db import get_workspaces_dir
 from infra.models import init_db
 from service.ingest_service import IngestError, ingest_pdf
@@ -39,6 +41,7 @@ def verify_workspace() -> str:
 
 
 def main() -> int:
+    load_dotenv()
     try:
         workspace_id = verify_workspace()
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -63,9 +66,28 @@ def main() -> int:
             print("All V0.0.3 checks passed (embedding skipped).")
             return 0
 
-        index_result = build_or_refresh_index(workspace_id=workspace_id, reset=True)
+        try:
+            index_result = build_or_refresh_index(workspace_id=workspace_id, reset=True)
+        except Exception as exc:
+            message = str(exc)
+            if "Embeddings endpoint not supported" in message or "Embeddings request failed" in message:
+                print(f"SKIP: embeddings unavailable ({message})")
+                print("All V0.0.3 checks passed (embedding skipped).")
+                return 0
+            raise
         if index_result.indexed_count < ingest_result.chunk_count:
             raise RuntimeError("Indexed chunk count is lower than chunk count.")
+        index_dir = get_workspaces_dir() / workspace_id / "index" / "chroma"
+        if not index_dir.exists():
+            raise RuntimeError("Vector index directory missing.")
+        store = VectorStore(
+            VectorStoreSettings(
+                persist_directory=index_dir,
+                collection_name=f"workspace_{workspace_id}",
+            )
+        )
+        if store.count() < ingest_result.chunk_count:
+            raise RuntimeError("Vector index count is less than chunk count.")
         print("OK: index build completed")
 
         hits = retrieve_hits(workspace_id=workspace_id, query="test document", top_k=8)

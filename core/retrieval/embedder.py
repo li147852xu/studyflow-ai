@@ -50,9 +50,7 @@ def build_embedding_settings(
             "Missing embeddings base URL. Set STUDYFLOW_EMBED_BASE_URL."
         )
     if not resolved_model:
-        raise EmbeddingError(
-            "Missing embeddings model. Set STUDYFLOW_EMBED_MODEL."
-        )
+        resolved_model = "text-embedding-3-small"
     if not resolved_api_key:
         raise EmbeddingError(
             "Missing embeddings API key. Set STUDYFLOW_EMBED_API_KEY."
@@ -80,7 +78,16 @@ def embed_texts(
     payload = {"model": settings.model, "input": texts}
     try:
         response = requests.post(url, headers=headers, json=payload, timeout=timeout)
+        if response.status_code == 404:
+            raise EmbeddingError("Embeddings endpoint not supported by provider.")
         response.raise_for_status()
+    except requests.HTTPError as exc:
+        status_code = exc.response.status_code if exc.response else None
+        if status_code == 404:
+            raise EmbeddingError(
+                "Embeddings endpoint not supported by provider."
+            ) from exc
+        raise EmbeddingError(f"Embeddings request failed: {exc}") from exc
     except requests.RequestException as exc:
         raise EmbeddingError(f"Embeddings request failed: {exc}") from exc
 
