@@ -14,6 +14,7 @@ class EmbeddingError(RuntimeError):
 @dataclass
 class EmbeddingSettings:
     model: str
+    cache_dir: str | None = None
 
 
 def build_embedding_settings(
@@ -25,6 +26,7 @@ def build_embedding_settings(
         if model is not None
         else os.getenv("STUDYFLOW_EMBED_MODEL", "sentence-transformers/all-MiniLM-L6-v2")
     )
+    cache_dir = os.getenv("STUDYFLOW_EMBED_CACHE_DIR", "").strip() or None
     resolved_model = resolved_model.strip()
 
     if not resolved_model:
@@ -32,15 +34,13 @@ def build_embedding_settings(
             "Missing embeddings model. Set STUDYFLOW_EMBED_MODEL."
         )
 
-    return EmbeddingSettings(
-        model=resolved_model,
-    )
+    return EmbeddingSettings(model=resolved_model, cache_dir=cache_dir)
 
 
 @lru_cache(maxsize=2)
-def _load_model(model_name: str) -> SentenceTransformer:
+def _load_model(model_name: str, cache_dir: str | None) -> SentenceTransformer:
     try:
-        return SentenceTransformer(model_name)
+        return SentenceTransformer(model_name, cache_folder=cache_dir)
     except Exception as exc:
         raise EmbeddingError(f"Failed to load embeddings model: {exc}") from exc
 
@@ -51,6 +51,7 @@ def embed_texts(
 ) -> list[list[float]]:
     if not texts:
         return []
-    model = _load_model(settings.model)
+    cache_dir = getattr(settings, "cache_dir", None)
+    model = _load_model(settings.model, cache_dir)
     embeddings = model.encode(texts, show_progress_bar=False, normalize_embeddings=True)
     return [emb.tolist() for emb in embeddings]
