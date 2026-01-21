@@ -15,9 +15,25 @@ def build_settings(
     api_key: str | None = None,
     model: str | None = None,
 ) -> LLMSettings:
-    resolved_base_url = base_url or os.getenv("STUDYFLOW_LLM_BASE_URL", "").strip()
-    resolved_api_key = api_key or os.getenv("STUDYFLOW_LLM_API_KEY", "").strip()
-    resolved_model = model or os.getenv("STUDYFLOW_LLM_MODEL", "").strip()
+    resolved_base_url = (
+        base_url
+        if base_url is not None
+        else os.getenv("STUDYFLOW_LLM_BASE_URL", "")
+    )
+    resolved_api_key = (
+        api_key
+        if api_key is not None
+        else os.getenv("STUDYFLOW_LLM_API_KEY", "")
+    )
+    resolved_model = (
+        model
+        if model is not None
+        else os.getenv("STUDYFLOW_LLM_MODEL", "")
+    )
+
+    resolved_base_url = resolved_base_url.strip()
+    resolved_api_key = resolved_api_key.strip()
+    resolved_model = resolved_model.strip()
 
     if not resolved_base_url:
         raise ChatConfigError("Missing LLM base URL. Set STUDYFLOW_LLM_BASE_URL.")

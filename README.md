@@ -21,6 +21,7 @@ Set these environment variables before running:
 - `STUDYFLOW_WORKSPACES_DIR` (optional, default `./workspaces`)
 
 You can use `.env.example` as a template, but do not commit real keys.
+The app auto-loads a local `.env` file if present.
 
 ## Real Flow Check (Optional)
 To run a real flow that downloads the "Attention Is All You Need" PDF and calls

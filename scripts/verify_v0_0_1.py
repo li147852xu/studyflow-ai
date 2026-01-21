@@ -3,6 +3,8 @@ import sys
 import tempfile
 from pathlib import Path
 
+from dotenv import load_dotenv
+
 from infra.models import init_db
 from service.chat_service import ChatConfigError, chat, build_settings
 from real_flow_attention import run_real_flow
@@ -82,6 +84,7 @@ def verify_real_flow() -> None:
 
 
 def main() -> int:
+    load_dotenv()
     try:
         workspace_id = verify_workspace()
         verify_upload(workspace_id)

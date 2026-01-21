@@ -1,9 +1,11 @@
 import streamlit as st
+from dotenv import load_dotenv
 
 from app.ui import init_app_state, sidebar_llm, sidebar_workspace
 
 
 def main() -> None:
+    load_dotenv()
     st.set_page_config(page_title="StudyFlow-AI", layout="wide")
     init_app_state()
     sidebar_workspace()

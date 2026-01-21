@@ -4,6 +4,7 @@ import tempfile
 from pathlib import Path
 
 import requests
+from dotenv import load_dotenv
 
 from infra.models import init_db
 from service.chat_service import ChatConfigError, chat
@@ -21,6 +22,7 @@ def download_pdf() -> bytes:
 
 
 def run_real_flow() -> str:
+    load_dotenv()
     init_db()
     workspace_id = create_workspace("realflow-attention")
     pdf_bytes = download_pdf()
