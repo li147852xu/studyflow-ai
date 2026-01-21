@@ -66,10 +66,6 @@ def main() -> int:
             print(citation)
 
     except RetrievalError as exc:
-        message = str(exc)
-        if "Embeddings endpoint not supported" in message or "Missing embeddings" in message:
-            print(f"SKIP: embeddings unavailable ({message})")
-            return 0
         print(f"FAILED: {exc}")
         return 1
     except IngestError as exc:
@@ -79,10 +75,6 @@ def main() -> int:
         print(f"FAILED: download error: {exc}")
         return 1
     except Exception as exc:
-        missing = str(exc)
-        if "Embeddings endpoint not supported" in missing or "Missing embeddings" in missing:
-            print(f"SKIP: embeddings unavailable ({missing})")
-            return 0
         print(f"FAILED: {exc}")
         return 1
 

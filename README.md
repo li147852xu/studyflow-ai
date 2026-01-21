@@ -24,9 +24,7 @@ Set these environment variables before running:
 - `STUDYFLOW_LLM_BASE_URL` (example: `https://api.openai.com/v1`)
 - `STUDYFLOW_LLM_API_KEY`
 - `STUDYFLOW_LLM_MODEL` (example: `gpt-4o-mini`)
-- `STUDYFLOW_EMBED_BASE_URL` (example: `https://api.openai.com/v1`)
-- `STUDYFLOW_EMBED_API_KEY`
-- `STUDYFLOW_EMBED_MODEL` (example: `text-embedding-3-small`)
+- `STUDYFLOW_EMBED_MODEL` (default `sentence-transformers/all-MiniLM-L6-v2`)
 - `STUDYFLOW_WORKSPACES_DIR` (optional, default `./workspaces`)
 
 You can use `.env.example` as a template, but do not commit real keys.

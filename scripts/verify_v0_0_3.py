@@ -59,22 +59,9 @@ def main() -> int:
             raise RuntimeError("Ingest created no chunks.")
         print("OK: ingest completed")
 
-        try:
-            build_embedding_settings()
-        except EmbeddingError as exc:
-            print(f"SKIP: embeddings unavailable ({exc})")
-            print("All V0.0.3 checks passed (embedding skipped).")
-            return 0
+        build_embedding_settings()
 
-        try:
-            index_result = build_or_refresh_index(workspace_id=workspace_id, reset=True)
-        except Exception as exc:
-            message = str(exc)
-            if "Embeddings endpoint not supported" in message or "Embeddings request failed" in message:
-                print(f"SKIP: embeddings unavailable ({message})")
-                print("All V0.0.3 checks passed (embedding skipped).")
-                return 0
-            raise
+        index_result = build_or_refresh_index(workspace_id=workspace_id, reset=True)
         if index_result.indexed_count < ingest_result.chunk_count:
             raise RuntimeError("Indexed chunk count is lower than chunk count.")
         index_dir = get_workspaces_dir() / workspace_id / "index" / "chroma"
