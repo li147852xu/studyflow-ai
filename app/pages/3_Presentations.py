@@ -1,8 +1,11 @@
 import streamlit as st
 
 from app.ui import init_app_state, require_workspace, sidebar_llm, sidebar_workspace
+from core.ingest.cite import build_citation
+from infra.db import get_workspaces_dir
 from service.chat_service import ChatConfigError, chat
-from service.document_service import list_documents, save_document_bytes
+from service.document_service import list_documents
+from service.ingest_service import IngestError, get_random_chunks, ingest_pdf
 
 
 def main() -> None:
@@ -21,12 +24,19 @@ def main() -> None:
     if uploaded is not None:
         if st.button("Save PDF"):
             try:
-                save_document_bytes(
+                result = ingest_pdf(
                     workspace_id=workspace_id,
                     filename=uploaded.name,
                     data=uploaded.getvalue(),
+                    save_dir=get_workspaces_dir() / workspace_id / "uploads",
                 )
-                st.success("File saved to workspace.")
+                st.session_state["last_ingest"] = result
+                if result.skipped:
+                    st.warning("This PDF was already ingested. Skipped re-ingest.")
+                else:
+                    st.success("PDF ingested successfully.")
+            except IngestError as exc:
+                st.error(str(exc))
             except OSError:
                 st.error("Failed to save file. Please check permissions.")
 
@@ -36,8 +46,27 @@ def main() -> None:
         for doc in documents[:5]:
             st.write(f"- {doc['filename']}")
 
+    ingest_info = st.session_state.get("last_ingest")
+    if ingest_info:
+        st.subheader("Ingest Result")
+        st.write(f"Pages: {ingest_info.page_count}")
+        st.write(f"Chunks: {ingest_info.chunk_count}")
+        st.write(f"Page range: 1-{ingest_info.page_count}")
+
+        if st.button("Show citations preview"):
+            preview_chunks = get_random_chunks(ingest_info.doc_id, limit=3)
+            if not preview_chunks:
+                st.info("No chunks available for preview.")
+            for chunk in preview_chunks:
+                citation = build_citation(
+                    filename=ingest_info.filename,
+                    page_start=chunk["page_start"],
+                    page_end=chunk["page_end"],
+                    text=chunk["text"],
+                )
+                st.write(citation.render())
+
     st.subheader("Chat")
-    st.caption("Note: V0.0.1 chat does not read uploaded PDFs.")
     prompt = st.text_input("Ask a question")
     if st.button("Send", key="chat_send"):
         if not prompt.strip():

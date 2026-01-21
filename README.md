@@ -1,12 +1,15 @@
 # StudyFlow-AI
 
-StudyFlow-AI is a minimal local workspace UI for uploading PDFs and chatting with an OpenAI-compatible LLM.
+StudyFlow-AI is a minimal local workspace UI for uploading PDFs, ingesting text with citations, and chatting with an OpenAI-compatible LLM.
 
-## V0.0.1 Features
+## V0.0.2 Features
+- PDF ingest with page-aware chunking (900/150)
+- SQLite storage for documents and chunks with citations
+- Citation preview with filename + page number + snippet
 - Streamlit UI with Courses / Papers / Presentations pages
 - Local workspace management backed by SQLite
 - PDF upload and save to local workspace folders
-- Simple LLM chat (no retrieval, no citations)
+- Simple LLM chat (no retrieval)
 
 ## Quickstart (3 steps)
 1) Clone: `git clone https://github.com/li147852xu/studyflow-ai.git`
@@ -22,6 +25,11 @@ Set these environment variables before running:
 
 You can use `.env.example` as a template, but do not commit real keys.
 The app auto-loads a local `.env` file if present.
+
+## Using Ingest + Citation Preview
+Upload a PDF on any page and the UI will show:
+- page count, chunk count, and page range
+- a "Show citations preview" button that displays 3 sample citations
 
 ## Real Flow Check (Optional)
 To run a real flow that downloads the "Attention Is All You Need" PDF and calls

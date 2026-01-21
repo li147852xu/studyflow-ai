@@ -1,5 +1,11 @@
 # VERSION LOG
 
+## V0.0.2
+- Added PDF ingest with page-aware chunking (900/150 overlap)
+- Added chunks table and document metadata (sha256, page_count)
+- Added citation preview (filename + page number + snippet)
+- Verification: `python scripts/verify_v0_0_2.py`, `python -m compileall .`, `streamlit run app/main.py --server.headless true`
+
 ## V0.0.1
 - Added Streamlit UI with Courses/Papers/Presentations pages
 - Implemented local workspace management with SQLite

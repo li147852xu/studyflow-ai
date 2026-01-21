@@ -12,3 +12,4 @@ logs/
 *.log
 *.sqlite3
 *.egg-info/
+*.db
