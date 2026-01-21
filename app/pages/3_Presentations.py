@@ -6,6 +6,11 @@ from infra.db import get_workspaces_dir
 from service.chat_service import ChatConfigError, chat
 from service.document_service import list_documents
 from service.ingest_service import IngestError, get_random_chunks, ingest_pdf
+from service.retrieval_service import (
+    RetrievalError,
+    answer_with_retrieval,
+    build_or_refresh_index,
+)
 
 
 def main() -> None:
@@ -53,6 +58,22 @@ def main() -> None:
         st.write(f"Chunks: {ingest_info.chunk_count}")
         st.write(f"Page range: 1-{ingest_info.page_count}")
 
+        if st.button("Build/Refresh Vector Index"):
+            progress = st.progress(0)
+
+            def _progress(current: int, total: int) -> None:
+                progress.progress(min(current / total, 1.0))
+
+            try:
+                result = build_or_refresh_index(
+                    workspace_id=workspace_id, reset=True, progress_cb=_progress
+                )
+                st.success(
+                    f"Indexed {result.indexed_count} chunks across {result.doc_count} documents."
+                )
+            except Exception as exc:
+                st.error(f"Index build failed: {exc}")
+
         if st.button("Show citations preview"):
             preview_chunks = get_random_chunks(ingest_info.doc_id, limit=3)
             if not preview_chunks:
@@ -67,20 +88,40 @@ def main() -> None:
                 st.write(citation.render())
 
     st.subheader("Chat")
+    use_retrieval = st.toggle("Use Retrieval (V0.0.3)", value=False)
     prompt = st.text_input("Ask a question")
     if st.button("Send", key="chat_send"):
         if not prompt.strip():
             st.error("Please enter a question.")
             return
         try:
-            response = chat(
-                prompt=prompt,
-                base_url=st.session_state.get("llm_base_url"),
-                api_key=st.session_state.get("llm_api_key"),
-                model=st.session_state.get("llm_model"),
-            )
-            st.write(response)
+            if use_retrieval:
+                response, hits, citations = answer_with_retrieval(
+                    workspace_id=workspace_id,
+                    query=prompt,
+                )
+                st.write(response)
+                st.subheader("Retrieval Hits")
+                for idx, hit in enumerate(hits, start=1):
+                    st.write(
+                        f"[{idx}] {hit.filename} p.{hit.page_start}-{hit.page_end} "
+                        f"(score={hit.score:.4f})"
+                    )
+                    st.caption(hit.text[:300] + ("..." if len(hit.text) > 300 else ""))
+                st.subheader("Citations")
+                for citation in citations:
+                    st.write(citation)
+            else:
+                response = chat(
+                    prompt=prompt,
+                    base_url=st.session_state.get("llm_base_url"),
+                    api_key=st.session_state.get("llm_api_key"),
+                    model=st.session_state.get("llm_model"),
+                )
+                st.write(response)
         except ChatConfigError as exc:
+            st.error(str(exc))
+        except RetrievalError as exc:
             st.error(str(exc))
         except Exception:
             st.error("LLM request failed. Please check your network or key.")

@@ -13,3 +13,5 @@ logs/
 *.sqlite3
 *.egg-info/
 *.db
+chroma*/
+qdrant_data/

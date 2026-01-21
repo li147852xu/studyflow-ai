@@ -1,5 +1,11 @@
 # VERSION LOG
 
+## V0.0.3
+- Added vector retrieval modules (embeddings + Chroma)
+- Added retrieval service and UI toggle for RAG-lite answers
+- Added verify script for vector retrieval
+- Verification: `python scripts/verify_v0_0_3.py`, `python -m compileall .`, `streamlit run app/main.py --server.headless true`
+
 ## V0.0.2
 - Added PDF ingest with page-aware chunking (900/150 overlap)
 - Added chunks table and document metadata (sha256, page_count)

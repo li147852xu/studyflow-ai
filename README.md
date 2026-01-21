@@ -1,8 +1,11 @@
 # StudyFlow-AI
 
-StudyFlow-AI is a minimal local workspace UI for uploading PDFs, ingesting text with citations, and chatting with an OpenAI-compatible LLM.
+StudyFlow-AI is a minimal local workspace UI for uploading PDFs, ingesting text with citations, and retrieving answers with vector search.
 
-## V0.0.2 Features
+## V0.0.3 Features
+- Vector retrieval with Chroma over chunked text
+- Embeddings via OpenAI-compatible API
+- Retrieval hit list with scores and citations in the UI
 - PDF ingest with page-aware chunking (900/150)
 - SQLite storage for documents and chunks with citations
 - Citation preview with filename + page number + snippet
@@ -21,6 +24,9 @@ Set these environment variables before running:
 - `STUDYFLOW_LLM_BASE_URL` (example: `https://api.openai.com/v1`)
 - `STUDYFLOW_LLM_API_KEY`
 - `STUDYFLOW_LLM_MODEL` (example: `gpt-4o-mini`)
+- `STUDYFLOW_EMBED_BASE_URL` (example: `https://api.openai.com/v1`)
+- `STUDYFLOW_EMBED_API_KEY`
+- `STUDYFLOW_EMBED_MODEL` (example: `text-embedding-3-small`)
 - `STUDYFLOW_WORKSPACES_DIR` (optional, default `./workspaces`)
 
 You can use `.env.example` as a template, but do not commit real keys.
@@ -30,6 +36,10 @@ The app auto-loads a local `.env` file if present.
 Upload a PDF on any page and the UI will show:
 - page count, chunk count, and page range
 - a "Show citations preview" button that displays 3 sample citations
+
+## Using Vector Retrieval (V0.0.3)
+After ingesting, click "Build/Refresh Vector Index" to create the vector index.
+In Chat, toggle "Use Retrieval (V0.0.3)" to see retrieval hits and citations.
 
 ## Real Flow Check (Optional)
 To run a real flow that downloads the "Attention Is All You Need" PDF and calls
