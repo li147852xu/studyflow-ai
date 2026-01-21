@@ -37,6 +37,7 @@ def main() -> None:
             st.write(f"- {doc['filename']}")
 
     st.subheader("Chat")
+    st.caption("Note: V0.0.1 chat does not read uploaded PDFs.")
     prompt = st.text_input("Ask a question")
     if st.button("Send", key="chat_send"):
         if not prompt.strip():
