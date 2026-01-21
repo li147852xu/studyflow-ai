@@ -5,6 +5,7 @@ from pathlib import Path
 
 from infra.models import init_db
 from service.chat_service import ChatConfigError, chat, build_settings
+from real_flow_attention import run_real_flow
 from service.document_service import save_document_bytes
 from service.workspace_service import create_workspace, list_workspaces
 
@@ -69,11 +70,23 @@ def verify_llm() -> None:
         raise RuntimeError(f"LLM call failed: {exc}") from exc
 
 
+def verify_real_flow() -> None:
+    if os.getenv("STUDYFLOW_RUN_REAL_FLOW", "").strip() != "1":
+        print("SKIP: real flow (set STUDYFLOW_RUN_REAL_FLOW=1 to enable).")
+        return
+    print("Verify: real flow with online PDF")
+    result = run_real_flow()
+    if not result.strip():
+        raise RuntimeError("Real flow LLM response was empty.")
+    print("OK: real flow completed.")
+
+
 def main() -> int:
     try:
         workspace_id = verify_workspace()
         verify_upload(workspace_id)
         verify_llm()
+        verify_real_flow()
     except Exception as exc:
         print(f"FAILED: {exc}")
         return 1

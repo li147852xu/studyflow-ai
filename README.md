@@ -22,5 +22,10 @@ Set these environment variables before running:
 
 You can use `.env.example` as a template, but do not commit real keys.
 
+## Real Flow Check (Optional)
+To run a real flow that downloads the "Attention Is All You Need" PDF and calls
+the LLM, set `STUDYFLOW_RUN_REAL_FLOW=1` and then run:
+`python scripts/verify_v0_0_1.py`
+
 ## Disclaimer
 You must provide your own API key. The application does not store keys on disk.
