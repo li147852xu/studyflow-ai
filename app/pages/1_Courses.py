@@ -11,6 +11,15 @@ from service.retrieval_service import (
     build_or_refresh_index,
     answer_with_retrieval,
 )
+from service.course_service import (
+    create_course,
+    list_courses,
+    link_document,
+    list_course_documents,
+    generate_overview,
+    generate_cheatsheet,
+    explain_selection,
+)
 
 
 def main() -> None:
@@ -23,6 +32,33 @@ def main() -> None:
     workspace_id = require_workspace()
     if not workspace_id:
         return
+
+    st.subheader("Course")
+    courses = list_courses(workspace_id)
+    course_names = {course["name"]: course["id"] for course in courses}
+    selected_course = st.selectbox(
+        "Select course",
+        options=["(new)"] + list(course_names.keys()),
+    )
+    if selected_course == "(new)":
+        new_name = st.text_input("New course name")
+        if st.button("Create course"):
+            if not new_name.strip():
+                st.error("Course name cannot be empty.")
+            else:
+                course_id = create_course(workspace_id, new_name.strip())
+                st.session_state["course_id"] = course_id
+                st.success("Course created.")
+    else:
+        st.session_state["course_id"] = course_names[selected_course]
+
+    course_id = st.session_state.get("course_id")
+    if course_id:
+        linked_docs = list_course_documents(course_id)
+        if linked_docs:
+            st.caption("Linked lecture PDFs")
+            for doc in linked_docs:
+                st.write(f"- {doc['filename']}")
 
     st.subheader("Upload PDF")
     uploaded = st.file_uploader("Choose a PDF file", type=["pdf"])
@@ -40,6 +76,9 @@ def main() -> None:
                     st.warning("This PDF was already ingested. Skipped re-ingest.")
                 else:
                     st.success("PDF ingested successfully.")
+                if course_id:
+                    link_document(course_id, result.doc_id)
+                    st.info("Linked PDF to selected course.")
             except IngestError as exc:
                 st.error(str(exc))
             except OSError:
@@ -86,6 +125,92 @@ def main() -> None:
                     text=chunk["text"],
                 )
                 st.write(citation.render())
+
+    if course_id:
+        st.subheader("Course Generation")
+        if st.button("Generate Course Overview"):
+            progress = st.progress(0)
+
+            def _progress(current: int, total: int) -> None:
+                progress.progress(min(current / total, 1.0))
+
+            try:
+                output = generate_overview(
+                    workspace_id=workspace_id,
+                    course_id=course_id,
+                    progress_cb=_progress,
+                )
+                st.session_state["overview_output"] = output
+                st.success("Course overview generated.")
+            except Exception as exc:
+                st.error(str(exc))
+
+        if st.button("Generate Exam Cheatsheet"):
+            progress = st.progress(0)
+
+            def _progress_cs(current: int, total: int) -> None:
+                progress.progress(min(current / total, 1.0))
+
+            try:
+                output = generate_cheatsheet(
+                    workspace_id=workspace_id,
+                    course_id=course_id,
+                    progress_cb=_progress_cs,
+                )
+                st.session_state["cheatsheet_output"] = output
+                st.success("Exam cheatsheet generated.")
+            except Exception as exc:
+                st.error(str(exc))
+
+        overview_output = st.session_state.get("overview_output")
+        if overview_output:
+            st.subheader("COURSE_OVERVIEW")
+            st.write(overview_output.content)
+            st.download_button(
+                "Download COURSE_OVERVIEW (.txt)",
+                overview_output.content,
+                file_name="COURSE_OVERVIEW.txt",
+            )
+            st.subheader("Citations")
+            for citation in overview_output.citations:
+                st.write(citation)
+
+        cheatsheet_output = st.session_state.get("cheatsheet_output")
+        if cheatsheet_output:
+            st.subheader("EXAM_CHEATSHEET")
+            st.write(cheatsheet_output.content)
+            st.download_button(
+                "Download EXAM_CHEATSHEET (.txt)",
+                cheatsheet_output.content,
+                file_name="EXAM_CHEATSHEET.txt",
+            )
+            st.subheader("Citations")
+            for citation in cheatsheet_output.citations:
+                st.write(citation)
+
+        st.subheader("Explain Selection")
+        selection = st.text_area("Paste text to explain")
+        mode = st.selectbox(
+            "Mode",
+            options=["plain", "example", "pitfall", "link_prev"],
+        )
+        if st.button("Explain"):
+            if not selection.strip():
+                st.error("Please provide text to explain.")
+            else:
+                try:
+                    output = explain_selection(
+                        workspace_id=workspace_id,
+                        course_id=course_id,
+                        selection=selection.strip(),
+                        mode=mode,
+                    )
+                    st.write(output.content)
+                    st.subheader("Citations")
+                    for citation in output.citations:
+                        st.write(citation)
+                except Exception as exc:
+                    st.error(str(exc))
 
     st.subheader("Chat")
     use_retrieval = st.toggle("Use Retrieval (V0.0.3)", value=False)

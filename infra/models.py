@@ -38,6 +38,30 @@ def init_db() -> None:
         )
         cursor.execute(
             """
+            CREATE TABLE IF NOT EXISTS courses (
+                id TEXT PRIMARY KEY,
+                workspace_id TEXT NOT NULL,
+                name TEXT NOT NULL,
+                created_at TEXT NOT NULL,
+                FOREIGN KEY(workspace_id) REFERENCES workspaces(id)
+            )
+            """
+        )
+        cursor.execute(
+            """
+            CREATE TABLE IF NOT EXISTS course_documents (
+                id TEXT PRIMARY KEY,
+                course_id TEXT NOT NULL,
+                doc_id TEXT NOT NULL,
+                created_at TEXT NOT NULL,
+                FOREIGN KEY(course_id) REFERENCES courses(id),
+                FOREIGN KEY(doc_id) REFERENCES documents(id),
+                UNIQUE(course_id, doc_id)
+            )
+            """
+        )
+        cursor.execute(
+            """
             CREATE TABLE IF NOT EXISTS chunks (
                 id TEXT PRIMARY KEY,
                 doc_id TEXT NOT NULL,

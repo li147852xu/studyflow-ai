@@ -43,11 +43,13 @@ class VectorStore:
         *,
         embedding: list[float],
         top_k: int,
+        where: dict | None = None,
     ) -> dict:
         return self.collection.query(
             query_embeddings=[embedding],
             n_results=top_k,
             include=["documents", "metadatas", "distances"],
+            where=where,
         )
 
     def reset(self) -> None:

@@ -13,7 +13,8 @@ def chat_completion(
     api_key: str,
     model: str,
     messages: list[dict],
-    timeout: int = 30,
+    temperature: float | None = None,
+    timeout: int = 60,
 ) -> str:
     url = base_url.rstrip("/") + "/chat/completions"
     headers = {
@@ -24,11 +25,24 @@ def chat_completion(
         "model": model,
         "messages": messages,
     }
-    try:
-        response = requests.post(url, headers=headers, json=payload, timeout=timeout)
-        response.raise_for_status()
-    except requests.RequestException as exc:
-        raise OpenAICompatError(f"LLM request failed: {exc}") from exc
+    if temperature is not None:
+        payload["temperature"] = temperature
+    last_exc: Exception | None = None
+    for _ in range(3):
+        try:
+            response = requests.post(
+                url, headers=headers, json=payload, timeout=timeout
+            )
+            response.raise_for_status()
+            last_exc = None
+            break
+        except requests.Timeout as exc:
+            last_exc = exc
+            continue
+        except requests.RequestException as exc:
+            raise OpenAICompatError(f"LLM request failed: {exc}") from exc
+    if last_exc is not None:
+        raise OpenAICompatError(f"LLM request failed: {last_exc}") from last_exc
 
     data = response.json()
     try:

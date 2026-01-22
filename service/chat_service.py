@@ -55,6 +55,7 @@ def chat(
     base_url: str | None = None,
     api_key: str | None = None,
     model: str | None = None,
+    temperature: float | None = None,
 ) -> str:
     settings = build_settings(base_url=base_url, api_key=api_key, model=model)
     client = LLMClient(settings)
@@ -62,4 +63,4 @@ def chat(
         {"role": "system", "content": "You are a helpful study assistant."},
         {"role": "user", "content": prompt},
     ]
-    return client.chat(messages)
+    return client.chat(messages, temperature=temperature)

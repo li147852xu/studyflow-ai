@@ -24,9 +24,13 @@ def retrieve(
     embed_settings: EmbeddingSettings,
     store: VectorStore,
     top_k: int = 8,
+    doc_ids: list[str] | None = None,
 ) -> list[Hit]:
     embedding = embed_texts([query], embed_settings)[0]
-    result = store.query(embedding=embedding, top_k=top_k)
+    where = None
+    if doc_ids:
+        where = {"doc_id": {"$in": doc_ids}}
+    result = store.query(embedding=embedding, top_k=top_k, where=where)
     metadatas = result.get("metadatas", [[]])[0]
     documents = result.get("documents", [[]])[0]
     distances = result.get("distances", [[]])[0]

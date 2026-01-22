@@ -140,6 +140,7 @@ def retrieve_hits(
     workspace_id: str,
     query: str,
     top_k: int = 8,
+    doc_ids: list[str] | None = None,
 ) -> list[Hit]:
     ensure_index(workspace_id)
     try:
@@ -149,7 +150,11 @@ def retrieve_hits(
     store = _build_store(workspace_id)
     try:
         return retrieve(
-            query=query, embed_settings=embed_settings, store=store, top_k=top_k
+            query=query,
+            embed_settings=embed_settings,
+            store=store,
+            top_k=top_k,
+            doc_ids=doc_ids,
         )
     except EmbeddingError as exc:
         raise RetrievalError(str(exc)) from exc

@@ -1,5 +1,12 @@
 # VERSION LOG
 
+## V0.1
+- Added course workspace (courses + course_documents tables)
+- Added CourseAgent for overview/cheatsheet generation with citations
+- Added explain_selection tool with four modes
+- Added V0.1 verification and real flow scripts
+- Verification: `python scripts/verify_v0_1.py`, `python -m compileall .`, `streamlit run app/main.py --server.headless true`
+
 ## V0.0.3
 - Added vector retrieval modules (embeddings + Chroma)
 - Added retrieval service and UI toggle for RAG-lite answers
