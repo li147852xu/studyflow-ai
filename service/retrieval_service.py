@@ -57,6 +57,31 @@ def _fetch_chunks(workspace_id: str) -> list[dict]:
     return [dict(row) for row in rows]
 
 
+def get_chunks_for_documents(doc_ids: list[str]) -> list[dict]:
+    if not doc_ids:
+        return []
+    placeholders = ",".join(["?"] * len(doc_ids))
+    with get_connection() as connection:
+        rows = connection.execute(
+            f"""
+            SELECT chunks.id as chunk_id,
+                   chunks.doc_id as doc_id,
+                   chunks.workspace_id as workspace_id,
+                   chunks.chunk_index as chunk_index,
+                   chunks.page_start as page_start,
+                   chunks.page_end as page_end,
+                   chunks.text as text,
+                   documents.filename as filename
+            FROM chunks
+            JOIN documents ON documents.id = chunks.doc_id
+            WHERE chunks.doc_id IN ({placeholders})
+            ORDER BY chunks.doc_id, chunks.chunk_index
+            """,
+            tuple(doc_ids),
+        ).fetchall()
+    return [dict(row) for row in rows]
+
+
 def _fetch_doc_count(workspace_id: str) -> int:
     with get_connection() as connection:
         row = connection.execute(

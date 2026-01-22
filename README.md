@@ -1,8 +1,11 @@
 # StudyFlow-AI
 
-StudyFlow-AI is a minimal local workspace UI for uploading PDFs, ingesting text with citations, and completing course workflows with retrieval.
+StudyFlow-AI is a minimal local workspace UI for uploading PDFs, ingesting text with citations, and completing course/paper workflows with retrieval.
 
-## V0.1 Features
+## V0.1.1 Features
+- Paper library with metadata extraction (title/authors/year) and tags
+- PAPER_CARD generation with citations
+- Cross-paper aggregation with citations (consensus/divergence/routes/related work)
 - Course workspace with course creation and lecture PDF linking
 - One-click COURSE_OVERVIEW and EXAM_CHEATSHEET generation with citations
 - Explain selection tool (plain/example/pitfall/link_prev)
@@ -37,7 +40,7 @@ Upload a PDF on any page and the UI will show:
 - page count, chunk count, and page range
 - a "Show citations preview" button that displays 3 sample citations
 
-## Using Vector Retrieval (V0.1)
+## Using Vector Retrieval (V0.1.1)
 After ingesting, click "Build/Refresh Vector Index" to create the vector index.
 In Chat, toggle "Use Retrieval (V0.0.3)" to see retrieval hits and citations.
 
@@ -47,6 +50,12 @@ In Chat, toggle "Use Retrieval (V0.0.3)" to see retrieval hits and citations.
 3) Click "Generate Course Overview" or "Generate Exam Cheatsheet" to produce
    downloadable text with citations.
 4) Use "Explain Selection" with the four modes for targeted explanations.
+
+## Paper Library (V0.1.1)
+1) Upload paper PDFs on the Papers page.
+2) Review/edit metadata and add tags.
+3) Generate PAPER_CARD and download as `.txt`.
+4) Use the aggregator to synthesize consensus/divergence/routes/related work.
 
 ## Cleanup + Verification
 Before running version verification, clean local workspaces:

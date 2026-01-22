@@ -26,6 +26,7 @@ packages = [
   "core.agents",
   "core.formatting",
   "core.ingest",
+  "core.parsing",
   "core.prompts",
   "core.retrieval",
   "core.llm",

@@ -1,5 +1,12 @@
 # VERSION LOG
 
+## V0.1.1
+- Added papers tables with metadata and tags
+- Added paper metadata extraction and editable metadata in UI
+- Added PAPER_CARD generation and cross-paper aggregator
+- Added verification for paper library flow
+- Verification: `python scripts/verify_v0_1_1.py`, `python -m compileall .`, `streamlit run app/main.py --server.headless true`
+
 ## V0.1
 - Added course workspace (courses + course_documents tables)
 - Added CourseAgent for overview/cheatsheet generation with citations

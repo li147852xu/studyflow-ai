@@ -62,6 +62,34 @@ def init_db() -> None:
         )
         cursor.execute(
             """
+            CREATE TABLE IF NOT EXISTS papers (
+                id TEXT PRIMARY KEY,
+                workspace_id TEXT NOT NULL,
+                doc_id TEXT NOT NULL,
+                title TEXT NOT NULL,
+                authors TEXT NOT NULL,
+                year TEXT NOT NULL,
+                created_at TEXT NOT NULL,
+                FOREIGN KEY(workspace_id) REFERENCES workspaces(id),
+                FOREIGN KEY(doc_id) REFERENCES documents(id),
+                UNIQUE(workspace_id, doc_id)
+            )
+            """
+        )
+        cursor.execute(
+            """
+            CREATE TABLE IF NOT EXISTS paper_tags (
+                id TEXT PRIMARY KEY,
+                paper_id TEXT NOT NULL,
+                tag TEXT NOT NULL,
+                created_at TEXT NOT NULL,
+                FOREIGN KEY(paper_id) REFERENCES papers(id),
+                UNIQUE(paper_id, tag)
+            )
+            """
+        )
+        cursor.execute(
+            """
             CREATE TABLE IF NOT EXISTS chunks (
                 id TEXT PRIMARY KEY,
                 doc_id TEXT NOT NULL,
