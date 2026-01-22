@@ -1,8 +1,13 @@
 # StudyFlow-AI
 
-StudyFlow-AI is a minimal local workspace UI for uploading PDFs, ingesting text with citations, and completing course/paper workflows with retrieval.
+StudyFlow-AI is a minimal local workspace UI for uploading PDFs, ingesting text with citations, and completing course/paper/presentation workflows with retrieval.
 
-## V0.1.1 Features
+## V0.1.2 Features
+- Presentation Builder with Marp deck generation (3/5/10/20 min)
+- Speaker notes + Q&A list + references with citations
+- Paper library with metadata extraction (title/authors/year) and tags
+- PAPER_CARD generation with citations
+- Cross-paper aggregation with citations (consensus/divergence/routes/related work)
 - Paper library with metadata extraction (title/authors/year) and tags
 - PAPER_CARD generation with citations
 - Cross-paper aggregation with citations (consensus/divergence/routes/related work)
@@ -56,6 +61,11 @@ In Chat, toggle "Use Retrieval (V0.0.3)" to see retrieval hits and citations.
 2) Review/edit metadata and add tags.
 3) Generate PAPER_CARD and download as `.txt`.
 4) Use the aggregator to synthesize consensus/divergence/routes/related work.
+
+## Presentation Builder (V0.1.2)
+1) Go to Presentations and select a source document/paper.
+2) Choose duration (3/5/10/20 minutes).
+3) Generate the Marp deck, view Q&A and references, download `.md`.
 
 ## Cleanup + Verification
 Before running version verification, clean local workspaces:

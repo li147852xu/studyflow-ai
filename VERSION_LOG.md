@@ -1,5 +1,11 @@
 # VERSION LOG
 
+## V0.1.2
+- Added SlidesAgent and Presentation Builder UI
+- Added Marp deck generation with speaker notes, Q&A, and references
+- Added V0.1.2 verification
+- Verification: `python scripts/verify_v0_1_2.py`, `python -m compileall .`, `streamlit run app/main.py --server.headless true`
+
 ## V0.1.1
 - Added papers tables with metadata and tags
 - Added paper metadata extraction and editable metadata in UI
