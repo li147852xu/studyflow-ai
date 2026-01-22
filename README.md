@@ -83,6 +83,16 @@ Use the Retrieval Mode selector on each page.
 Each generation and retrieval chat produces a `run_id` and writes a JSON log to
 `workspaces/<wid>/runs/`. The UI shows the run_id and log path after completion.
 
+## UI Guide
+- The UI includes a Help / Docs page with full workflows and troubleshooting.
+- Sidebar contains workspace management, provider config, retrieval mode, and status.
+- History is stored in SQLite and shown in the sidebar per workspace.
+
+### Persistence
+- Workspaces, documents, chunks, history, and UI settings are stored in SQLite.
+- Indexes and outputs are derived data in `workspaces/<wid>/`.
+- Backup/restore: copy the entire `workspaces/<wid>/` directory.
+
 ## Cleanup + Verification
 Before running version verification, clean local workspaces:
 `python scripts/cleanup_workspaces.py`

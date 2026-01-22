@@ -36,6 +36,7 @@ packages = [
   "core.formatting",
   "core.ingest",
   "core.indexing",
+  "core.ui_state",
   "core.parsing",
   "core.prompts",
   "core.retrieval",

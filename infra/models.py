@@ -51,6 +51,33 @@ def init_db() -> None:
         )
         cursor.execute(
             """
+            CREATE TABLE IF NOT EXISTS ui_settings (
+                id TEXT PRIMARY KEY,
+                workspace_id TEXT,
+                key TEXT NOT NULL,
+                value TEXT NOT NULL,
+                updated_at TEXT NOT NULL,
+                UNIQUE(workspace_id, key)
+            )
+            """
+        )
+        cursor.execute(
+            """
+            CREATE TABLE IF NOT EXISTS ui_history (
+                id TEXT PRIMARY KEY,
+                workspace_id TEXT NOT NULL,
+                action_type TEXT NOT NULL,
+                summary TEXT,
+                preview TEXT,
+                source_ref TEXT,
+                citations_count INTEGER,
+                created_at TEXT NOT NULL,
+                FOREIGN KEY(workspace_id) REFERENCES workspaces(id)
+            )
+            """
+        )
+        cursor.execute(
+            """
             CREATE TABLE IF NOT EXISTS courses (
                 id TEXT PRIMARY KEY,
                 workspace_id TEXT NOT NULL,

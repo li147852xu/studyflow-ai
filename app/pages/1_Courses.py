@@ -1,7 +1,11 @@
 import os
 import streamlit as st
 
-from app.ui import init_app_state, require_workspace, sidebar_llm, sidebar_workspace
+from app.ui import init_app_state, require_workspace
+from app.components.sidebar import sidebar_llm, sidebar_retrieval_mode, sidebar_workspace
+from app.components.history_view import render_history
+from core.ui_state.storage import add_history
+from core.ui_state.guards import llm_ready
 from core.ingest.cite import build_citation
 from infra.db import get_workspaces_dir
 from service.chat_service import ChatConfigError, chat
@@ -27,16 +31,23 @@ from service.course_service import (
 def main() -> None:
     st.set_page_config(page_title="Courses", layout="wide")
     init_app_state()
-    sidebar_workspace()
+    workspace_id = sidebar_workspace()
     sidebar_llm()
+    retrieval_mode = sidebar_retrieval_mode(workspace_id)
+    if workspace_id:
+        render_history(workspace_id)
 
     st.title("Courses")
     workspace_id = require_workspace()
     if not workspace_id:
         return
+    ready, reason = llm_ready(
+        st.session_state.get("llm_base_url", ""),
+        st.session_state.get("llm_model", ""),
+        st.session_state.get("llm_api_key", ""),
+    )
 
-    retrieval_mode = "vector"
-    st.subheader("Course")
+    st.subheader("Data")
     courses = list_courses(workspace_id)
     course_names = {course["name"]: course["id"] for course in courses}
     selected_course = st.selectbox(
@@ -45,7 +56,7 @@ def main() -> None:
     )
     if selected_course == "(new)":
         new_name = st.text_input("New course name")
-        if st.button("Create course"):
+        if st.button("Create course", disabled=not new_name.strip(), help="Create a new course in this workspace."):
             if not new_name.strip():
                 st.error("Course name cannot be empty.")
             else:
@@ -66,7 +77,7 @@ def main() -> None:
     st.subheader("Upload PDF")
     uploaded = st.file_uploader("Choose a PDF file", type=["pdf"])
     if uploaded is not None:
-        if st.button("Save PDF"):
+        if st.button("Save PDF", help="Save and ingest PDF into the workspace."):
             try:
                 result = ingest_pdf(
                     workspace_id=workspace_id,
@@ -100,7 +111,7 @@ def main() -> None:
         st.write(f"Chunks: {ingest_info.chunk_count}")
         st.write(f"Page range: 1-{ingest_info.page_count}")
 
-        if st.button("Build/Refresh Vector Index"):
+        if st.button("Build/Refresh Vector Index", help="Required for vector retrieval mode."):
             progress = st.progress(0)
 
             def _progress(current: int, total: int) -> None:
@@ -116,7 +127,7 @@ def main() -> None:
             except Exception as exc:
                 st.error(f"Index build failed: {exc}")
 
-        if st.button("Show citations preview"):
+        if st.button("Show citations preview", help="Preview 3 sample citations from this PDF."):
             preview_chunks = get_random_chunks(ingest_info.doc_id, limit=3)
             if not preview_chunks:
                 st.info("No chunks available for preview.")
@@ -130,14 +141,12 @@ def main() -> None:
                 st.write(citation.render())
 
     if course_id:
-        st.subheader("Course Generation")
-        retrieval_mode = st.selectbox(
-        "Retrieval Mode",
-        options=["vector", "bm25", "hybrid"],
-        index=0,
-        key="course_retrieval_mode",
-    )
-        if st.button("Generate Course Overview"):
+        st.subheader("Actions")
+        if st.button(
+            "Generate Course Overview",
+            disabled=not ready,
+            help=reason or "Generate a course overview with citations.",
+        ):
             progress = st.progress(0)
 
             def _progress(current: int, total: int) -> None:
@@ -152,10 +161,22 @@ def main() -> None:
                 )
                 st.session_state["overview_output"] = output
                 st.success("Course overview generated.")
+                add_history(
+                    workspace_id=workspace_id,
+                    action_type="course_overview",
+                    summary=f"Course overview for {course_id}",
+                    preview=output.content[:200],
+                    source_ref=course_id,
+                    citations_count=len(output.citations),
+                )
             except Exception as exc:
                 st.error(str(exc))
 
-        if st.button("Generate Exam Cheatsheet"):
+        if st.button(
+            "Generate Exam Cheatsheet",
+            disabled=not ready,
+            help=reason or "Generate a cheat sheet for exam prep.",
+        ):
             progress = st.progress(0)
 
             def _progress_cs(current: int, total: int) -> None:
@@ -170,11 +191,20 @@ def main() -> None:
                 )
                 st.session_state["cheatsheet_output"] = output
                 st.success("Exam cheatsheet generated.")
+                add_history(
+                    workspace_id=workspace_id,
+                    action_type="course_cheatsheet",
+                    summary=f"Cheatsheet for {course_id}",
+                    preview=output.content[:200],
+                    source_ref=course_id,
+                    citations_count=len(output.citations),
+                )
             except Exception as exc:
                 st.error(str(exc))
 
         overview_output = st.session_state.get("overview_output")
         if overview_output:
+            st.subheader("Results")
             st.subheader("COURSE_OVERVIEW")
             st.write(overview_output.content)
             st.download_button(
@@ -215,7 +245,11 @@ def main() -> None:
             "Mode",
             options=["plain", "example", "pitfall", "link_prev"],
         )
-        if st.button("Explain"):
+        if st.button(
+            "Explain",
+            disabled=not ready or not selection.strip(),
+            help=reason or "Explain a selection with citations.",
+        ):
             if not selection.strip():
                 st.error("Please provide text to explain.")
             else:
@@ -236,13 +270,27 @@ def main() -> None:
                             f"Last run_id: {output.run_id} | "
                             f"log: {_run_dir(workspace_id)}/run_{output.run_id}.json"
                         )
+                    add_history(
+                        workspace_id=workspace_id,
+                        action_type="course_explain",
+                        summary=f"Explain selection ({mode})",
+                        preview=output.content[:200],
+                        source_ref=course_id,
+                        citations_count=len(output.citations),
+                    )
                 except Exception as exc:
                     st.error(str(exc))
 
+    st.subheader("Results")
     st.subheader("Chat")
     use_retrieval = st.toggle("Use Retrieval (V0.2)", value=False)
     prompt = st.text_input("Ask a question")
-    if st.button("Send", key="chat_send"):
+    if st.button(
+        "Send",
+        key="chat_send",
+        disabled=not prompt.strip() or not ready,
+        help=reason or "Ask a question with or without retrieval.",
+    ):
         if not prompt.strip():
             st.error("Please enter a question.")
             return
@@ -268,6 +316,14 @@ def main() -> None:
                     f"Last run_id: {run_id} | "
                     f"log: {_run_dir(workspace_id)}/run_{run_id}.json"
                 )
+                add_history(
+                    workspace_id=workspace_id,
+                    action_type="chat",
+                    summary="Chat with retrieval",
+                    preview=response[:200],
+                    source_ref=None,
+                    citations_count=len(citations),
+                )
             else:
                 response = chat(
                     prompt=prompt,
@@ -290,6 +346,14 @@ def main() -> None:
                 st.caption(
                     f"Last run_id: {run_id} | "
                     f"log: {_run_dir(workspace_id)}/run_{run_id}.json"
+                )
+                add_history(
+                    workspace_id=workspace_id,
+                    action_type="chat",
+                    summary="Chat (no retrieval)",
+                    preview=response[:200],
+                    source_ref=None,
+                    citations_count=0,
                 )
         except ChatConfigError as exc:
             st.error(str(exc))

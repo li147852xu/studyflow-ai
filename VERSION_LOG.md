@@ -5,7 +5,8 @@
 - Added incremental indexing and workspace/document CLI management
 - Added CLI (doctor/ingest/query/gen/index)
 - Added pytest unit tests + minimal e2e
-- Verification: `python -m compileall .`, `pytest -q`, `studyflow doctor`, `studyflow workspace create`, `studyflow ingest`, `studyflow query`, `studyflow gen`, `python scripts/verify_v1_0.py`
+- UI/UX polish (no version bump): unified sidebar, Help/Docs, history/settings
+- Verification: `python -m compileall .`, `pytest -q`, `studyflow doctor`, `studyflow workspace create`, `studyflow ingest`, `studyflow query`, `studyflow gen`, `python scripts/verify_v1_0.py`, `python scripts/verify_ui_polish.py`, `python -c "import app.main"`
 
 ## V0.2
 - Added BM25 index and hybrid retrieval fusion

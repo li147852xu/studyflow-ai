@@ -1,7 +1,11 @@
 import os
 import streamlit as st
 
-from app.ui import init_app_state, require_workspace, sidebar_llm, sidebar_workspace
+from app.ui import init_app_state, require_workspace
+from app.components.sidebar import sidebar_llm, sidebar_retrieval_mode, sidebar_workspace
+from app.components.history_view import render_history
+from core.ui_state.storage import add_history
+from core.ui_state.guards import llm_ready
 from service.retrieval_service import build_or_refresh_index
 from service.presentation_service import list_sources, generate_slides
 from core.telemetry.run_logger import _run_dir
@@ -10,14 +14,23 @@ from core.telemetry.run_logger import _run_dir
 def main() -> None:
     st.set_page_config(page_title="Presentations", layout="wide")
     init_app_state()
-    sidebar_workspace()
+    workspace_id = sidebar_workspace()
     sidebar_llm()
+    retrieval_mode = sidebar_retrieval_mode(workspace_id)
+    if workspace_id:
+        render_history(workspace_id)
 
     st.title("Presentations")
     workspace_id = require_workspace()
     if not workspace_id:
         return
+    ready, reason = llm_ready(
+        st.session_state.get("llm_base_url", ""),
+        st.session_state.get("llm_model", ""),
+        st.session_state.get("llm_api_key", ""),
+    )
 
+    st.subheader("Data")
     st.subheader("Source Selection")
     sources = list_sources(workspace_id)
     if not sources:
@@ -28,7 +41,7 @@ def main() -> None:
     selected_label = st.selectbox("Select source", options=labels)
     selected_source = next(s for s in sources if s["label"] == selected_label)
 
-    st.subheader("Vector Index")
+    st.subheader("Index")
     if st.button("Build/Refresh Vector Index"):
         progress = st.progress(0)
 
@@ -45,16 +58,15 @@ def main() -> None:
         except Exception as exc:
             st.error(f"Index build failed: {exc}")
 
+    st.subheader("Actions")
     st.subheader("Generate Slides")
-    retrieval_mode = st.selectbox(
-        "Retrieval Mode",
-        options=["vector", "bm25", "hybrid"],
-        index=0,
-        key="slides_retrieval_mode",
-    )
     duration = st.selectbox("Duration (minutes)", options=["3", "5", "10", "20"])
     save_outputs = st.toggle("Save deck to outputs/", value=True)
-    if st.button("Generate Marp Deck"):
+    if st.button(
+        "Generate Marp Deck",
+        disabled=not ready,
+        help=reason or "Generate a Marp deck with Q&A and citations.",
+    ):
         try:
             output = generate_slides(
                 workspace_id=workspace_id,
@@ -65,11 +77,20 @@ def main() -> None:
             )
             st.session_state["slides_output"] = output
             st.success("Slides generated.")
+            add_history(
+                workspace_id=workspace_id,
+                action_type="slides",
+                summary=f"Slides ({duration} min)",
+                preview=output.deck[:200],
+                source_ref=selected_source["doc_id"],
+                citations_count=len(output.citations),
+            )
         except Exception as exc:
             st.error(str(exc))
 
     slides_output = st.session_state.get("slides_output")
     if slides_output:
+        st.subheader("Results")
         st.subheader("Deck Preview (Marp)")
         st.text_area("Deck", slides_output.deck, height=400)
         st.download_button(
