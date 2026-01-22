@@ -31,8 +31,21 @@ def init_db() -> None:
                 path TEXT NOT NULL,
                 sha256 TEXT,
                 page_count INTEGER,
+                updated_at TEXT,
                 created_at TEXT NOT NULL,
                 FOREIGN KEY(workspace_id) REFERENCES workspaces(id)
+            )
+            """
+        )
+        cursor.execute(
+            """
+            CREATE TABLE IF NOT EXISTS document_tags (
+                id TEXT PRIMARY KEY,
+                doc_id TEXT NOT NULL,
+                tag TEXT NOT NULL,
+                created_at TEXT NOT NULL,
+                FOREIGN KEY(doc_id) REFERENCES documents(id),
+                UNIQUE(doc_id, tag)
             )
             """
         )
@@ -108,3 +121,4 @@ def init_db() -> None:
 
     _ensure_column("documents", "sha256", "TEXT")
     _ensure_column("documents", "page_count", "INTEGER")
+    _ensure_column("documents", "updated_at", "TEXT")

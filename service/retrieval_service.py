@@ -327,7 +327,12 @@ def answer_with_retrieval(
         f"Context:\n{context}\n\n"
         f"Question: {query}"
     )
-    answer = chat(prompt=prompt)
+    try:
+        answer = chat(prompt=prompt)
+    except ChatConfigError as exc:
+        raise RetrievalError(
+            "LLM not configured. Set STUDYFLOW_LLM_BASE_URL/STUDYFLOW_LLM_MODEL/STUDYFLOW_LLM_API_KEY."
+        ) from exc
 
     citations = []
     for idx, hit in enumerate(hits, start=1):

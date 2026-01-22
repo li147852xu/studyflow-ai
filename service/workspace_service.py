@@ -36,3 +36,24 @@ def get_workspace(workspace_id: str) -> dict | None:
             (workspace_id,),
         ).fetchone()
     return dict(row) if row else None
+
+
+def rename_workspace(workspace_id: str, new_name: str) -> None:
+    with get_connection() as connection:
+        connection.execute(
+            "UPDATE workspaces SET name = ? WHERE id = ?",
+            (new_name, workspace_id),
+        )
+        connection.commit()
+
+
+def delete_workspace(workspace_id: str) -> None:
+    with get_connection() as connection:
+        connection.execute("DELETE FROM course_documents WHERE course_id IN (SELECT id FROM courses WHERE workspace_id = ?)", (workspace_id,))
+        connection.execute("DELETE FROM courses WHERE workspace_id = ?", (workspace_id,))
+        connection.execute("DELETE FROM paper_tags WHERE paper_id IN (SELECT id FROM papers WHERE workspace_id = ?)", (workspace_id,))
+        connection.execute("DELETE FROM papers WHERE workspace_id = ?", (workspace_id,))
+        connection.execute("DELETE FROM chunks WHERE workspace_id = ?", (workspace_id,))
+        connection.execute("DELETE FROM documents WHERE workspace_id = ?", (workspace_id,))
+        connection.execute("DELETE FROM workspaces WHERE id = ?", (workspace_id,))
+        connection.commit()

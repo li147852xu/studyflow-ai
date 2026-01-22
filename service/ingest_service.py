@@ -8,7 +8,10 @@ from pathlib import Path
 
 from core.ingest.chunker import Chunk, chunk_pages
 from core.ingest.pdf_reader import PDFReadError, read_pdf
-from infra.db import get_connection
+from core.indexing.planner import plan_document
+from core.indexing.sync import delete_document, delete_document_vectors
+from core.retrieval.bm25_index import build_bm25_index
+from infra.db import get_connection, get_workspaces_dir
 
 
 class IngestError(RuntimeError):
@@ -71,10 +74,19 @@ def _insert_document(
     with get_connection() as connection:
         connection.execute(
             """
-            INSERT INTO documents (id, workspace_id, filename, path, sha256, page_count, created_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?)
+            INSERT INTO documents (id, workspace_id, filename, path, sha256, page_count, created_at, updated_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
             """,
-            (doc_id, workspace_id, filename, path, sha256, page_count, _now_iso()),
+            (
+                doc_id,
+                workspace_id,
+                filename,
+                path,
+                sha256,
+                page_count,
+                _now_iso(),
+                _now_iso(),
+            ),
         )
         connection.commit()
     return doc_id
@@ -120,10 +132,16 @@ def ingest_pdf(
         raise IngestError("Uploaded PDF is empty.")
 
     sha256 = _sha256_bytes(data)
-    existing = _get_existing_document(workspace_id, sha256)
-    if existing:
-        chunk_count = _count_chunks(existing["id"])
-        if chunk_count > 0:
+
+    save_dir.mkdir(parents=True, exist_ok=True)
+    target_path = save_dir / filename
+    target_path.write_bytes(data)
+
+    plan = plan_document(workspace_id, target_path)
+    if plan.action == "skip":
+        existing = _get_existing_document(workspace_id, sha256)
+        if existing:
+            chunk_count = _count_chunks(existing["id"])
             return IngestResult(
                 doc_id=existing["id"],
                 workspace_id=workspace_id,
@@ -135,9 +153,9 @@ def ingest_pdf(
                 skipped=True,
             )
 
-    save_dir.mkdir(parents=True, exist_ok=True)
-    target_path = save_dir / filename
-    target_path.write_bytes(data)
+    if plan.action == "update" and plan.doc_id:
+        delete_document_vectors(workspace_id, plan.doc_id)
+        delete_document(workspace_id, plan.doc_id)
 
     try:
         parse_result = read_pdf(target_path)
@@ -156,6 +174,10 @@ def ingest_pdf(
         page_count=parse_result.page_count,
     )
     _insert_chunks(doc_id=doc_id, workspace_id=workspace_id, chunks=chunks)
+    try:
+        build_bm25_index(workspace_id)
+    except Exception:
+        pass
 
     return IngestResult(
         doc_id=doc_id,

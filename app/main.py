@@ -1,11 +1,17 @@
 import streamlit as st
 from dotenv import load_dotenv
 
+from core.config.loader import load_config, apply_profile, ConfigError
+
 from app.ui import init_app_state, sidebar_llm, sidebar_workspace
 
 
 def main() -> None:
     load_dotenv()
+    try:
+        apply_profile(load_config())
+    except ConfigError:
+        pass
     st.set_page_config(page_title="StudyFlow-AI", layout="wide")
     init_app_state()
     sidebar_workspace()

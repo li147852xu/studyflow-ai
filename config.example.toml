@@ -1,0 +1,27 @@
+# Example configuration (no real keys)
+
+default_profile = "openai"
+
+[profiles.openai]
+base_url = "https://api.openai.com/v1"
+api_key_env = "OPENAI_API_KEY"
+chat_model = "gpt-4o-mini"
+embedding_model = "text-embedding-3-small"
+temperature = 0.2
+max_tokens = 2048
+
+[profiles.deepseek]
+base_url = "https://api.deepseek.com/v1"
+api_key_env = "DEEPSEEK_API_KEY"
+chat_model = "deepseek-chat"
+embedding_model = "sentence-transformers/all-MiniLM-L6-v2"
+temperature = 0.2
+max_tokens = 2048
+
+[profiles.ollama]
+base_url = "http://localhost:11434/v1"
+api_key_env = "OLLAMA_API_KEY"
+chat_model = "llama3"
+embedding_model = "nomic-embed-text"
+temperature = 0.2
+max_tokens = 2048

@@ -5,6 +5,8 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from infra.db import get_connection, get_workspaces_dir
+from core.indexing.sync import delete_document, delete_document_vectors
+from core.retrieval.bm25_index import build_bm25_index
 
 
 def _now_iso() -> str:
@@ -54,3 +56,37 @@ def list_documents(workspace_id: str) -> list[dict]:
             (workspace_id,),
         ).fetchall()
     return [dict(row) for row in rows]
+
+
+def delete_document_by_id(workspace_id: str, doc_id: str) -> None:
+    delete_document_vectors(workspace_id, doc_id)
+    delete_document(workspace_id, doc_id)
+    try:
+        build_bm25_index(workspace_id)
+    except Exception:
+        pass
+
+
+def add_document_tags(doc_id: str, tags: list[str]) -> None:
+    with get_connection() as connection:
+        connection.executemany(
+            """
+            INSERT OR IGNORE INTO document_tags (id, doc_id, tag, created_at)
+            VALUES (?, ?, ?, ?)
+            """,
+            [
+                (str(uuid.uuid4()), doc_id, tag.strip(), _now_iso())
+                for tag in tags
+                if tag.strip()
+            ],
+        )
+        connection.commit()
+
+
+def list_document_tags(doc_id: str) -> list[str]:
+    with get_connection() as connection:
+        rows = connection.execute(
+            "SELECT tag FROM document_tags WHERE doc_id = ? ORDER BY tag ASC",
+            (doc_id,),
+        ).fetchall()
+    return [row["tag"] for row in rows]

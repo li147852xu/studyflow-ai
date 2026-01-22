@@ -12,21 +12,30 @@ dependencies = [
   "requests>=2.31.0",
   "sentence-transformers>=2.7.0",
   "streamlit>=1.32.0",
+  "typer>=0.12.3",
+  "pytest>=8.2.0",
 ]
 
 [build-system]
 requires = ["setuptools>=61.0"]
 build-backend = "setuptools.build_meta"
 
+[project.scripts]
+studyflow = "cli.main:app"
+
 [tool.setuptools]
 packages = [
   "app",
   "app.pages",
   "app.components",
+  "cli",
+  "cli.commands",
   "core",
+  "core.config",
   "core.agents",
   "core.formatting",
   "core.ingest",
+  "core.indexing",
   "core.parsing",
   "core.prompts",
   "core.retrieval",

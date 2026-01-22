@@ -1,5 +1,12 @@
 # VERSION LOG
 
+## V1.0
+- Added config profiles and model presets (config.toml)
+- Added incremental indexing and workspace/document CLI management
+- Added CLI (doctor/ingest/query/gen/index)
+- Added pytest unit tests + minimal e2e
+- Verification: `python -m compileall .`, `pytest -q`, `studyflow doctor`, `studyflow workspace create`, `studyflow ingest`, `studyflow query`, `studyflow gen`, `python scripts/verify_v1_0.py`
+
 ## V0.2
 - Added BM25 index and hybrid retrieval fusion
 - Added retrieval modes and workspace filtering
