@@ -6,7 +6,7 @@ from core.formatting.citations import build_citation_bundle
 from core.prompts.paper_prompts import paper_card_prompt
 from core.retrieval.retriever import Hit
 from service.chat_service import ChatConfigError, chat
-from service.retrieval_service import retrieve_hits
+from service.retrieval_service import retrieve_hits_mode
 
 
 class PaperAgentError(RuntimeError):
@@ -17,12 +17,16 @@ class PaperAgentError(RuntimeError):
 class PaperCardOutput:
     content: str
     citations: list[str]
+    hits: list[Hit]
+    retrieval_mode: str
+    run_id: str | None = None
 
 
 class PaperAgent:
-    def __init__(self, workspace_id: str, doc_id: str) -> None:
+    def __init__(self, workspace_id: str, doc_id: str, retrieval_mode: str) -> None:
         self.workspace_id = workspace_id
         self.doc_id = doc_id
+        self.retrieval_mode = retrieval_mode
 
     def generate_paper_card(self, progress_cb: callable | None = None) -> PaperCardOutput:
         queries = [
@@ -33,10 +37,12 @@ class PaperAgent:
         ]
         batches: list[list[Hit]] = []
         total = len(queries)
+        used_mode = self.retrieval_mode
         for idx, query in enumerate(queries, start=1):
-            hits = retrieve_hits(
+            hits, used_mode = retrieve_hits_mode(
                 workspace_id=self.workspace_id,
                 query=query,
+                mode=self.retrieval_mode,
                 top_k=8,
                 doc_ids=[self.doc_id],
             )
@@ -53,7 +59,12 @@ class PaperAgent:
             content = chat(prompt=prompt, temperature=0.2)
         except ChatConfigError as exc:
             raise PaperAgentError(str(exc)) from exc
-        return PaperCardOutput(content=content, citations=bundle.citations)
+        return PaperCardOutput(
+            content=content,
+            citations=bundle.citations,
+            hits=merged_hits,
+            retrieval_mode=used_mode,
+        )
 
 
 def _merge_hits(batches: list[list[Hit]]) -> list[Hit]:

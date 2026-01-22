@@ -37,6 +37,7 @@ def retrieve(
 
     hits: list[Hit] = []
     for metadata, doc_text, distance in zip(metadatas, documents, distances):
+        similarity = 1.0 / (1.0 + float(distance))
         hits.append(
             Hit(
                 chunk_id=metadata["chunk_id"],
@@ -46,7 +47,7 @@ def retrieve(
                 page_start=int(metadata["page_start"]),
                 page_end=int(metadata["page_end"]),
                 text=doc_text,
-                score=float(distance),
+                score=similarity,
             )
         )
     return hits

@@ -46,7 +46,7 @@ def main() -> int:
         print("Vector index built.")
 
         question = "What is the main contribution of the Transformer architecture?"
-        answer, hits, citations = answer_with_retrieval(
+        answer, hits, citations, run_id = answer_with_retrieval(
             workspace_id=workspace_id, query=question
         )
         print("Answer:")

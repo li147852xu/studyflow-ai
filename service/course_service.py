@@ -3,8 +3,12 @@ from __future__ import annotations
 import uuid
 from datetime import datetime, timezone
 
+import os
+import time
+
 from infra.db import get_connection
 from core.agents.course_agent import CourseAgent, AgentOutput
+from core.telemetry.run_logger import log_run
 
 
 def _now_iso() -> str:
@@ -83,26 +87,58 @@ def generate_overview(
     *,
     workspace_id: str,
     course_id: str,
+    retrieval_mode: str = "vector",
     progress_cb: callable | None = None,
 ) -> AgentOutput:
     doc_ids = list_course_doc_ids(course_id)
     if not doc_ids:
         raise RuntimeError("No lecture PDFs linked to this course.")
-    agent = CourseAgent(workspace_id, course_id, doc_ids)
-    return agent.generate_overview(progress_cb=progress_cb)
+    start = time.time()
+    agent = CourseAgent(workspace_id, course_id, doc_ids, retrieval_mode)
+    output = agent.generate_overview(progress_cb=progress_cb)
+    latency_ms = int((time.time() - start) * 1000)
+    run_id = log_run(
+        workspace_id=workspace_id,
+        action_type="course_overview",
+        input_payload={"course_id": course_id},
+        retrieval_mode=output.retrieval_mode,
+        hits=output.hits,
+        model=os.getenv("STUDYFLOW_LLM_MODEL", ""),
+        embed_model=os.getenv("STUDYFLOW_EMBED_MODEL", ""),
+        latency_ms=latency_ms,
+        errors=None,
+    )
+    output.run_id = run_id
+    return output
 
 
 def generate_cheatsheet(
     *,
     workspace_id: str,
     course_id: str,
+    retrieval_mode: str = "vector",
     progress_cb: callable | None = None,
 ) -> AgentOutput:
     doc_ids = list_course_doc_ids(course_id)
     if not doc_ids:
         raise RuntimeError("No lecture PDFs linked to this course.")
-    agent = CourseAgent(workspace_id, course_id, doc_ids)
-    return agent.generate_cheatsheet(progress_cb=progress_cb)
+    start = time.time()
+    agent = CourseAgent(workspace_id, course_id, doc_ids, retrieval_mode)
+    output = agent.generate_cheatsheet(progress_cb=progress_cb)
+    latency_ms = int((time.time() - start) * 1000)
+    run_id = log_run(
+        workspace_id=workspace_id,
+        action_type="course_cheatsheet",
+        input_payload={"course_id": course_id},
+        retrieval_mode=output.retrieval_mode,
+        hits=output.hits,
+        model=os.getenv("STUDYFLOW_LLM_MODEL", ""),
+        embed_model=os.getenv("STUDYFLOW_EMBED_MODEL", ""),
+        latency_ms=latency_ms,
+        errors=None,
+    )
+    output.run_id = run_id
+    return output
 
 
 def explain_selection(
@@ -111,9 +147,25 @@ def explain_selection(
     course_id: str,
     selection: str,
     mode: str,
+    retrieval_mode: str = "vector",
 ) -> AgentOutput:
     doc_ids = list_course_doc_ids(course_id)
     if not doc_ids:
         raise RuntimeError("No lecture PDFs linked to this course.")
-    agent = CourseAgent(workspace_id, course_id, doc_ids)
-    return agent.explain_selection(selection, mode)
+    start = time.time()
+    agent = CourseAgent(workspace_id, course_id, doc_ids, retrieval_mode)
+    output = agent.explain_selection(selection, mode)
+    latency_ms = int((time.time() - start) * 1000)
+    run_id = log_run(
+        workspace_id=workspace_id,
+        action_type="course_explain",
+        input_payload={"course_id": course_id, "mode": mode},
+        retrieval_mode=output.retrieval_mode,
+        hits=output.hits,
+        model=os.getenv("STUDYFLOW_LLM_MODEL", ""),
+        embed_model=os.getenv("STUDYFLOW_EMBED_MODEL", ""),
+        latency_ms=latency_ms,
+        errors=None,
+    )
+    output.run_id = run_id
+    return output

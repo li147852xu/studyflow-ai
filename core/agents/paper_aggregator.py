@@ -6,7 +6,7 @@ from core.formatting.citations import build_citation_bundle
 from core.prompts.paper_prompts import aggregator_prompt
 from core.retrieval.retriever import Hit
 from service.chat_service import ChatConfigError, chat
-from service.retrieval_service import retrieve_hits
+from service.retrieval_service import retrieve_hits_mode
 
 
 class PaperAggregatorError(RuntimeError):
@@ -17,12 +17,16 @@ class PaperAggregatorError(RuntimeError):
 class AggregationOutput:
     content: str
     citations: list[str]
+    hits: list[Hit]
+    retrieval_mode: str
+    run_id: str | None = None
 
 
 class PaperAggregator:
-    def __init__(self, workspace_id: str, doc_ids: list[str]) -> None:
+    def __init__(self, workspace_id: str, doc_ids: list[str], retrieval_mode: str) -> None:
         self.workspace_id = workspace_id
         self.doc_ids = doc_ids
+        self.retrieval_mode = retrieval_mode
 
     def aggregate(self, question: str, progress_cb: callable | None = None) -> AggregationOutput:
         if not self.doc_ids:
@@ -32,11 +36,13 @@ class PaperAggregator:
         batches: list[list[Hit]] = []
         total = len(self.doc_ids) * 2
         current = 0
+        used_mode = self.retrieval_mode
         for doc_id in self.doc_ids:
             for query in [question, "related work"]:
-                hits = retrieve_hits(
+                hits, used_mode = retrieve_hits_mode(
                     workspace_id=self.workspace_id,
                     query=query,
+                    mode=self.retrieval_mode,
                     top_k=8,
                     doc_ids=[doc_id],
                 )
@@ -55,7 +61,12 @@ class PaperAggregator:
             content = chat(prompt=prompt, temperature=0.2)
         except ChatConfigError as exc:
             raise PaperAggregatorError(str(exc)) from exc
-        return AggregationOutput(content=content, citations=bundle.citations)
+        return AggregationOutput(
+            content=content,
+            citations=bundle.citations,
+            hits=merged_hits,
+            retrieval_mode=used_mode,
+        )
 
 
 def _merge_hits(batches: list[list[Hit]]) -> list[Hit]:

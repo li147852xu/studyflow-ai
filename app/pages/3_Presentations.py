@@ -1,8 +1,10 @@
+import os
 import streamlit as st
 
 from app.ui import init_app_state, require_workspace, sidebar_llm, sidebar_workspace
 from service.retrieval_service import build_or_refresh_index
 from service.presentation_service import list_sources, generate_slides
+from core.telemetry.run_logger import _run_dir
 
 
 def main() -> None:
@@ -44,6 +46,12 @@ def main() -> None:
             st.error(f"Index build failed: {exc}")
 
     st.subheader("Generate Slides")
+    retrieval_mode = st.selectbox(
+        "Retrieval Mode",
+        options=["vector", "bm25", "hybrid"],
+        index=0,
+        key="slides_retrieval_mode",
+    )
     duration = st.selectbox("Duration (minutes)", options=["3", "5", "10", "20"])
     save_outputs = st.toggle("Save deck to outputs/", value=True)
     if st.button("Generate Marp Deck"):
@@ -52,6 +60,7 @@ def main() -> None:
                 workspace_id=workspace_id,
                 doc_id=selected_source["doc_id"],
                 duration=duration,
+                retrieval_mode=retrieval_mode,
                 save_outputs=save_outputs,
             )
             st.session_state["slides_output"] = output
@@ -78,6 +87,11 @@ def main() -> None:
         st.subheader("Citations")
         for citation in slides_output.citations:
             st.write(citation)
+        if slides_output.run_id:
+            st.caption(
+                f"Last run_id: {slides_output.run_id} | "
+                f"log: {_run_dir(workspace_id)}/run_{slides_output.run_id}.json"
+            )
 
 
 if __name__ == "__main__":

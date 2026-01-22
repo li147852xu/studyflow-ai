@@ -10,7 +10,13 @@ from core.retrieval.embedder import (
     build_embedding_settings,
     embed_texts,
 )
+import os
+import time
+
 from core.retrieval.retriever import Hit, retrieve
+from core.retrieval.bm25_index import build_bm25_index, query_bm25, load_bm25_index
+from core.retrieval.hybrid import fuse_scores
+from core.telemetry.run_logger import log_run
 from core.retrieval.vector_store import VectorStore, VectorStoreSettings
 from infra.db import get_connection, get_workspaces_dir
 from service.chat_service import ChatConfigError, chat
@@ -29,6 +35,10 @@ class IndexResult:
 
 def _index_dir(workspace_id: str) -> Path:
     return get_workspaces_dir() / workspace_id / "index" / "chroma"
+
+
+def _bm25_index_dir(workspace_id: str) -> Path:
+    return get_workspaces_dir() / workspace_id / "index" / "bm25"
 
 
 def _collection_name(workspace_id: str) -> str:
@@ -160,6 +170,13 @@ def ensure_index(workspace_id: str) -> None:
         build_or_refresh_index(workspace_id=workspace_id, reset=True)
 
 
+def ensure_bm25_index(workspace_id: str) -> Path:
+    index = load_bm25_index(workspace_id)
+    if index is None:
+        return build_bm25_index(workspace_id)
+    return _bm25_index_dir(workspace_id) / "index.pkl"
+
+
 def retrieve_hits(
     *,
     workspace_id: str,
@@ -185,6 +202,95 @@ def retrieve_hits(
         raise RetrievalError(str(exc)) from exc
 
 
+def retrieve_hits_mode(
+    *,
+    workspace_id: str,
+    query: str,
+    mode: str,
+    top_k: int = 8,
+    doc_ids: list[str] | None = None,
+) -> tuple[list[Hit], str]:
+    if mode == "vector":
+        hits = retrieve_hits(
+            workspace_id=workspace_id, query=query, top_k=top_k, doc_ids=doc_ids
+        )
+        return hits, "vector"
+    if mode == "bm25":
+        ensure_bm25_index(workspace_id)
+        results = query_bm25(
+            workspace_id=workspace_id, query=query, top_k=20, doc_ids=doc_ids
+        )
+        hits = [
+            Hit(
+                chunk_id=item["chunk_id"],
+                doc_id=item["doc_id"],
+                workspace_id=item["workspace_id"],
+                filename=item["filename"],
+                page_start=item["page_start"],
+                page_end=item["page_end"],
+                text=item["text"],
+                score=item["score"],
+            )
+            for item in results[:top_k]
+        ]
+        return hits, "bm25"
+
+    if mode == "hybrid":
+        bm25_results = query_bm25(
+            workspace_id=workspace_id, query=query, top_k=20, doc_ids=doc_ids
+        )
+        try:
+            vector_hits = retrieve_hits(
+                workspace_id=workspace_id, query=query, top_k=20, doc_ids=doc_ids
+            )
+            vec_dicts = [
+                {
+                    "chunk_id": hit.chunk_id,
+                    "doc_id": hit.doc_id,
+                    "workspace_id": hit.workspace_id,
+                    "filename": hit.filename,
+                    "page_start": hit.page_start,
+                    "page_end": hit.page_end,
+                    "text": hit.text,
+                    "score": hit.score,
+                }
+                for hit in vector_hits
+            ]
+            fused = fuse_scores(vector_hits=vec_dicts, bm25_hits=bm25_results, top_k=top_k)
+            hits = [
+                Hit(
+                    chunk_id=item.chunk_id,
+                    doc_id=item.doc_id,
+                    workspace_id=item.workspace_id,
+                    filename=item.filename,
+                    page_start=item.page_start,
+                    page_end=item.page_end,
+                    text=item.text,
+                    score=item.score,
+                )
+                for item in fused
+            ]
+            return hits, "hybrid"
+        except RetrievalError:
+            # fallback to BM25 if vector fails
+            hits = [
+                Hit(
+                    chunk_id=item["chunk_id"],
+                    doc_id=item["doc_id"],
+                    workspace_id=item["workspace_id"],
+                    filename=item["filename"],
+                    page_start=item["page_start"],
+                    page_end=item["page_end"],
+                    text=item["text"],
+                    score=item["score"],
+                )
+                for item in bm25_results[:top_k]
+            ]
+            return hits, "bm25"
+
+    raise RetrievalError("Unknown retrieval mode.")
+
+
 def _build_context(hits: list[Hit], max_chars: int = 3500) -> str:
     parts: list[str] = []
     total = 0
@@ -204,9 +310,13 @@ def answer_with_retrieval(
     *,
     workspace_id: str,
     query: str,
+    mode: str = "vector",
     top_k: int = 8,
-) -> tuple[str, list[Hit], list[str]]:
-    hits = retrieve_hits(workspace_id=workspace_id, query=query, top_k=top_k)
+) -> tuple[str, list[Hit], list[str], str]:
+    start = time.time()
+    hits, used_mode = retrieve_hits_mode(
+        workspace_id=workspace_id, query=query, mode=mode, top_k=top_k
+    )
     if not hits:
         raise RetrievalError("No retrieval hits found. Try another query.")
 
@@ -229,4 +339,17 @@ def answer_with_retrieval(
         )
         citations.append(f"[{idx}] {citation.render()}")
 
-    return answer, hits, citations
+    latency_ms = int((time.time() - start) * 1000)
+    run_id = log_run(
+        workspace_id=workspace_id,
+        action_type="chat",
+        input_payload={"query": query},
+        retrieval_mode=used_mode,
+        hits=hits,
+        model=os.getenv("STUDYFLOW_LLM_MODEL", ""),
+        embed_model=os.getenv("STUDYFLOW_EMBED_MODEL", ""),
+        latency_ms=latency_ms,
+        errors=None,
+    )
+
+    return answer, hits, citations, run_id

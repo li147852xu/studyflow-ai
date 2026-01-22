@@ -16,3 +16,6 @@ logs/
 chroma*/
 qdrant_data/
 outputs/
+runs/
+bm25*/
+*.pkl

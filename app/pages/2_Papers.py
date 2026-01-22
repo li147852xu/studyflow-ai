@@ -1,3 +1,4 @@
+import os
 import streamlit as st
 
 from app.ui import init_app_state, require_workspace, sidebar_llm, sidebar_workspace
@@ -17,6 +18,7 @@ from service.paper_service import (
     list_tags,
 )
 from service.paper_generate_service import generate_paper_card, aggregate_papers
+from core.telemetry.run_logger import _run_dir, log_run
 
 
 def main() -> None:
@@ -52,7 +54,15 @@ def main() -> None:
                 st.error("Failed to save file. Please check permissions.")
 
     papers = list_papers(workspace_id)
+    retrieval_mode = "vector"
     if papers:
+        retrieval_mode = st.selectbox(
+            "Retrieval Mode",
+            options=["vector", "bm25", "hybrid"],
+            index=0,
+            key="paper_retrieval_mode",
+        )
+
         st.subheader("Paper Library")
         selected = st.selectbox(
             "Select paper",
@@ -94,6 +104,7 @@ def main() -> None:
                 output = generate_paper_card(
                     workspace_id=workspace_id,
                     doc_id=selected_paper["doc_id"],
+                    retrieval_mode=retrieval_mode,
                     progress_cb=_progress,
                 )
                 st.session_state["paper_card_output"] = output
@@ -113,6 +124,11 @@ def main() -> None:
             st.subheader("Citations")
             for citation in paper_card_output.citations:
                 st.write(citation)
+            if paper_card_output.run_id:
+                st.caption(
+                    f"Last run_id: {paper_card_output.run_id} | "
+                    f"log: {_run_dir(workspace_id)}/run_{paper_card_output.run_id}.json"
+                )
 
     if papers:
         st.subheader("Cross-paper Aggregator")
@@ -155,6 +171,7 @@ def main() -> None:
                         workspace_id=workspace_id,
                         doc_ids=doc_ids,
                         question=st.session_state.get("agg_question", ""),
+                        retrieval_mode=retrieval_mode,
                         progress_cb=_progress_agg,
                     )
                     st.session_state["agg_output"] = output
@@ -169,6 +186,11 @@ def main() -> None:
             st.subheader("Citations")
             for citation in agg_output.citations:
                 st.write(citation)
+            if agg_output.run_id:
+                st.caption(
+                    f"Last run_id: {agg_output.run_id} | "
+                    f"log: {_run_dir(workspace_id)}/run_{agg_output.run_id}.json"
+                )
 
     st.subheader("Vector Index")
     if st.button("Build/Refresh Vector Index"):
@@ -188,7 +210,7 @@ def main() -> None:
             st.error(f"Index build failed: {exc}")
 
     st.subheader("Chat")
-    use_retrieval = st.toggle("Use Retrieval (V0.0.3)", value=False)
+    use_retrieval = st.toggle("Use Retrieval (V0.2)", value=False)
     prompt = st.text_input("Ask a question")
     if st.button("Send", key="chat_send"):
         if not prompt.strip():
@@ -196,9 +218,10 @@ def main() -> None:
             return
         try:
             if use_retrieval:
-                response, hits, citations = answer_with_retrieval(
+                response, hits, citations, run_id = answer_with_retrieval(
                     workspace_id=workspace_id,
                     query=prompt,
+                    mode=retrieval_mode if papers else "vector",
                 )
                 st.write(response)
                 st.subheader("Retrieval Hits")
@@ -211,6 +234,10 @@ def main() -> None:
                 st.subheader("Citations")
                 for citation in citations:
                     st.write(citation)
+                st.caption(
+                    f"Last run_id: {run_id} | "
+                    f"log: {_run_dir(workspace_id)}/run_{run_id}.json"
+                )
             else:
                 response = chat(
                     prompt=prompt,
@@ -219,6 +246,21 @@ def main() -> None:
                     model=st.session_state.get("llm_model"),
                 )
                 st.write(response)
+                run_id = log_run(
+                    workspace_id=workspace_id,
+                    action_type="chat",
+                    input_payload={"query": prompt},
+                    retrieval_mode="none",
+                    hits=[],
+                    model=os.getenv("STUDYFLOW_LLM_MODEL", ""),
+                    embed_model=os.getenv("STUDYFLOW_EMBED_MODEL", ""),
+                    latency_ms=0,
+                    errors=None,
+                )
+                st.caption(
+                    f"Last run_id: {run_id} | "
+                    f"log: {_run_dir(workspace_id)}/run_{run_id}.json"
+                )
         except ChatConfigError as exc:
             st.error(str(exc))
         except RetrievalError as exc:

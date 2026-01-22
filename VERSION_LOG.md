@@ -1,5 +1,11 @@
 # VERSION LOG
 
+## V0.2
+- Added BM25 index and hybrid retrieval fusion
+- Added retrieval modes and workspace filtering
+- Added run logs with run_id
+- Verification: `python scripts/verify_v0_2.py`, `python -m compileall .`, `streamlit run app/main.py --server.headless true`
+
 ## V0.1.2
 - Added SlidesAgent and Presentation Builder UI
 - Added Marp deck generation with speaker notes, Q&A, and references

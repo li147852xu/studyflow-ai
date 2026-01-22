@@ -8,7 +8,7 @@ from core.formatting.citations import build_citation_bundle
 from core.prompts.slides_prompts import qa_prompt, slides_prompt
 from core.retrieval.retriever import Hit
 from service.chat_service import ChatConfigError, chat
-from service.retrieval_service import retrieve_hits
+from service.retrieval_service import retrieve_hits_mode
 
 
 class SlidesAgentError(RuntimeError):
@@ -21,6 +21,9 @@ class SlidesOutput:
     citations: list[str]
     qa: list[str]
     saved_path: str | None = None
+    hits: list[Hit] | None = None
+    retrieval_mode: str | None = None
+    run_id: str | None = None
 
 
 _DURATION_TO_PAGES = {
@@ -32,9 +35,10 @@ _DURATION_TO_PAGES = {
 
 
 class SlidesAgent:
-    def __init__(self, workspace_id: str, doc_id: str) -> None:
+    def __init__(self, workspace_id: str, doc_id: str, retrieval_mode: str) -> None:
         self.workspace_id = workspace_id
         self.doc_id = doc_id
+        self.retrieval_mode = retrieval_mode
 
     def generate(self, duration: str, output_dir: Path | None = None) -> SlidesOutput:
         if duration not in _DURATION_TO_PAGES:
@@ -44,10 +48,12 @@ class SlidesAgent:
         # Retrieval rounds: summary + methods + results + discussion (4 rounds)
         queries = ["summary", "methods", "results", "discussion"]
         batches: list[list[Hit]] = []
+        used_mode = self.retrieval_mode
         for query in queries:
-            hits = retrieve_hits(
+            hits, used_mode = retrieve_hits_mode(
                 workspace_id=self.workspace_id,
                 query=query,
+                mode=self.retrieval_mode,
                 top_k=8,
                 doc_ids=[self.doc_id],
             )
@@ -83,7 +89,14 @@ class SlidesAgent:
             target.write_text(deck, encoding="utf-8")
             saved_path = str(target)
 
-        return SlidesOutput(deck=deck, citations=bundle.citations, qa=qa, saved_path=saved_path)
+        return SlidesOutput(
+            deck=deck,
+            citations=bundle.citations,
+            qa=qa,
+            saved_path=saved_path,
+            hits=merged_hits,
+            retrieval_mode=used_mode,
+        )
 
 
 def _merge_hits(batches: list[list[Hit]]) -> list[Hit]:

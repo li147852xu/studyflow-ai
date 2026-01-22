@@ -1,8 +1,11 @@
 # StudyFlow-AI
 
-StudyFlow-AI is a minimal local workspace UI for uploading PDFs, ingesting text with citations, and completing course/paper/presentation workflows with retrieval.
+StudyFlow-AI is a minimal local workspace UI for uploading PDFs, ingesting text with citations, and completing course/paper/presentation workflows with hybrid retrieval.
 
-## V0.1.2 Features
+## V0.2 Features
+- Hybrid retrieval (Vector + BM25) with mode switch
+- Workspace filter built into retrieval
+- Run logs with run_id for chat/generation
 - Presentation Builder with Marp deck generation (3/5/10/20 min)
 - Speaker notes + Q&A list + references with citations
 - Paper library with metadata extraction (title/authors/year) and tags
@@ -45,9 +48,13 @@ Upload a PDF on any page and the UI will show:
 - page count, chunk count, and page range
 - a "Show citations preview" button that displays 3 sample citations
 
-## Using Vector Retrieval (V0.1.1)
+## Retrieval Modes (V0.2)
+- Vector: embedding retrieval only
+- BM25: lexical retrieval only
+- Hybrid: fused score (Vector + BM25)
+
 After ingesting, click "Build/Refresh Vector Index" to create the vector index.
-In Chat, toggle "Use Retrieval (V0.0.3)" to see retrieval hits and citations.
+Use the Retrieval Mode selector on each page.
 
 ## Course Workspace (V0.1)
 1) Create/select a course on the Courses page.
@@ -66,6 +73,10 @@ In Chat, toggle "Use Retrieval (V0.0.3)" to see retrieval hits and citations.
 1) Go to Presentations and select a source document/paper.
 2) Choose duration (3/5/10/20 minutes).
 3) Generate the Marp deck, view Q&A and references, download `.md`.
+
+## Run Logs (V0.2)
+Each generation and retrieval chat produces a `run_id` and writes a JSON log to
+`workspaces/<wid>/runs/`. The UI shows the run_id and log path after completion.
 
 ## Cleanup + Verification
 Before running version verification, clean local workspaces:

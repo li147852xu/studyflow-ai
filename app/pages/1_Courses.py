@@ -1,3 +1,4 @@
+import os
 import streamlit as st
 
 from app.ui import init_app_state, require_workspace, sidebar_llm, sidebar_workspace
@@ -11,6 +12,7 @@ from service.retrieval_service import (
     build_or_refresh_index,
     answer_with_retrieval,
 )
+from core.telemetry.run_logger import _run_dir, log_run
 from service.course_service import (
     create_course,
     list_courses,
@@ -33,6 +35,7 @@ def main() -> None:
     if not workspace_id:
         return
 
+    retrieval_mode = "vector"
     st.subheader("Course")
     courses = list_courses(workspace_id)
     course_names = {course["name"]: course["id"] for course in courses}
@@ -128,6 +131,12 @@ def main() -> None:
 
     if course_id:
         st.subheader("Course Generation")
+        retrieval_mode = st.selectbox(
+        "Retrieval Mode",
+        options=["vector", "bm25", "hybrid"],
+        index=0,
+        key="course_retrieval_mode",
+    )
         if st.button("Generate Course Overview"):
             progress = st.progress(0)
 
@@ -138,6 +147,7 @@ def main() -> None:
                 output = generate_overview(
                     workspace_id=workspace_id,
                     course_id=course_id,
+                    retrieval_mode=retrieval_mode,
                     progress_cb=_progress,
                 )
                 st.session_state["overview_output"] = output
@@ -155,6 +165,7 @@ def main() -> None:
                 output = generate_cheatsheet(
                     workspace_id=workspace_id,
                     course_id=course_id,
+                    retrieval_mode=retrieval_mode,
                     progress_cb=_progress_cs,
                 )
                 st.session_state["cheatsheet_output"] = output
@@ -174,6 +185,11 @@ def main() -> None:
             st.subheader("Citations")
             for citation in overview_output.citations:
                 st.write(citation)
+            if overview_output.run_id:
+                st.caption(
+                    f"Last run_id: {overview_output.run_id} | "
+                    f"log: {_run_dir(workspace_id)}/run_{overview_output.run_id}.json"
+                )
 
         cheatsheet_output = st.session_state.get("cheatsheet_output")
         if cheatsheet_output:
@@ -187,6 +203,11 @@ def main() -> None:
             st.subheader("Citations")
             for citation in cheatsheet_output.citations:
                 st.write(citation)
+            if cheatsheet_output.run_id:
+                st.caption(
+                    f"Last run_id: {cheatsheet_output.run_id} | "
+                    f"log: {_run_dir(workspace_id)}/run_{cheatsheet_output.run_id}.json"
+                )
 
         st.subheader("Explain Selection")
         selection = st.text_area("Paste text to explain")
@@ -204,16 +225,22 @@ def main() -> None:
                         course_id=course_id,
                         selection=selection.strip(),
                         mode=mode,
+                        retrieval_mode=retrieval_mode,
                     )
                     st.write(output.content)
                     st.subheader("Citations")
                     for citation in output.citations:
                         st.write(citation)
+                    if output.run_id:
+                        st.caption(
+                            f"Last run_id: {output.run_id} | "
+                            f"log: {_run_dir(workspace_id)}/run_{output.run_id}.json"
+                        )
                 except Exception as exc:
                     st.error(str(exc))
 
     st.subheader("Chat")
-    use_retrieval = st.toggle("Use Retrieval (V0.0.3)", value=False)
+    use_retrieval = st.toggle("Use Retrieval (V0.2)", value=False)
     prompt = st.text_input("Ask a question")
     if st.button("Send", key="chat_send"):
         if not prompt.strip():
@@ -221,9 +248,10 @@ def main() -> None:
             return
         try:
             if use_retrieval:
-                response, hits, citations = answer_with_retrieval(
+                response, hits, citations, run_id = answer_with_retrieval(
                     workspace_id=workspace_id,
                     query=prompt,
+                    mode=retrieval_mode,
                 )
                 st.write(response)
                 st.subheader("Retrieval Hits")
@@ -236,6 +264,10 @@ def main() -> None:
                 st.subheader("Citations")
                 for citation in citations:
                     st.write(citation)
+                st.caption(
+                    f"Last run_id: {run_id} | "
+                    f"log: {_run_dir(workspace_id)}/run_{run_id}.json"
+                )
             else:
                 response = chat(
                     prompt=prompt,
@@ -244,6 +276,21 @@ def main() -> None:
                     model=st.session_state.get("llm_model"),
                 )
                 st.write(response)
+                run_id = log_run(
+                    workspace_id=workspace_id,
+                    action_type="chat",
+                    input_payload={"query": prompt},
+                    retrieval_mode="none",
+                    hits=[],
+                    model=os.getenv("STUDYFLOW_LLM_MODEL", ""),
+                    embed_model=os.getenv("STUDYFLOW_EMBED_MODEL", ""),
+                    latency_ms=0,
+                    errors=None,
+                )
+                st.caption(
+                    f"Last run_id: {run_id} | "
+                    f"log: {_run_dir(workspace_id)}/run_{run_id}.json"
+                )
         except ChatConfigError as exc:
             st.error(str(exc))
         except RetrievalError as exc:
