@@ -1,5 +1,11 @@
 # VERSION LOG
 
+## V2.4
+- Added concept cards with evidence and incremental processing markers
+- Added related work manager with outline/draft export and asset versions
+- Added concepts/related CLI commands and verify_v2_4.py
+- Verification: `python scripts/verify_v2_4.py`, `python -m compileall .`, `pytest -q`, `studyflow concepts build/search`, `studyflow related create/update/export`
+
 ## V2.3
 - Added standardized importers for Zotero, arXiv/DOI/URL, and folder sync
 - Added external_sources/external_mappings tables and document source metadata

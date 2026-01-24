@@ -45,7 +45,7 @@ from service.presentation_service import generate_slides
 from service.retrieval_service import answer_with_retrieval
 from service.workspace_service import create_workspace, list_workspaces
 
-app = FastAPI(title="StudyFlow API", version="2.3.0")
+app = FastAPI(title="StudyFlow API", version="2.4.0")
 
 
 def _verify_token(authorization: str | None = Header(None)) -> None:
@@ -66,7 +66,7 @@ def _init_db() -> None:
 
 @app.get("/health", response_model=HealthResponse)
 def health() -> HealthResponse:
-    return HealthResponse(status="ok", version="2.3.0")
+    return HealthResponse(status="ok", version="2.4.0")
 
 
 @app.get("/ocr/status", response_model=OcrStatusResponse, dependencies=[Depends(_verify_token)])

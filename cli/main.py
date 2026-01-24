@@ -16,6 +16,8 @@ from cli.commands.api import api_app
 from cli.commands.coach import coach_app
 from cli.commands.plugins import plugins_app
 from cli.commands.import_cmd import import_app
+from cli.commands.concepts_cmd import concepts_app
+from cli.commands.related_cmd import related_app
 
 app = typer.Typer(help="StudyFlow CLI")
 
@@ -39,6 +41,8 @@ app.add_typer(api_app, name="api")
 app.add_typer(coach_app, name="coach")
 app.add_typer(plugins_app, name="plugins")
 app.add_typer(import_app, name="import")
+app.add_typer(concepts_app, name="concepts")
+app.add_typer(related_app, name="related")
 app.command()(ingest)
 app.command()(query)
 app.command()(gen)

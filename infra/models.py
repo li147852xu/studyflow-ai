@@ -250,6 +250,90 @@ def init_db() -> None:
             )
             """
         )
+        cursor.execute(
+            """
+            CREATE TABLE IF NOT EXISTS concept_cards (
+                id TEXT PRIMARY KEY,
+                workspace_id TEXT NOT NULL,
+                name TEXT NOT NULL,
+                type TEXT NOT NULL,
+                content TEXT NOT NULL,
+                created_at TEXT NOT NULL,
+                updated_at TEXT NOT NULL,
+                FOREIGN KEY(workspace_id) REFERENCES workspaces(id)
+            )
+            """
+        )
+        cursor.execute(
+            """
+            CREATE TABLE IF NOT EXISTS concept_evidence (
+                id TEXT PRIMARY KEY,
+                card_id TEXT NOT NULL,
+                doc_id TEXT NOT NULL,
+                chunk_id TEXT NOT NULL,
+                page_start INTEGER,
+                page_end INTEGER,
+                snippet TEXT,
+                created_at TEXT NOT NULL,
+                FOREIGN KEY(card_id) REFERENCES concept_cards(id)
+            )
+            """
+        )
+        cursor.execute(
+            """
+            CREATE TABLE IF NOT EXISTS document_processing_marks (
+                id TEXT PRIMARY KEY,
+                workspace_id TEXT NOT NULL,
+                doc_id TEXT NOT NULL,
+                processor TEXT NOT NULL,
+                doc_hash TEXT,
+                created_at TEXT NOT NULL,
+                updated_at TEXT NOT NULL,
+                UNIQUE(workspace_id, doc_id, processor)
+            )
+            """
+        )
+        cursor.execute(
+            """
+            CREATE TABLE IF NOT EXISTS related_projects (
+                id TEXT PRIMARY KEY,
+                workspace_id TEXT NOT NULL,
+                topic TEXT NOT NULL,
+                comparison_axes_json TEXT,
+                current_draft TEXT,
+                created_at TEXT NOT NULL,
+                updated_at TEXT NOT NULL,
+                FOREIGN KEY(workspace_id) REFERENCES workspaces(id)
+            )
+            """
+        )
+        cursor.execute(
+            """
+            CREATE TABLE IF NOT EXISTS related_sections (
+                id TEXT PRIMARY KEY,
+                project_id TEXT NOT NULL,
+                section_index INTEGER NOT NULL,
+                title TEXT NOT NULL,
+                bullets_json TEXT,
+                created_at TEXT NOT NULL,
+                updated_at TEXT NOT NULL,
+                FOREIGN KEY(project_id) REFERENCES related_projects(id)
+            )
+            """
+        )
+        cursor.execute(
+            """
+            CREATE TABLE IF NOT EXISTS related_candidates (
+                id TEXT PRIMARY KEY,
+                project_id TEXT NOT NULL,
+                section_id TEXT NOT NULL,
+                paper_id TEXT NOT NULL,
+                created_at TEXT NOT NULL,
+                FOREIGN KEY(project_id) REFERENCES related_projects(id),
+                FOREIGN KEY(section_id) REFERENCES related_sections(id)
+            )
+            """
+        )
         connection.commit()
 
     _ensure_column("documents", "sha256", "TEXT")

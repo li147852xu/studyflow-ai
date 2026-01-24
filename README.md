@@ -8,6 +8,7 @@ StudyFlow-AI is a local-first study workspace for PDFs with OCR, coaching, asset
 - Plugin registry (import/export + citations exporters)
 - Prompt registry with versioning + local overrides
 - Standardized importers (Zotero, arXiv/DOI/URL, folder sync)
+- Concept cards and related work manager
 - Asset versioning for generated outputs (pin/rollback/diff)
 - Optional API mode via FastAPI (local/self-hosted)
 - Hybrid retrieval (Vector + BM25) with mode switch
@@ -52,6 +53,9 @@ The app auto-loads a local `.env` file if present. Do not commit real keys.
 - `studyflow import folder --workspace <id> --path <folder>`
 - `studyflow import zotero --workspace <id> --data-dir <zotero_dir>`
 - `studyflow import arxiv --workspace <id> --id 1706.03762`
+- `studyflow concepts build --workspace <id> --papers <pid...>`
+- `studyflow concepts search --workspace <id> "query"`
+- `studyflow related create --workspace <id> --papers <pid...> --topic "..."`
 
 ## Using Ingest + Citation Preview
 Upload a PDF on any page and the UI will show:
@@ -83,6 +87,11 @@ Use the Retrieval Mode selector on each page.
 1) Go to Presentations and select a source document/paper.
 2) Choose duration (3/5/10/20 minutes).
 3) Generate the Marp deck, view Q&A and references, download `.md`.
+
+## Concept Cards + Related Work (V2.4)
+1) Build concept cards from selected papers or a course.
+2) Search cards by keyword and type filters.
+3) Create a related work project, then update it as you add new papers.
 
 ## Run Logs
 Each generation and retrieval chat produces a `run_id` and writes a JSON log to
