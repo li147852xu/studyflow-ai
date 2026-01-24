@@ -5,7 +5,7 @@ from datetime import datetime
 from pathlib import Path
 
 from core.formatting.citations import build_citation_bundle
-from core.prompts.slides_prompts import qa_prompt, slides_prompt
+from core.prompts.registry import build_prompt
 from core.retrieval.retriever import Hit
 from service.chat_service import ChatConfigError, chat
 from service.retrieval_service import retrieve_hits_mode
@@ -27,6 +27,7 @@ class SlidesOutput:
     asset_id: str | None = None
     asset_version_id: str | None = None
     asset_version_index: int | None = None
+    prompt_version: str | None = None
 
 
 _DURATION_TO_PAGES = {
@@ -68,12 +69,23 @@ class SlidesAgent:
 
         bundle = build_citation_bundle(merged_hits)
         try:
+            deck_prompt, prompt_version = build_prompt(
+                "slides",
+                self.workspace_id,
+                context=bundle.numbered_context,
+                page_count=page_count,
+            )
+            qa_prompt, _ = build_prompt(
+                "slides_qa",
+                self.workspace_id,
+                context=bundle.numbered_context,
+            )
             deck = chat(
-                prompt=slides_prompt(bundle.numbered_context, page_count),
+                prompt=deck_prompt,
                 temperature=0.2,
             )
             qa_text = chat(
-                prompt=qa_prompt(bundle.numbered_context),
+                prompt=qa_prompt,
                 temperature=0.2,
             )
         except ChatConfigError as exc:
@@ -99,6 +111,7 @@ class SlidesAgent:
             saved_path=saved_path,
             hits=merged_hits,
             retrieval_mode=used_mode,
+            prompt_version=prompt_version,
         )
 
 

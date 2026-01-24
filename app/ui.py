@@ -19,6 +19,15 @@ def init_app_state() -> None:
     st.session_state.setdefault(
         "api_base_url", get_setting(None, "api_base_url") or "http://127.0.0.1:8000"
     )
+    st.session_state.setdefault(
+        "ocr_mode", get_setting(None, "ocr_mode") or "off"
+    )
+    st.session_state.setdefault(
+        "ocr_threshold", int(get_setting(None, "ocr_threshold") or 50)
+    )
+    st.session_state.setdefault(
+        "prompt_version", get_setting(None, "prompt_version") or "v1"
+    )
     st.session_state.setdefault("active_nav", "Home")
     st.session_state.setdefault("retrieval_mode", "vector")
 

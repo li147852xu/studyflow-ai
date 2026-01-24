@@ -16,6 +16,7 @@ HELP_SECTIONS = [
             "Use Library to ingest one or multiple PDFs.",
             "Each upload extracts text, chunks it, and stores metadata in SQLite.",
             "Re-ingesting the same file hash is skipped automatically.",
+            "OCR modes: off, auto (low-text pages), on (all pages).",
         ],
     },
     {
@@ -33,6 +34,28 @@ HELP_SECTIONS = [
             "Courses: generate COURSE_OVERVIEW, EXAM_CHEATSHEET, and explain selections.",
             "Papers: generate PAPER_CARD and aggregate questions across papers.",
             "Presentations: generate Marp decks and Q&A lists.",
+        ],
+    },
+    {
+        "title": "Study Coach",
+        "bullets": [
+            "Phase A: framework, key concepts, and pitfalls.",
+            "Phase B: review your answer with hints and rubric.",
+            "Coach avoids giving full final answers by default.",
+        ],
+    },
+    {
+        "title": "Plugins",
+        "bullets": [
+            "Importer: batch ingest PDFs from a folder.",
+            "Exporter: export assets to folders and citations.",
+        ],
+    },
+    {
+        "title": "Prompt Overrides",
+        "bullets": [
+            "Override prompts with workspaces/<wid>/prompts_override.json.",
+            "Use prompt_version in Settings to select versions.",
         ],
     },
     {
@@ -57,6 +80,7 @@ HELP_SECTIONS = [
             "History records recent actions, outputs, and citations counts.",
             "Data is stored in workspaces/<wid>/ (uploads, indexes, runs, outputs).",
             "SQLite stores workspace metadata, documents, chunks, and settings.",
+            "Coach sessions stored in SQLite and mirrored to workspaces/<wid>/coach/.",
         ],
     },
     {

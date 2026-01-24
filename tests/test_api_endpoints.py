@@ -24,10 +24,12 @@ def test_api_endpoints(tmp_path: Path, monkeypatch):
     import service.chat_service as chat_service
     import service.retrieval_service as retrieval_service
     import core.agents.paper_agent as paper_agent
+    import core.coach.coach_agent as coach_agent
 
     monkeypatch.setattr(chat_service, "chat", lambda *args, **kwargs: "ok")
     monkeypatch.setattr(retrieval_service, "chat", lambda *args, **kwargs: "ok")
     monkeypatch.setattr(paper_agent, "chat", lambda *args, **kwargs: "ok")
+    monkeypatch.setattr(coach_agent, "chat", lambda *args, **kwargs: "ok")
 
     from infra.models import init_db
     from backend.api import app
@@ -83,3 +85,32 @@ def test_api_endpoints(tmp_path: Path, monkeypatch):
     resp = client.get(f"/assets/{asset_id}/version/{version_id}")
     assert resp.status_code == 200
     assert resp.json()["content"]
+
+    resp = client.get("/ocr/status")
+    assert resp.status_code == 200
+
+    resp = client.post(
+        "/coach/start",
+        json={"workspace_id": ws_id, "problem": "Test problem", "retrieval_mode": "bm25"},
+    )
+    assert resp.status_code == 200
+    session_id = resp.json()["session_id"]
+
+    resp = client.post(
+        "/coach/submit",
+        json={
+            "workspace_id": ws_id,
+            "session_id": session_id,
+            "answer": "My answer",
+            "retrieval_mode": "bm25",
+        },
+    )
+    assert resp.status_code == 200
+
+    resp = client.get("/plugins")
+    assert resp.status_code == 200
+    assert resp.json()["plugins"]
+
+    resp = client.get("/prompts")
+    assert resp.status_code == 200
+    assert resp.json()["prompts"]

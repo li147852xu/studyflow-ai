@@ -69,7 +69,7 @@ def generate_slides(
         content_type="markdown",
         run_id=run_id,
         model=os.getenv("STUDYFLOW_LLM_MODEL", ""),
-        prompt_version="v1",
+        prompt_version=output.prompt_version or "v1",
         hits=output.hits or [],
     )
     output.asset_id = version.asset_id

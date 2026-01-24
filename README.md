@@ -1,15 +1,15 @@
 # StudyFlow-AI
 
-StudyFlow-AI is a local-first study workspace for PDFs with generation workflows, asset versioning, and optional API mode.
+StudyFlow-AI is a local-first study workspace for PDFs with OCR, coaching, asset versioning, and optional API mode.
 
-## v1.x Highlights
+## v2.x Highlights
+- OCR pipeline (optional) with auto/on/off modes
+- Study Coach (two-phase guidance with guard)
+- Plugin registry (import/export + citations exporters)
+- Prompt registry with versioning + local overrides
 - Asset versioning for generated outputs (pin/rollback/diff)
-- Citations export (JSON + TXT) for any asset version
 - Optional API mode via FastAPI (local/self-hosted)
 - Hybrid retrieval (Vector + BM25) with mode switch
-- Course, Paper, Presentation workbenches with citations
-- Local embeddings via `sentence-transformers`
-- Local-first storage with SQLite + workspace folders
 
 ## Quickstart (3 steps)
 1) Clone: `git clone https://github.com/li147852xu/studyflow-ai.git`
@@ -39,12 +39,15 @@ The app auto-loads a local `.env` file if present. Do not commit real keys.
 ## CLI Quickstart
 - `studyflow doctor`
 - `studyflow workspace create <name>`
-- `studyflow ingest --workspace <id> <pdf_path>`
+- `studyflow ingest --workspace <id> --ocr auto <pdf_path>`
 - `studyflow query --workspace <id> --mode bm25 "question"`
 - `studyflow gen --workspace <id> --type slides --source <doc_id> --duration 5 --mode bm25`
 - `studyflow asset ls --workspace <id>`
 - `studyflow asset diff --asset <id> --a <ver> --b <ver>`
 - `studyflow api ping --base-url http://127.0.0.1:8000`
+- `studyflow coach start --workspace <id> --problem "..."`
+- `studyflow coach submit --workspace <id> --session <sid> --answer "..."`
+- `studyflow plugins ls`
 
 ## Using Ingest + Citation Preview
 Upload a PDF on any page and the UI will show:
@@ -85,6 +88,8 @@ Each generation and retrieval chat produces a `run_id` and writes a JSON log to
 - The UI includes a Help page with full workflows and troubleshooting.
 - Navigation, workspace management, and status live in the left column.
 - History is stored in SQLite and shown in the History page per workspace.
+- Coach sessions are stored in SQLite and mirrored to `workspaces/<wid>/coach/`.
+- Prompt overrides live in `workspaces/<wid>/prompts_override.json`.
 
 ### Persistence
 - Workspaces, documents, chunks, history, and UI settings are stored in SQLite.
@@ -94,6 +99,11 @@ Each generation and retrieval chat produces a `run_id` and writes a JSON log to
 ## Privacy & Storage
 - All data stays local by default; API mode is for local/self-hosted use.
 - API tokens are read from env only and not stored in the DB.
+- OCR requires optional dependencies (tesseract + pytesseract; EasyOCR optional).
+- Install tesseract:
+  - macOS: `brew install tesseract`
+  - Ubuntu: `sudo apt-get install tesseract-ocr`
+  - Windows: `choco install tesseract`
 
 ## Cleanup + Verification
 Before running version verification, clean local workspaces:

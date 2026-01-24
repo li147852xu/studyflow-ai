@@ -8,6 +8,7 @@ from infra.db import get_workspaces_dir
 def delete_document(workspace_id: str, doc_id: str) -> None:
     with get_connection() as connection:
         connection.execute("DELETE FROM chunks WHERE doc_id = ?", (doc_id,))
+        connection.execute("DELETE FROM document_pages WHERE doc_id = ?", (doc_id,))
         connection.execute("DELETE FROM documents WHERE id = ?", (doc_id,))
         connection.commit()
 

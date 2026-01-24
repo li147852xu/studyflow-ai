@@ -3,7 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from core.formatting.citations import CitationBundle, build_citation_bundle
-from core.prompts.course_prompts import cheatsheet_prompt, explain_prompt, overview_prompt
+from core.prompts.registry import build_prompt
 from service.chat_service import ChatConfigError, chat
 from service.retrieval_service import retrieve_hits_mode
 from core.retrieval.retriever import Hit
@@ -23,6 +23,7 @@ class AgentOutput:
     asset_id: str | None = None
     asset_version_id: str | None = None
     asset_version_index: int | None = None
+    prompt_version: str | None = None
 
 
 class CourseAgent:
@@ -81,7 +82,12 @@ class CourseAgent:
 
         merged_hits = self._merge_hits(batches)
         bundle = build_citation_bundle(merged_hits)
-        prompt = overview_prompt(bundle.numbered_context, topics)
+        prompt, prompt_version = build_prompt(
+            "course_overview",
+            self.workspace_id,
+            context=bundle.numbered_context,
+            topics=topics,
+        )
         try:
             content = chat(prompt=prompt, temperature=0.2)
         except ChatConfigError as exc:
@@ -91,6 +97,7 @@ class CourseAgent:
             citations=bundle.citations,
             hits=merged_hits,
             retrieval_mode=used_mode,
+            prompt_version=prompt_version,
         )
 
     def generate_cheatsheet(self, progress_cb: callable | None = None) -> AgentOutput:
@@ -111,7 +118,11 @@ class CourseAgent:
 
         merged_hits = self._merge_hits(batches)
         bundle = build_citation_bundle(merged_hits)
-        prompt = cheatsheet_prompt(bundle.numbered_context)
+        prompt, prompt_version = build_prompt(
+            "course_cheatsheet",
+            self.workspace_id,
+            context=bundle.numbered_context,
+        )
         try:
             content = chat(prompt=prompt, temperature=0.2)
         except ChatConfigError as exc:
@@ -121,12 +132,19 @@ class CourseAgent:
             citations=bundle.citations,
             hits=merged_hits,
             retrieval_mode=used_mode,
+            prompt_version=prompt_version,
         )
 
     def explain_selection(self, selection: str, mode: str) -> AgentOutput:
         hits, used_mode = self._retrieve_hits(selection, top_k=8)
         bundle = build_citation_bundle(hits)
-        prompt = explain_prompt(selection, mode, bundle.numbered_context)
+        prompt, prompt_version = build_prompt(
+            "course_explain",
+            self.workspace_id,
+            selection=selection,
+            mode=mode,
+            context=bundle.numbered_context,
+        )
         try:
             content = chat(prompt=prompt, temperature=0.2)
         except ChatConfigError as exc:
@@ -136,4 +154,5 @@ class CourseAgent:
             citations=bundle.citations,
             hits=hits,
             retrieval_mode=used_mode,
+            prompt_version=prompt_version,
         )

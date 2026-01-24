@@ -98,6 +98,21 @@ def render_library_view(
 
     with center:
         st.markdown("### Upload PDFs")
+        ocr_mode = st.selectbox(
+            "OCR mode",
+            options=["off", "auto", "on"],
+            index=["off", "auto", "on"].index(
+                st.session_state.get("ocr_mode", "off")
+            ),
+            help="Auto triggers OCR on low-text pages.",
+        )
+        ocr_threshold = st.slider(
+            "OCR threshold (chars)",
+            min_value=10,
+            max_value=200,
+            value=int(st.session_state.get("ocr_threshold", 50)),
+            step=10,
+        )
         uploads = st.file_uploader(
             "Drop PDFs here",
             type=["pdf"],
@@ -117,11 +132,16 @@ def render_library_view(
                             data=upload.getvalue(),
                             save_dir=get_workspaces_dir() / workspace_id / "uploads",
                             kind="document",
+                            ocr_mode=ocr_mode,
+                            ocr_threshold=ocr_threshold,
                         )
                         msg = "Skipped (already ingested)" if result.get("skipped") else "Ingested"
                         st.write(
                             f"{upload.name}: {msg} ({result.get('chunk_count', 0)} chunks)"
                         )
+                        warnings = result.get("warnings") or []
+                        for warning in warnings:
+                            st.warning(warning)
                     except IngestError as exc:
                         st.error(f"{upload.name}: {exc}")
                     except ApiModeError as exc:

@@ -19,6 +19,8 @@ NAV_ITEMS = [
     "Courses",
     "Papers",
     "Presentations",
+    "Coach",
+    "Plugins",
     "History",
     "Settings",
     "Help",

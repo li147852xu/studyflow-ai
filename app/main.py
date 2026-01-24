@@ -42,6 +42,15 @@ from service.ingest_service import IngestError
 from service.paper_service import add_tags, list_papers, list_tags
 from service.presentation_service import list_sources
 from service.api_mode_adapter import ApiModeAdapter, ApiModeError
+from service.coach_service import (
+    clear_coach_sessions,
+    list_coach_sessions,
+    show_coach_session,
+    start_coach,
+    submit_coach,
+)
+from core.plugins.registry import load_builtin_plugins, list_plugins, get_plugin
+from core.plugins.base import PluginContext
 
 
 def _ensure_retrieval_mode(workspace_id: str | None) -> str:
@@ -188,6 +197,8 @@ def render_courses(left: st.delta_generator.DeltaGenerator, center: st.delta_gen
                     data=upload.getvalue(),
                     save_dir=get_workspaces_dir() / workspace_id / "uploads",
                     kind="document",
+                    ocr_mode=st.session_state.get("ocr_mode", "off"),
+                    ocr_threshold=int(st.session_state.get("ocr_threshold", 50)),
                 )
                 link_document(course_id, result["doc_id"])
                 st.success("PDF ingested and linked.")
@@ -429,6 +440,8 @@ def render_papers(left: st.delta_generator.DeltaGenerator, center: st.delta_gene
                     data=upload.getvalue(),
                     save_dir=get_workspaces_dir() / workspace_id / "uploads",
                     kind="paper",
+                    ocr_mode=st.session_state.get("ocr_mode", "off"),
+                    ocr_threshold=int(st.session_state.get("ocr_threshold", 50)),
                 )
                 paper_id = result.get("paper_id")
                 if paper_id:
@@ -712,6 +725,148 @@ def render_presentations(left: st.delta_generator.DeltaGenerator, center: st.del
         )
 
 
+def render_coach(left: st.delta_generator.DeltaGenerator, center: st.delta_generator.DeltaGenerator, right: st.delta_generator.DeltaGenerator, workspace_id: str) -> None:
+    retrieval_mode = _ensure_retrieval_mode(workspace_id)
+    sessions = list_coach_sessions(workspace_id)
+    with left:
+        st.markdown("### Coach Sessions")
+        if not sessions:
+            st.caption("No coach sessions yet.")
+        else:
+            for session in sessions[:10]:
+                st.write(f"{session.created_at[:19]} · {session.id}")
+                st.caption(session.problem[:120])
+        if confirm_action(
+            key="confirm_clear_coach",
+            label="Confirm clear sessions",
+            help_text="Remove all coach sessions in this workspace.",
+        ):
+            if st.button("Clear coach sessions", type="primary"):
+                clear_coach_sessions(workspace_id)
+                st.success("Coach sessions cleared.")
+
+    with center:
+        st.markdown("### Study Coach")
+        ready, reason = llm_ready(
+            st.session_state.get("llm_base_url", ""),
+            st.session_state.get("llm_model", ""),
+            st.session_state.get("llm_api_key", ""),
+        )
+        st.markdown("#### Phase A — Framework")
+        problem = st.text_area("Problem statement", height=140, key="coach_problem")
+        if st.button(
+            "Start coaching",
+            disabled=not problem.strip() or not ready,
+            help=reason or "Generate framework and hints.",
+        ):
+            try:
+                result = start_coach(
+                    workspace_id=workspace_id,
+                    problem=problem.strip(),
+                    retrieval_mode=retrieval_mode,
+                )
+                st.session_state["coach_last_session_id"] = result.session.id
+                st.success("Phase A complete.")
+                st.write(result.output.content)
+                for citation in result.output.citations:
+                    st.write(citation)
+            except Exception as exc:
+                st.error(str(exc))
+
+        st.divider()
+        st.markdown("#### Phase B — Review")
+        session_ids = [session.id for session in sessions]
+        selected_session = st.selectbox(
+            "Select session",
+            options=["(none)"] + session_ids,
+        )
+        answer = st.text_area("Your answer", height=140, key="coach_answer")
+        if st.button(
+            "Submit answer",
+            disabled=selected_session == "(none)" or not answer.strip() or not ready,
+            help=reason or "Get feedback and rubric.",
+        ):
+            try:
+                result = submit_coach(
+                    workspace_id=workspace_id,
+                    session_id=selected_session,
+                    answer=answer.strip(),
+                    retrieval_mode=retrieval_mode,
+                )
+                st.session_state["coach_last_session_id"] = result.session.id
+                st.success("Phase B complete.")
+                st.write(result.output.content)
+                for citation in result.output.citations:
+                    st.write(citation)
+            except Exception as exc:
+                st.error(str(exc))
+
+    with right:
+        st.markdown("### Inspector")
+        session_id = st.session_state.get("coach_last_session_id")
+        if not session_id:
+            st.caption("No session selected.")
+            return
+        session = show_coach_session(session_id)
+        render_metadata(
+            {
+                "Session": session.id,
+                "Status": session.status or "-",
+                "Updated": session.updated_at[:19],
+            }
+        )
+        if session.phase_a_output:
+            render_section_title("Phase A")
+            st.write(session.phase_a_output[:600] + ("..." if len(session.phase_a_output) > 600 else ""))
+        if session.phase_b_output:
+            render_section_title("Phase B")
+            st.write(session.phase_b_output[:600] + ("..." if len(session.phase_b_output) > 600 else ""))
+
+
+def render_plugins(left: st.delta_generator.DeltaGenerator, center: st.delta_generator.DeltaGenerator, right: st.delta_generator.DeltaGenerator, workspace_id: str) -> None:
+    load_builtin_plugins()
+    plugins = list_plugins()
+    with left:
+        st.markdown("### Plugins")
+        for plugin in plugins:
+            st.write(f"{plugin.name} · {plugin.version}")
+            st.caption(plugin.description)
+
+    with center:
+        st.markdown("### Run Plugin")
+        plugin_names = [plugin.name for plugin in plugins]
+        selected = st.selectbox("Select plugin", options=plugin_names)
+        path = st.text_input("Path (for importer/exporter)", value="")
+        ocr_mode = st.selectbox("OCR mode", options=["off", "auto", "on"], index=0)
+        ocr_threshold = st.slider("OCR threshold", 10, 200, 50, step=10)
+        if st.button("Run plugin", disabled=not selected):
+            plugin = get_plugin(selected)
+            context = PluginContext(
+                workspace_id=workspace_id,
+                args={
+                    "path": path or None,
+                    "ocr_mode": ocr_mode,
+                    "ocr_threshold": ocr_threshold,
+                    "formats": ["json", "txt"],
+                },
+            )
+            result = plugin.run(context)
+            st.success(result.message if result.ok else result.message)
+
+    with right:
+        st.markdown("### Plugin Info")
+        if not selected:
+            st.caption("No plugin selected.")
+            return
+        plugin = get_plugin(selected)
+        render_metadata(
+            {
+                "Name": plugin.name,
+                "Version": plugin.version,
+                "Description": plugin.description,
+            }
+        )
+
 def render_history_page(center: st.delta_generator.DeltaGenerator, right: st.delta_generator.DeltaGenerator, workspace_id: str) -> None:
     with center:
         st.markdown("### History")
@@ -821,6 +976,29 @@ def render_settings(center: st.delta_generator.DeltaGenerator, right: st.delta_g
             value=os.getenv("STUDYFLOW_EMBED_MODEL", ""),
             key="settings_embed_model",
         )
+        st.markdown("#### OCR Settings")
+        ocr_mode = st.selectbox(
+            "OCR mode",
+            options=["off", "auto", "on"],
+            index=["off", "auto", "on"].index(
+                st.session_state.get("ocr_mode", "off")
+            ),
+            help="Auto triggers OCR on low-text pages.",
+        )
+        ocr_threshold = st.slider(
+            "OCR threshold (chars)",
+            min_value=10,
+            max_value=200,
+            value=int(st.session_state.get("ocr_threshold", 50)),
+            step=10,
+        )
+        st.markdown("#### Prompt Version")
+        prompt_version = st.selectbox(
+            "Prompt version",
+            options=["v1"],
+            index=0,
+            help="Select prompt version for generation and coach.",
+        )
         if st.button("Save settings"):
             st.session_state["llm_base_url"] = base_url
             st.session_state["llm_model"] = model
@@ -828,6 +1006,9 @@ def render_settings(center: st.delta_generator.DeltaGenerator, right: st.delta_g
             st.session_state["llm_temperature"] = temperature
             st.session_state["api_mode"] = mode
             st.session_state["api_base_url"] = api_base_url
+            st.session_state["ocr_mode"] = ocr_mode
+            st.session_state["ocr_threshold"] = ocr_threshold
+            st.session_state["prompt_version"] = prompt_version
             if embed_model:
                 os.environ["STUDYFLOW_EMBED_MODEL"] = embed_model
             if base_url:
@@ -837,6 +1018,9 @@ def render_settings(center: st.delta_generator.DeltaGenerator, right: st.delta_g
             set_setting(None, "llm_temperature", str(temperature))
             set_setting(None, "api_mode", mode)
             set_setting(None, "api_base_url", api_base_url)
+            set_setting(None, "ocr_mode", ocr_mode)
+            set_setting(None, "ocr_threshold", str(ocr_threshold))
+            set_setting(None, "prompt_version", prompt_version)
             st.success("Settings saved.")
 
         st.markdown("#### Connection tests")
@@ -944,6 +1128,10 @@ def main() -> None:
         render_papers(left, center, right, workspace_id)
     elif nav == "Presentations":
         render_presentations(left, center, right, workspace_id)
+    elif nav == "Coach":
+        render_coach(left, center, right, workspace_id)
+    elif nav == "Plugins":
+        render_plugins(left, center, right, workspace_id)
     elif nav == "History":
         render_history_page(center, right, workspace_id)
     elif nav == "Settings":

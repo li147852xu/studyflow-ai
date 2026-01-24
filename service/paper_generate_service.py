@@ -40,7 +40,7 @@ def generate_paper_card(
         content_type="text",
         run_id=run_id,
         model=os.getenv("STUDYFLOW_LLM_MODEL", ""),
-        prompt_version="v1",
+        prompt_version=output.prompt_version or "v1",
         hits=output.hits,
     )
     output.asset_id = version.asset_id
@@ -81,7 +81,7 @@ def aggregate_papers(
         content_type="text",
         run_id=run_id,
         model=os.getenv("STUDYFLOW_LLM_MODEL", ""),
-        prompt_version="v1",
+        prompt_version=output.prompt_version or "v1",
         hits=output.hits,
     )
     output.asset_id = version.asset_id

@@ -31,6 +31,9 @@ def init_db() -> None:
                 path TEXT NOT NULL,
                 sha256 TEXT,
                 page_count INTEGER,
+                ocr_mode TEXT,
+                ocr_pages_count INTEGER,
+                image_pages_count INTEGER,
                 updated_at TEXT,
                 created_at TEXT NOT NULL,
                 FOREIGN KEY(workspace_id) REFERENCES workspaces(id)
@@ -139,9 +142,30 @@ def init_db() -> None:
                 page_start INTEGER NOT NULL,
                 page_end INTEGER NOT NULL,
                 text TEXT NOT NULL,
+                text_source TEXT,
+                metadata_json TEXT,
                 created_at TEXT NOT NULL,
                 FOREIGN KEY(doc_id) REFERENCES documents(id),
                 FOREIGN KEY(workspace_id) REFERENCES workspaces(id)
+            )
+            """
+        )
+        cursor.execute(
+            """
+            CREATE TABLE IF NOT EXISTS document_pages (
+                id TEXT PRIMARY KEY,
+                doc_id TEXT NOT NULL,
+                workspace_id TEXT NOT NULL,
+                page_number INTEGER NOT NULL,
+                text_source TEXT,
+                ocr_text TEXT,
+                image_count INTEGER,
+                has_images INTEGER,
+                blocks_json TEXT,
+                created_at TEXT NOT NULL,
+                FOREIGN KEY(doc_id) REFERENCES documents(id),
+                FOREIGN KEY(workspace_id) REFERENCES workspaces(id),
+                UNIQUE(doc_id, page_number)
             )
             """
         )
@@ -177,10 +201,32 @@ def init_db() -> None:
             )
             """
         )
+        cursor.execute(
+            """
+            CREATE TABLE IF NOT EXISTS coach_sessions (
+                id TEXT PRIMARY KEY,
+                workspace_id TEXT NOT NULL,
+                problem TEXT NOT NULL,
+                phase_a_output TEXT,
+                phase_b_output TEXT,
+                citations_json TEXT,
+                hits_json TEXT,
+                status TEXT,
+                created_at TEXT NOT NULL,
+                updated_at TEXT NOT NULL,
+                FOREIGN KEY(workspace_id) REFERENCES workspaces(id)
+            )
+            """
+        )
         connection.commit()
 
     _ensure_column("documents", "sha256", "TEXT")
     _ensure_column("documents", "page_count", "INTEGER")
     _ensure_column("documents", "updated_at", "TEXT")
+    _ensure_column("documents", "ocr_mode", "TEXT")
+    _ensure_column("documents", "ocr_pages_count", "INTEGER")
+    _ensure_column("documents", "image_pages_count", "INTEGER")
     _ensure_column("ui_history", "run_id", "TEXT")
     _ensure_column("assets", "active_version_id", "TEXT")
+    _ensure_column("chunks", "text_source", "TEXT")
+    _ensure_column("chunks", "metadata_json", "TEXT")

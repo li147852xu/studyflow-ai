@@ -139,12 +139,16 @@ def ingest_paper(
     filename: str,
     data: bytes,
     save_dir: Path,
+    ocr_mode: str = "off",
+    ocr_threshold: int = 50,
 ) -> tuple[str, PaperMetadata]:
     ingest_result = ingest_pdf(
         workspace_id=workspace_id,
         filename=filename,
         data=data,
         save_dir=save_dir,
+        ocr_mode=ocr_mode,
+        ocr_threshold=ocr_threshold,
     )
     metadata = extract_paper_metadata(Path(ingest_result.path))
     existing = find_paper_by_doc(workspace_id, ingest_result.doc_id)

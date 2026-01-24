@@ -77,6 +77,8 @@ class ApiModeAdapter:
         data: bytes,
         save_dir,
         kind: str = "document",
+        ocr_mode: str = "off",
+        ocr_threshold: int = 50,
     ) -> dict:
         if self.mode == "direct":
             if kind == "paper":
@@ -85,6 +87,8 @@ class ApiModeAdapter:
                     filename=filename,
                     data=data,
                     save_dir=save_dir,
+                    ocr_mode=ocr_mode,
+                    ocr_threshold=ocr_threshold,
                 )
                 return {
                     "paper_id": paper_id,
@@ -97,6 +101,8 @@ class ApiModeAdapter:
                 filename=filename,
                 data=data,
                 save_dir=save_dir,
+                ocr_mode=ocr_mode,
+                ocr_threshold=ocr_threshold,
             )
             return result.__dict__
         payload = {
@@ -104,6 +110,8 @@ class ApiModeAdapter:
             "filename": filename,
             "data_base64": base64.b64encode(data).decode("utf-8"),
             "kind": kind,
+            "ocr_mode": ocr_mode,
+            "ocr_threshold": ocr_threshold,
         }
         return self._post("/ingest", payload)
 

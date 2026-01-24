@@ -8,6 +8,7 @@ from pathlib import Path
 
 from core.ingest.chunker import Chunk, chunk_pages
 from core.ingest.pdf_reader import PDFReadError, read_pdf
+from core.ingest.ocr import OCRSettings
 from core.indexing.planner import plan_document
 from core.indexing.sync import delete_document, delete_document_vectors
 from core.retrieval.bm25_index import build_bm25_index
@@ -28,6 +29,10 @@ class IngestResult:
     page_count: int
     chunk_count: int
     skipped: bool
+    ocr_pages_count: int = 0
+    image_pages_count: int = 0
+    ocr_mode: str = "off"
+    warnings: list[str] | None = None
 
 
 def _now_iso() -> str:
@@ -44,7 +49,8 @@ def _get_existing_document(workspace_id: str, sha256: str) -> dict | None:
     with get_connection() as connection:
         row = connection.execute(
             """
-            SELECT id, workspace_id, filename, path, sha256, page_count
+            SELECT id, workspace_id, filename, path, sha256, page_count,
+                   ocr_mode, ocr_pages_count, image_pages_count
             FROM documents
             WHERE workspace_id = ? AND sha256 = ?
             """,
@@ -69,13 +75,19 @@ def _insert_document(
     path: str,
     sha256: str,
     page_count: int,
+    ocr_mode: str,
+    ocr_pages_count: int,
+    image_pages_count: int,
 ) -> str:
     doc_id = str(uuid.uuid4())
     with get_connection() as connection:
         connection.execute(
             """
-            INSERT INTO documents (id, workspace_id, filename, path, sha256, page_count, created_at, updated_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            INSERT INTO documents (
+                id, workspace_id, filename, path, sha256, page_count,
+                ocr_mode, ocr_pages_count, image_pages_count, created_at, updated_at
+            )
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (
                 doc_id,
@@ -84,6 +96,9 @@ def _insert_document(
                 path,
                 sha256,
                 page_count,
+                ocr_mode,
+                ocr_pages_count,
+                image_pages_count,
                 _now_iso(),
                 _now_iso(),
             ),
@@ -101,8 +116,11 @@ def _insert_chunks(
     with get_connection() as connection:
         connection.executemany(
             """
-            INSERT INTO chunks (id, doc_id, workspace_id, chunk_index, page_start, page_end, text, created_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            INSERT INTO chunks (
+                id, doc_id, workspace_id, chunk_index, page_start, page_end,
+                text, text_source, metadata_json, created_at
+            )
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             [
                 (
@@ -113,9 +131,45 @@ def _insert_chunks(
                     chunk.page_start,
                     chunk.page_end,
                     chunk.text,
+                    chunk.text_source,
+                    chunk.metadata_json,
                     _now_iso(),
                 )
                 for chunk in chunks
+            ],
+        )
+        connection.commit()
+
+
+def _insert_document_pages(
+    *,
+    doc_id: str,
+    workspace_id: str,
+    pages: list,
+) -> None:
+    with get_connection() as connection:
+        connection.executemany(
+            """
+            INSERT INTO document_pages (
+                id, doc_id, workspace_id, page_number, text_source, ocr_text,
+                image_count, has_images, blocks_json, created_at
+            )
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+            [
+                (
+                    f"{doc_id}:{page.number}",
+                    doc_id,
+                    workspace_id,
+                    page.number,
+                    page.text_source,
+                    page.ocr_text,
+                    page.image_count,
+                    1 if page.has_images else 0,
+                    page.blocks_json,
+                    _now_iso(),
+                )
+                for page in pages
             ],
         )
         connection.commit()
@@ -127,9 +181,15 @@ def ingest_pdf(
     filename: str,
     data: bytes,
     save_dir: Path,
+    ocr_mode: str = "off",
+    ocr_threshold: int = 50,
+    progress_cb: callable | None = None,
+    stop_check: callable | None = None,
 ) -> IngestResult:
     if not data:
         raise IngestError("Uploaded PDF is empty.")
+    if ocr_mode not in ["off", "auto", "on"]:
+        raise IngestError("OCR mode must be off, auto, or on.")
 
     sha256 = _sha256_bytes(data)
 
@@ -151,6 +211,10 @@ def ingest_pdf(
                 page_count=existing.get("page_count") or 0,
                 chunk_count=chunk_count,
                 skipped=True,
+                ocr_pages_count=existing.get("ocr_pages_count") or 0,
+                image_pages_count=existing.get("image_pages_count") or 0,
+                ocr_mode=existing.get("ocr_mode") or "off",
+                warnings=[],
             )
 
     if plan.action == "update" and plan.doc_id:
@@ -158,7 +222,14 @@ def ingest_pdf(
         delete_document(workspace_id, plan.doc_id)
 
     try:
-        parse_result = read_pdf(target_path)
+        parse_result = read_pdf(
+            target_path,
+            ocr_mode=ocr_mode,
+            ocr_threshold=ocr_threshold,
+            ocr_settings=OCRSettings(),
+            progress_cb=progress_cb,
+            stop_check=stop_check,
+        )
     except PDFReadError as exc:
         raise IngestError(str(exc)) from exc
 
@@ -166,14 +237,24 @@ def ingest_pdf(
     if not chunks:
         raise IngestError("No text extracted from PDF.")
 
+    ocr_pages_count = len([p for p in parse_result.pages if p.text_source in ["ocr", "mixed"]])
+    image_pages_count = len([p for p in parse_result.pages if p.has_images])
     doc_id = _insert_document(
         workspace_id=workspace_id,
         filename=filename,
         path=str(target_path),
         sha256=sha256,
         page_count=parse_result.page_count,
+        ocr_mode=ocr_mode,
+        ocr_pages_count=ocr_pages_count,
+        image_pages_count=image_pages_count,
     )
     _insert_chunks(doc_id=doc_id, workspace_id=workspace_id, chunks=chunks)
+    _insert_document_pages(
+        doc_id=doc_id,
+        workspace_id=workspace_id,
+        pages=parse_result.pages,
+    )
     try:
         build_bm25_index(workspace_id)
     except Exception:
@@ -188,6 +269,10 @@ def ingest_pdf(
         page_count=parse_result.page_count,
         chunk_count=len(chunks),
         skipped=False,
+        ocr_pages_count=ocr_pages_count,
+        image_pages_count=image_pages_count,
+        ocr_mode=ocr_mode,
+        warnings=parse_result.warnings,
     )
 
 

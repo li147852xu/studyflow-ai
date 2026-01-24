@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from dataclasses import dataclass
 
 from core.ingest.pdf_reader import PDFPage
@@ -15,6 +16,8 @@ class Chunk:
     page_start: int
     page_end: int
     text: str
+    text_source: str
+    metadata_json: str | None = None
 
 
 def _split_paragraphs(text: str) -> list[str]:
@@ -28,6 +31,7 @@ def _hard_split(text: str, size: int) -> list[str]:
 
 def chunk_pages(pages: list[PDFPage]) -> list[Chunk]:
     paragraphs: list[tuple[int, str]] = []
+    page_meta: dict[int, PDFPage] = {page.number: page for page in pages}
     for page in pages:
         if not page.text:
             continue
@@ -46,12 +50,35 @@ def chunk_pages(pages: list[PDFPage]) -> list[Chunk]:
         nonlocal current_text, page_start, page_end, chunk_index, carry_text, carry_page
         if not current_text:
             return
+        sources = set()
+        ocr_pages: list[int] = []
+        image_pages: list[int] = []
+        if page_start and page_end:
+            for page_num in range(page_start, page_end + 1):
+                meta = page_meta.get(page_num)
+                if not meta:
+                    continue
+                sources.add(meta.text_source)
+                if meta.text_source in ["ocr", "mixed"]:
+                    ocr_pages.append(page_num)
+                if meta.has_images:
+                    image_pages.append(page_num)
+        text_source = "mixed" if len(sources) > 1 else (next(iter(sources)) if sources else "extract")
+        metadata_json = json.dumps(
+            {
+                "ocr_pages": ocr_pages,
+                "image_pages": image_pages,
+            },
+            ensure_ascii=False,
+        )
         chunks.append(
             Chunk(
                 chunk_index=chunk_index,
                 page_start=page_start or page_end or 1,
                 page_end=page_end or page_start or 1,
                 text=current_text.strip(),
+                text_source=text_source,
+                metadata_json=metadata_json,
             )
         )
         chunk_index += 1

@@ -3,7 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from core.formatting.citations import build_citation_bundle
-from core.prompts.paper_prompts import paper_card_prompt
+from core.prompts.registry import build_prompt
 from core.retrieval.retriever import Hit
 from service.chat_service import ChatConfigError, chat
 from service.retrieval_service import retrieve_hits_mode
@@ -23,6 +23,7 @@ class PaperCardOutput:
     asset_id: str | None = None
     asset_version_id: str | None = None
     asset_version_index: int | None = None
+    prompt_version: str | None = None
 
 
 class PaperAgent:
@@ -57,7 +58,11 @@ class PaperAgent:
 
         merged_hits = _merge_hits(batches)
         bundle = build_citation_bundle(merged_hits)
-        prompt = paper_card_prompt(bundle.numbered_context)
+        prompt, prompt_version = build_prompt(
+            "paper_card",
+            self.workspace_id,
+            context=bundle.numbered_context,
+        )
         try:
             content = chat(prompt=prompt, temperature=0.2)
         except ChatConfigError as exc:
@@ -67,6 +72,7 @@ class PaperAgent:
             citations=bundle.citations,
             hits=merged_hits,
             retrieval_mode=used_mode,
+            prompt_version=prompt_version,
         )
 
 

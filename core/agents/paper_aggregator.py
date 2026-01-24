@@ -3,7 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from core.formatting.citations import build_citation_bundle
-from core.prompts.paper_prompts import aggregator_prompt
+from core.prompts.registry import build_prompt
 from core.retrieval.retriever import Hit
 from service.chat_service import ChatConfigError, chat
 from service.retrieval_service import retrieve_hits_mode
@@ -23,6 +23,7 @@ class AggregationOutput:
     asset_id: str | None = None
     asset_version_id: str | None = None
     asset_version_index: int | None = None
+    prompt_version: str | None = None
 
 
 class PaperAggregator:
@@ -59,7 +60,12 @@ class PaperAggregator:
         if not merged_hits:
             raise PaperAggregatorError("No retrieval hits across selected papers.")
         bundle = build_citation_bundle(merged_hits)
-        prompt = aggregator_prompt(bundle.numbered_context, question)
+        prompt, prompt_version = build_prompt(
+            "paper_aggregate",
+            self.workspace_id,
+            context=bundle.numbered_context,
+            question=question,
+        )
         try:
             content = chat(prompt=prompt, temperature=0.2)
         except ChatConfigError as exc:
@@ -69,6 +75,7 @@ class PaperAggregator:
             citations=bundle.citations,
             hits=merged_hits,
             retrieval_mode=used_mode,
+            prompt_version=prompt_version,
         )
 
 

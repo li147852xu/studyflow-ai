@@ -8,11 +8,17 @@ from fastapi import Depends, FastAPI, Header, HTTPException
 from backend.schemas import (
     AssetVersionResponse,
     AssetVersionsResponse,
+    CoachResponse,
+    CoachStartRequest,
+    CoachSubmitRequest,
     GenerateRequest,
     GenerateResponse,
     HealthResponse,
     IngestRequest,
     IngestResponse,
+    OcrStatusResponse,
+    PluginsResponse,
+    PromptsResponse,
     QueryRequest,
     QueryResponse,
     WorkspaceRequest,
@@ -20,9 +26,13 @@ from backend.schemas import (
 )
 from core.assets.citations import format_citations_payload
 from core.assets.store import get_asset
+from core.ingest.ocr import OCRSettings, ocr_available
+from core.plugins.registry import load_builtin_plugins, list_plugins
+from core.prompts.registry import list_prompts
 from infra.db import get_connection, get_workspaces_dir
 from infra.models import init_db
 from service.asset_service import list_versions, read_version
+from service.coach_service import start_coach, submit_coach
 from service.course_service import generate_cheatsheet, generate_overview, explain_selection
 from service.ingest_service import ingest_pdf
 from service.paper_generate_service import aggregate_papers, generate_paper_card
@@ -32,7 +42,7 @@ from service.presentation_service import generate_slides
 from service.retrieval_service import answer_with_retrieval
 from service.workspace_service import create_workspace, list_workspaces
 
-app = FastAPI(title="StudyFlow API", version="1.3.0")
+app = FastAPI(title="StudyFlow API", version="2.2.0")
 
 
 def _verify_token(authorization: str | None = Header(None)) -> None:
@@ -53,7 +63,17 @@ def _init_db() -> None:
 
 @app.get("/health", response_model=HealthResponse)
 def health() -> HealthResponse:
-    return HealthResponse(status="ok", version="1.3.0")
+    return HealthResponse(status="ok", version="2.2.0")
+
+
+@app.get("/ocr/status", response_model=OcrStatusResponse, dependencies=[Depends(_verify_token)])
+def ocr_status() -> OcrStatusResponse:
+    ok, reason = ocr_available(OCRSettings())
+    return OcrStatusResponse(
+        available=ok,
+        engine="auto",
+        message=reason or "OCR available",
+    )
 
 
 @app.post("/workspaces", response_model=WorkspaceResponse, dependencies=[Depends(_verify_token)])
@@ -77,6 +97,8 @@ def ingest(payload: IngestRequest) -> IngestResponse:
             filename=payload.filename,
             data=data,
             save_dir=get_workspaces_dir() / payload.workspace_id / "uploads",
+            ocr_mode=payload.ocr_mode,
+            ocr_threshold=payload.ocr_threshold,
         )
         paper = get_paper(paper_id)
         doc_id = paper["doc_id"] if paper else ""
@@ -108,6 +130,8 @@ def ingest(payload: IngestRequest) -> IngestResponse:
         filename=payload.filename,
         data=data,
         save_dir=get_workspaces_dir() / payload.workspace_id / "uploads",
+        ocr_mode=payload.ocr_mode,
+        ocr_threshold=payload.ocr_threshold,
     )
     return IngestResponse(**result.__dict__)
 
@@ -262,4 +286,72 @@ def asset_version(asset_id: str, version_id: str) -> AssetVersionResponse:
         content=view.content,
         content_type=view.version.content_type,
         citations=citations,
+    )
+
+
+@app.post(
+    "/coach/start",
+    response_model=CoachResponse,
+    dependencies=[Depends(_verify_token)],
+)
+def coach_start(payload: CoachStartRequest) -> CoachResponse:
+    result = start_coach(
+        workspace_id=payload.workspace_id,
+        problem=payload.problem,
+        retrieval_mode=payload.retrieval_mode,
+    )
+    return CoachResponse(
+        session_id=result.session.id,
+        content=result.output.content,
+        citations=result.output.citations,
+        run_id=result.output.run_id,
+    )
+
+
+@app.post(
+    "/coach/submit",
+    response_model=CoachResponse,
+    dependencies=[Depends(_verify_token)],
+)
+def coach_submit(payload: CoachSubmitRequest) -> CoachResponse:
+    result = submit_coach(
+        workspace_id=payload.workspace_id,
+        session_id=payload.session_id,
+        answer=payload.answer,
+        retrieval_mode=payload.retrieval_mode,
+    )
+    return CoachResponse(
+        session_id=result.session.id,
+        content=result.output.content,
+        citations=result.output.citations,
+        run_id=result.output.run_id,
+    )
+
+
+@app.get(
+    "/plugins",
+    response_model=PluginsResponse,
+    dependencies=[Depends(_verify_token)],
+)
+def plugins_list() -> PluginsResponse:
+    load_builtin_plugins()
+    return PluginsResponse(
+        plugins=[
+            {"name": plugin.name, "version": plugin.version, "description": plugin.description}
+            for plugin in list_plugins()
+        ]
+    )
+
+
+@app.get(
+    "/prompts",
+    response_model=PromptsResponse,
+    dependencies=[Depends(_verify_token)],
+)
+def prompts_list() -> PromptsResponse:
+    return PromptsResponse(
+        prompts=[
+            {"name": prompt.name, "version": prompt.version}
+            for prompt in list_prompts()
+        ]
     )

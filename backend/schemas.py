@@ -23,6 +23,8 @@ class IngestRequest(BaseModel):
     filename: str
     data_base64: str
     kind: str = "document"
+    ocr_mode: str = "off"
+    ocr_threshold: int = 50
 
 
 class IngestResponse(BaseModel):
@@ -34,6 +36,10 @@ class IngestResponse(BaseModel):
     page_count: int
     chunk_count: int
     skipped: bool
+    ocr_pages_count: int | None = None
+    image_pages_count: int | None = None
+    ocr_mode: str | None = None
+    warnings: list[str] | None = None
     paper_id: str | None = None
     title: str | None = None
     authors: str | None = None
@@ -89,3 +95,37 @@ class AssetVersionResponse(BaseModel):
     content: str
     content_type: str
     citations: list[dict[str, Any]]
+
+
+class OcrStatusResponse(BaseModel):
+    available: bool
+    engine: str
+    message: str
+
+
+class CoachStartRequest(BaseModel):
+    workspace_id: str
+    problem: str
+    retrieval_mode: str = "vector"
+
+
+class CoachSubmitRequest(BaseModel):
+    workspace_id: str
+    session_id: str
+    answer: str
+    retrieval_mode: str = "vector"
+
+
+class CoachResponse(BaseModel):
+    session_id: str
+    content: str
+    citations: list[str]
+    run_id: str | None
+
+
+class PluginsResponse(BaseModel):
+    plugins: list[dict[str, Any]]
+
+
+class PromptsResponse(BaseModel):
+    prompts: list[dict[str, Any]]

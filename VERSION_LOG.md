@@ -1,5 +1,23 @@
 # VERSION LOG
 
+## V2.2
+- Added plugin registry with importer/exporter and prompt registry with overrides
+- Added coach API endpoints and plugins/prompts endpoints
+- Added verify_v2_2.py and v2.2 verification flow
+- Verification: `python scripts/verify_v2_2.py`, `python -m compileall .`, `pytest -q`, `studyflow doctor`, `studyflow workspace create`, `studyflow ingest --ocr auto`, `studyflow query`, `studyflow gen`, `studyflow coach start/submit`, `studyflow plugins ls/run`
+
+## V2.1
+- Added Study Coach with two-phase protocol and guard
+- Added coach session storage (SQLite + local JSON)
+- Added coach CLI + UI
+- Verification: `pytest -q`, `python -m compileall .`, `studyflow coach start`, `studyflow coach submit`
+
+## V2.0
+- Added OCR pipeline with auto/on/off modes (optional dependencies)
+- Added page-level metadata, image counts, and OCR source tracking
+- Added OCR settings in UI and CLI ingest options
+- Verification: `pytest -q`, `python -m compileall .`, `studyflow ingest --ocr auto`
+
 ## V1.3
 - Added release-grade CLI commands for API serve/ping and asset management
 - Added verify_v1_3.py for full validation pipeline

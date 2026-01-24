@@ -3,6 +3,7 @@ from __future__ import annotations
 import os
 import sys
 import socket
+import shutil
 from urllib.parse import urlparse
 
 import typer
@@ -41,3 +42,19 @@ def doctor() -> None:
         sock.settimeout(0.5)
         in_use = sock.connect_ex((host, port)) == 0
     typer.echo(f"API port {host}:{port} in use: {'yes' if in_use else 'no'}")
+
+    try:
+        from core.ingest.ocr import OCRSettings, ocr_available
+        ok, reason = ocr_available(OCRSettings())
+        tesseract_path = shutil.which("tesseract")
+        typer.echo(f"OCR available: {'yes' if ok else 'no'}")
+        if not ok:
+            typer.echo(f"OCR reason: {reason}")
+            typer.echo("Install tesseract:")
+            typer.echo("  macOS: brew install tesseract")
+            typer.echo("  Ubuntu: sudo apt-get install tesseract-ocr")
+            typer.echo("  Windows: choco install tesseract")
+        else:
+            typer.echo(f"Tesseract path: {tesseract_path or 'not found'}")
+    except Exception as exc:
+        typer.echo(f"OCR check failed: {exc}")
