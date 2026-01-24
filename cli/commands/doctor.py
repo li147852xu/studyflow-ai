@@ -58,3 +58,10 @@ def doctor() -> None:
             typer.echo(f"Tesseract path: {tesseract_path or 'not found'}")
     except Exception as exc:
         typer.echo(f"OCR check failed: {exc}")
+
+    try:
+        import requests  # noqa: F401
+
+        typer.echo("Download support: available (arXiv/DOI/URL imports)")
+    except Exception:
+        typer.echo("Download support: missing (install requests)")

@@ -48,7 +48,7 @@ def list_documents(workspace_id: str) -> list[dict]:
     with get_connection() as connection:
         rows = connection.execute(
             """
-            SELECT id, workspace_id, filename, path, page_count, created_at
+            SELECT id, workspace_id, filename, path, page_count, source_type, source_ref, created_at
             FROM documents
             WHERE workspace_id = ?
             ORDER BY created_at DESC
@@ -62,13 +62,28 @@ def get_document(doc_id: str) -> dict | None:
     with get_connection() as connection:
         row = connection.execute(
             """
-            SELECT id, workspace_id, filename, path, sha256, page_count, created_at
+            SELECT id, workspace_id, filename, path, sha256, page_count, source_type, source_ref, created_at
             FROM documents
             WHERE id = ?
             """,
             (doc_id,),
         ).fetchone()
     return dict(row) if row else None
+
+
+def set_document_source(
+    *, doc_id: str, source_type: str | None, source_ref: str | None
+) -> None:
+    with get_connection() as connection:
+        connection.execute(
+            """
+            UPDATE documents
+            SET source_type = ?, source_ref = ?
+            WHERE id = ?
+            """,
+            (source_type, source_ref, doc_id),
+        )
+        connection.commit()
 
 
 def delete_document_by_id(workspace_id: str, doc_id: str) -> None:

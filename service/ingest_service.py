@@ -181,6 +181,8 @@ def ingest_pdf(
     filename: str,
     data: bytes,
     save_dir: Path,
+    write_file: bool = True,
+    existing_path: Path | None = None,
     ocr_mode: str = "off",
     ocr_threshold: int = 50,
     progress_cb: callable | None = None,
@@ -194,8 +196,9 @@ def ingest_pdf(
     sha256 = _sha256_bytes(data)
 
     save_dir.mkdir(parents=True, exist_ok=True)
-    target_path = save_dir / filename
-    target_path.write_bytes(data)
+    target_path = existing_path or (save_dir / filename)
+    if write_file:
+        target_path.write_bytes(data)
 
     plan = plan_document(workspace_id, target_path)
     if plan.action == "skip":

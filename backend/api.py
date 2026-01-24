@@ -14,6 +14,8 @@ from backend.schemas import (
     GenerateRequest,
     GenerateResponse,
     HealthResponse,
+    ImportRequest,
+    ImportResponse,
     IngestRequest,
     IngestResponse,
     OcrStatusResponse,
@@ -27,7 +29,8 @@ from backend.schemas import (
 from core.assets.citations import format_citations_payload
 from core.assets.store import get_asset
 from core.ingest.ocr import OCRSettings, ocr_available
-from core.plugins.registry import load_builtin_plugins, list_plugins
+from core.plugins.registry import load_builtin_plugins, list_plugins, get_plugin
+from core.plugins.base import PluginContext
 from core.prompts.registry import list_prompts
 from infra.db import get_connection, get_workspaces_dir
 from infra.models import init_db
@@ -42,7 +45,7 @@ from service.presentation_service import generate_slides
 from service.retrieval_service import answer_with_retrieval
 from service.workspace_service import create_workspace, list_workspaces
 
-app = FastAPI(title="StudyFlow API", version="2.2.0")
+app = FastAPI(title="StudyFlow API", version="2.3.0")
 
 
 def _verify_token(authorization: str | None = Header(None)) -> None:
@@ -63,7 +66,7 @@ def _init_db() -> None:
 
 @app.get("/health", response_model=HealthResponse)
 def health() -> HealthResponse:
-    return HealthResponse(status="ok", version="2.2.0")
+    return HealthResponse(status="ok", version="2.3.0")
 
 
 @app.get("/ocr/status", response_model=OcrStatusResponse, dependencies=[Depends(_verify_token)])
@@ -355,3 +358,60 @@ def prompts_list() -> PromptsResponse:
             for prompt in list_prompts()
         ]
     )
+
+
+def _run_import(name: str, payload: ImportRequest) -> ImportResponse:
+    load_builtin_plugins()
+    plugin = get_plugin(name)
+    result = plugin.run(
+        PluginContext(
+            workspace_id=payload.workspace_id,
+            args=payload.params,
+        )
+    )
+    return ImportResponse(ok=result.ok, message=result.message, data=result.data)
+
+
+@app.post(
+    "/import/zotero",
+    response_model=ImportResponse,
+    dependencies=[Depends(_verify_token)],
+)
+def import_zotero(payload: ImportRequest) -> ImportResponse:
+    return _run_import("importer_zotero", payload)
+
+
+@app.post(
+    "/import/arxiv",
+    response_model=ImportResponse,
+    dependencies=[Depends(_verify_token)],
+)
+def import_arxiv(payload: ImportRequest) -> ImportResponse:
+    return _run_import("importer_arxiv", payload)
+
+
+@app.post(
+    "/import/doi",
+    response_model=ImportResponse,
+    dependencies=[Depends(_verify_token)],
+)
+def import_doi(payload: ImportRequest) -> ImportResponse:
+    return _run_import("importer_doi", payload)
+
+
+@app.post(
+    "/import/url",
+    response_model=ImportResponse,
+    dependencies=[Depends(_verify_token)],
+)
+def import_url(payload: ImportRequest) -> ImportResponse:
+    return _run_import("importer_url", payload)
+
+
+@app.post(
+    "/import/folder",
+    response_model=ImportResponse,
+    dependencies=[Depends(_verify_token)],
+)
+def import_folder(payload: ImportRequest) -> ImportResponse:
+    return _run_import("importer_folder_sync", payload)

@@ -1,6 +1,6 @@
 [project]
 name = "studyflow-ai"
-version = "2.2.0"
+version = "2.3.0"
 description = "StudyFlow-AI V0.0.1 skeleton"
 readme = "README.md"
 requires-python = ">=3.10"
@@ -39,6 +39,7 @@ packages = [
   "core.assets",
   "core.coach",
   "core.config",
+  "core.external",
   "core.agents",
   "core.formatting",
   "core.ingest",

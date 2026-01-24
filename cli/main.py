@@ -15,6 +15,7 @@ from cli.commands.asset import asset_app
 from cli.commands.api import api_app
 from cli.commands.coach import coach_app
 from cli.commands.plugins import plugins_app
+from cli.commands.import_cmd import import_app
 
 app = typer.Typer(help="StudyFlow CLI")
 
@@ -37,6 +38,7 @@ app.add_typer(asset_app, name="asset")
 app.add_typer(api_app, name="api")
 app.add_typer(coach_app, name="coach")
 app.add_typer(plugins_app, name="plugins")
+app.add_typer(import_app, name="import")
 app.command()(ingest)
 app.command()(query)
 app.command()(gen)

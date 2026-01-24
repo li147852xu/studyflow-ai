@@ -129,3 +129,14 @@ class PluginsResponse(BaseModel):
 
 class PromptsResponse(BaseModel):
     prompts: list[dict[str, Any]]
+
+
+class ImportRequest(BaseModel):
+    workspace_id: str
+    params: dict[str, Any]
+
+
+class ImportResponse(BaseModel):
+    ok: bool
+    message: str
+    data: dict[str, Any] | None = None

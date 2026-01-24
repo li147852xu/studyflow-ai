@@ -34,6 +34,8 @@ def init_db() -> None:
                 ocr_mode TEXT,
                 ocr_pages_count INTEGER,
                 image_pages_count INTEGER,
+                source_type TEXT,
+                source_ref TEXT,
                 updated_at TEXT,
                 created_at TEXT NOT NULL,
                 FOREIGN KEY(workspace_id) REFERENCES workspaces(id)
@@ -218,6 +220,36 @@ def init_db() -> None:
             )
             """
         )
+        cursor.execute(
+            """
+            CREATE TABLE IF NOT EXISTS external_sources (
+                id TEXT PRIMARY KEY,
+                workspace_id TEXT NOT NULL,
+                source_type TEXT NOT NULL,
+                params_json TEXT,
+                last_sync_at TEXT,
+                created_at TEXT NOT NULL,
+                updated_at TEXT NOT NULL,
+                FOREIGN KEY(workspace_id) REFERENCES workspaces(id)
+            )
+            """
+        )
+        cursor.execute(
+            """
+            CREATE TABLE IF NOT EXISTS external_mappings (
+                id TEXT PRIMARY KEY,
+                source_id TEXT NOT NULL,
+                external_id TEXT NOT NULL,
+                external_sub_id TEXT,
+                doc_id TEXT,
+                status TEXT,
+                meta_json TEXT,
+                created_at TEXT NOT NULL,
+                updated_at TEXT NOT NULL,
+                FOREIGN KEY(source_id) REFERENCES external_sources(id)
+            )
+            """
+        )
         connection.commit()
 
     _ensure_column("documents", "sha256", "TEXT")
@@ -226,6 +258,8 @@ def init_db() -> None:
     _ensure_column("documents", "ocr_mode", "TEXT")
     _ensure_column("documents", "ocr_pages_count", "INTEGER")
     _ensure_column("documents", "image_pages_count", "INTEGER")
+    _ensure_column("documents", "source_type", "TEXT")
+    _ensure_column("documents", "source_ref", "TEXT")
     _ensure_column("ui_history", "run_id", "TEXT")
     _ensure_column("assets", "active_version_id", "TEXT")
     _ensure_column("chunks", "text_source", "TEXT")

@@ -7,6 +7,7 @@ StudyFlow-AI is a local-first study workspace for PDFs with OCR, coaching, asset
 - Study Coach (two-phase guidance with guard)
 - Plugin registry (import/export + citations exporters)
 - Prompt registry with versioning + local overrides
+- Standardized importers (Zotero, arXiv/DOI/URL, folder sync)
 - Asset versioning for generated outputs (pin/rollback/diff)
 - Optional API mode via FastAPI (local/self-hosted)
 - Hybrid retrieval (Vector + BM25) with mode switch
@@ -48,6 +49,9 @@ The app auto-loads a local `.env` file if present. Do not commit real keys.
 - `studyflow coach start --workspace <id> --problem "..."`
 - `studyflow coach submit --workspace <id> --session <sid> --answer "..."`
 - `studyflow plugins ls`
+- `studyflow import folder --workspace <id> --path <folder>`
+- `studyflow import zotero --workspace <id> --data-dir <zotero_dir>`
+- `studyflow import arxiv --workspace <id> --id 1706.03762`
 
 ## Using Ingest + Citation Preview
 Upload a PDF on any page and the UI will show:
@@ -100,6 +104,7 @@ Each generation and retrieval chat produces a `run_id` and writes a JSON log to
 - All data stays local by default; API mode is for local/self-hosted use.
 - API tokens are read from env only and not stored in the DB.
 - OCR requires optional dependencies (tesseract + pytesseract; EasyOCR optional).
+- Importers store external source mappings in SQLite and write PDFs to `workspaces/<wid>/docs/`.
 - Install tesseract:
   - macOS: `brew install tesseract`
   - Ubuntu: `sudo apt-get install tesseract-ocr`

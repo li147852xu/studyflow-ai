@@ -1,5 +1,11 @@
 # VERSION LOG
 
+## V2.3
+- Added standardized importers for Zotero, arXiv/DOI/URL, and folder sync
+- Added external_sources/external_mappings tables and document source metadata
+- Added import CLI commands and verify_v2_3.py
+- Verification: `python scripts/verify_v2_3.py`, `python -m compileall .`, `pytest -q`, `studyflow doctor`, `studyflow import folder`, `studyflow import zotero`, `studyflow import arxiv`
+
 ## V2.2
 - Added plugin registry with importer/exporter and prompt registry with overrides
 - Added coach API endpoints and plugins/prompts endpoints
