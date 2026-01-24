@@ -1,5 +1,11 @@
 # VERSION LOG
 
+## V2.5
+- Added workspace bundle export/import with sanitized manifests
+- Added submission packs (slides/exam/related) with manifests
+- Added bundle/pack CLI commands and verify_v2_5.py
+- Verification: `python scripts/verify_v2_5.py`, `python -m compileall .`, `pytest -q`, `studyflow bundle export/import`, `studyflow pack make`
+
 ## V2.4
 - Added concept cards with evidence and incremental processing markers
 - Added related work manager with outline/draft export and asset versions

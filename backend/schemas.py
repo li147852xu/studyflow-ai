@@ -140,3 +140,33 @@ class ImportResponse(BaseModel):
     ok: bool
     message: str
     data: dict[str, Any] | None = None
+
+
+class BundleExportRequest(BaseModel):
+    workspace_id: str
+    with_pdf: bool = False
+    with_assets: bool = False
+    with_prompts: bool = False
+
+
+class BundleExportResponse(BaseModel):
+    path: str
+
+
+class BundleImportRequest(BaseModel):
+    path: str
+    rebuild_index: bool = False
+
+
+class BundleImportResponse(BaseModel):
+    workspace_id: str
+
+
+class PackRequest(BaseModel):
+    workspace_id: str
+    pack_type: str
+    source_id: str
+
+
+class PackResponse(BaseModel):
+    path: str

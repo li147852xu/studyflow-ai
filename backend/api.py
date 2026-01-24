@@ -18,6 +18,12 @@ from backend.schemas import (
     ImportResponse,
     IngestRequest,
     IngestResponse,
+    BundleExportRequest,
+    BundleExportResponse,
+    BundleImportRequest,
+    BundleImportResponse,
+    PackRequest,
+    PackResponse,
     OcrStatusResponse,
     PluginsResponse,
     PromptsResponse,
@@ -36,6 +42,8 @@ from infra.db import get_connection, get_workspaces_dir
 from infra.models import init_db
 from service.asset_service import list_versions, read_version
 from service.coach_service import start_coach, submit_coach
+from service.bundle_service import bundle_export, bundle_import
+from service.pack_service import make_pack
 from service.course_service import generate_cheatsheet, generate_overview, explain_selection
 from service.ingest_service import ingest_pdf
 from service.paper_generate_service import aggregate_papers, generate_paper_card
@@ -45,7 +53,7 @@ from service.presentation_service import generate_slides
 from service.retrieval_service import answer_with_retrieval
 from service.workspace_service import create_workspace, list_workspaces
 
-app = FastAPI(title="StudyFlow API", version="2.4.0")
+app = FastAPI(title="StudyFlow API", version="2.5.0")
 
 
 def _verify_token(authorization: str | None = Header(None)) -> None:
@@ -66,7 +74,7 @@ def _init_db() -> None:
 
 @app.get("/health", response_model=HealthResponse)
 def health() -> HealthResponse:
-    return HealthResponse(status="ok", version="2.4.0")
+    return HealthResponse(status="ok", version="2.5.0")
 
 
 @app.get("/ocr/status", response_model=OcrStatusResponse, dependencies=[Depends(_verify_token)])
@@ -415,3 +423,43 @@ def import_url(payload: ImportRequest) -> ImportResponse:
 )
 def import_folder(payload: ImportRequest) -> ImportResponse:
     return _run_import("importer_folder_sync", payload)
+
+
+@app.post(
+    "/bundle/export",
+    response_model=BundleExportResponse,
+    dependencies=[Depends(_verify_token)],
+)
+def bundle_export_api(payload: BundleExportRequest) -> BundleExportResponse:
+    path = bundle_export(
+        workspace_id=payload.workspace_id,
+        out_path=None,
+        with_pdf=payload.with_pdf,
+        with_assets=payload.with_assets,
+        with_prompts=payload.with_prompts,
+    )
+    return BundleExportResponse(path=path)
+
+
+@app.post(
+    "/bundle/import",
+    response_model=BundleImportResponse,
+    dependencies=[Depends(_verify_token)],
+)
+def bundle_import_api(payload: BundleImportRequest) -> BundleImportResponse:
+    workspace_id = bundle_import(path=payload.path, rebuild_index=payload.rebuild_index)
+    return BundleImportResponse(workspace_id=workspace_id)
+
+
+@app.post(
+    "/pack/make",
+    response_model=PackResponse,
+    dependencies=[Depends(_verify_token)],
+)
+def pack_make_api(payload: PackRequest) -> PackResponse:
+    path = make_pack(
+        workspace_id=payload.workspace_id,
+        pack_type=payload.pack_type,
+        source_id=payload.source_id,
+    )
+    return PackResponse(path=path)

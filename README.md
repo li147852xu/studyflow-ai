@@ -9,6 +9,7 @@ StudyFlow-AI is a local-first study workspace for PDFs with OCR, coaching, asset
 - Prompt registry with versioning + local overrides
 - Standardized importers (Zotero, arXiv/DOI/URL, folder sync)
 - Concept cards and related work manager
+- Workspace bundles and submission packs
 - Asset versioning for generated outputs (pin/rollback/diff)
 - Optional API mode via FastAPI (local/self-hosted)
 - Hybrid retrieval (Vector + BM25) with mode switch
@@ -56,6 +57,9 @@ The app auto-loads a local `.env` file if present. Do not commit real keys.
 - `studyflow concepts build --workspace <id> --papers <pid...>`
 - `studyflow concepts search --workspace <id> "query"`
 - `studyflow related create --workspace <id> --papers <pid...> --topic "..."`
+- `studyflow bundle export --workspace <id> --with-pdf`
+- `studyflow bundle import --path <bundle.zip>`
+- `studyflow pack make --workspace <id> --type slides --source <doc_id>`
 
 ## Using Ingest + Citation Preview
 Upload a PDF on any page and the UI will show:
@@ -92,6 +96,11 @@ Use the Retrieval Mode selector on each page.
 1) Build concept cards from selected papers or a course.
 2) Search cards by keyword and type filters.
 3) Create a related work project, then update it as you add new papers.
+
+## Workspace Bundles + Submission Packs (V2.5)
+1) Export a bundle to migrate a workspace across machines (optional PDFs/assets).
+2) Import a bundle to create a new workspace and rebuild indexes as needed.
+3) Generate submission packs for slides/exam/related work from existing assets.
 
 ## Run Logs
 Each generation and retrieval chat produces a `run_id` and writes a JSON log to
