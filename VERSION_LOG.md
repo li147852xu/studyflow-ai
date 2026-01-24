@@ -1,5 +1,23 @@
 # VERSION LOG
 
+## V1.3
+- Added release-grade CLI commands for API serve/ping and asset management
+- Added verify_v1_3.py for full validation pipeline
+- Updated README for v1.x features, API mode, and CLI usage
+- Verification: `python scripts/verify_v1_3.py`, `python -m compileall .`, `pytest -q`, `studyflow doctor`, `studyflow workspace create`, `studyflow ingest`, `studyflow query`, `studyflow gen`, `studyflow asset ls/show/pin/rollback/diff/export-citations`
+
+## V1.2
+- Added FastAPI service mode with token auth
+- Added UI Direct/API mode switch and API base URL setting
+- Added API endpoints for ingest/query/generate/assets
+- Verification: `pytest -q`, `python -m compileall .`, `python -m cli.main api ping`, `python -c "from backend.api import app"`
+
+## V1.1
+- Added asset versioning with pin/rollback and diff
+- Added citations export (JSON + TXT) for assets
+- Added asset CLI commands and tests for versioning/diff
+- Verification: `pytest -q`, `python -m compileall .`, `python -m cli.main asset ls`
+
 ## V1.0
 - Added config profiles and model presets (config.toml)
 - Added incremental indexing and workspace/document CLI management

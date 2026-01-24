@@ -145,9 +145,42 @@ def init_db() -> None:
             )
             """
         )
+        cursor.execute(
+            """
+            CREATE TABLE IF NOT EXISTS assets (
+                id TEXT PRIMARY KEY,
+                workspace_id TEXT NOT NULL,
+                kind TEXT NOT NULL,
+                ref_id TEXT NOT NULL,
+                active_version_id TEXT,
+                created_at TEXT NOT NULL,
+                FOREIGN KEY(workspace_id) REFERENCES workspaces(id),
+                UNIQUE(workspace_id, kind, ref_id)
+            )
+            """
+        )
+        cursor.execute(
+            """
+            CREATE TABLE IF NOT EXISTS asset_versions (
+                id TEXT PRIMARY KEY,
+                asset_id TEXT NOT NULL,
+                version_index INTEGER NOT NULL,
+                run_id TEXT,
+                model TEXT,
+                prompt_version TEXT,
+                content_path TEXT NOT NULL,
+                content_type TEXT NOT NULL,
+                citations_json TEXT,
+                hits_json TEXT,
+                created_at TEXT NOT NULL,
+                FOREIGN KEY(asset_id) REFERENCES assets(id)
+            )
+            """
+        )
         connection.commit()
 
     _ensure_column("documents", "sha256", "TEXT")
     _ensure_column("documents", "page_count", "INTEGER")
     _ensure_column("documents", "updated_at", "TEXT")
     _ensure_column("ui_history", "run_id", "TEXT")
+    _ensure_column("assets", "active_version_id", "TEXT")

@@ -9,6 +9,11 @@ import time
 from infra.db import get_connection
 from core.agents.course_agent import CourseAgent, AgentOutput
 from core.telemetry.run_logger import log_run
+from service.asset_service import (
+    course_explain_ref_id,
+    course_ref_id,
+    create_asset_version,
+)
 
 
 def _now_iso() -> str:
@@ -109,6 +114,20 @@ def generate_overview(
         errors=None,
     )
     output.run_id = run_id
+    version = create_asset_version(
+        workspace_id=workspace_id,
+        kind="course_overview",
+        ref_id=course_ref_id(course_id),
+        content=output.content,
+        content_type="text",
+        run_id=run_id,
+        model=os.getenv("STUDYFLOW_LLM_MODEL", ""),
+        prompt_version="v1",
+        hits=output.hits,
+    )
+    output.asset_id = version.asset_id
+    output.asset_version_id = version.id
+    output.asset_version_index = version.version_index
     return output
 
 
@@ -138,6 +157,20 @@ def generate_cheatsheet(
         errors=None,
     )
     output.run_id = run_id
+    version = create_asset_version(
+        workspace_id=workspace_id,
+        kind="course_cheatsheet",
+        ref_id=course_ref_id(course_id),
+        content=output.content,
+        content_type="text",
+        run_id=run_id,
+        model=os.getenv("STUDYFLOW_LLM_MODEL", ""),
+        prompt_version="v1",
+        hits=output.hits,
+    )
+    output.asset_id = version.asset_id
+    output.asset_version_id = version.id
+    output.asset_version_index = version.version_index
     return output
 
 
@@ -168,4 +201,18 @@ def explain_selection(
         errors=None,
     )
     output.run_id = run_id
+    version = create_asset_version(
+        workspace_id=workspace_id,
+        kind="course_explain",
+        ref_id=course_explain_ref_id(course_id, selection, mode),
+        content=output.content,
+        content_type="text",
+        run_id=run_id,
+        model=os.getenv("STUDYFLOW_LLM_MODEL", ""),
+        prompt_version="v1",
+        hits=output.hits,
+    )
+    output.asset_id = version.asset_id
+    output.asset_version_id = version.id
+    output.asset_version_index = version.version_index
     return output

@@ -8,12 +8,15 @@ from core.ui_state.guards import llm_ready
 from core.telemetry.run_logger import _run_dir, log_run
 from service.chat_service import ChatConfigError, chat
 from service.retrieval_service import RetrievalError, answer_with_retrieval
+from service.api_mode_adapter import ApiModeAdapter, ApiModeError
 
 
 def render_chat_panel(
     *,
     workspace_id: str,
     default_retrieval_mode: str,
+    api_adapter: ApiModeAdapter,
+    api_mode: str,
     title: str = "Chat",
 ) -> None:
     with st.expander(title, expanded=False):
@@ -22,6 +25,9 @@ def render_chat_panel(
             st.session_state.get("llm_model", ""),
             st.session_state.get("llm_api_key", ""),
         )
+        if api_mode == "api":
+            ready = True
+            reason = ""
         retrieval_mode = st.selectbox(
             "Retrieval mode",
             options=["vector", "bm25", "hybrid"],
@@ -32,7 +38,12 @@ def render_chat_panel(
             help="Vector uses embeddings, BM25 uses lexical match, Hybrid fuses both.",
         )
         set_setting(workspace_id, "retrieval_mode", retrieval_mode)
-        use_retrieval = st.toggle("Use retrieval", value=True)
+        use_retrieval = st.toggle(
+            "Use retrieval",
+            value=True,
+            disabled=api_mode == "api",
+            help="API mode only supports retrieval queries.",
+        )
         query = st.text_area("Ask a question", height=120)
         if st.button(
             "Send",
@@ -45,20 +56,39 @@ def render_chat_panel(
                 return
             try:
                 if use_retrieval:
-                    response, hits, citations, run_id = answer_with_retrieval(
-                        workspace_id=workspace_id,
-                        query=query.strip(),
-                        mode=retrieval_mode,
-                    )
+                    if api_mode == "api":
+                        result = api_adapter.query(
+                            workspace_id=workspace_id,
+                            query=query.strip(),
+                            mode=retrieval_mode,
+                        )
+                        response = result.answer
+                        hits = result.hits
+                        citations = result.citations
+                        run_id = result.run_id
+                    else:
+                        response, hits, citations, run_id = answer_with_retrieval(
+                            workspace_id=workspace_id,
+                            query=query.strip(),
+                            mode=retrieval_mode,
+                        )
                     st.success("Answer ready.")
                     st.write(response)
                     st.subheader("Retrieval hits")
                     for idx, hit in enumerate(hits, start=1):
-                        st.write(
-                            f"[{idx}] {hit.filename} p.{hit.page_start}-{hit.page_end} "
-                            f"(score={hit.score:.4f})"
-                        )
-                        st.caption(hit.text[:240] + ("..." if len(hit.text) > 240 else ""))
+                        if isinstance(hit, dict):
+                            st.write(
+                                f"[{idx}] {hit.get('filename')} p.{hit.get('page_start')}-{hit.get('page_end')} "
+                                f"(score={float(hit.get('score') or 0):.4f})"
+                            )
+                            text = hit.get("text") or ""
+                            st.caption(text[:240] + ("..." if len(text) > 240 else ""))
+                        else:
+                            st.write(
+                                f"[{idx}] {hit.filename} p.{hit.page_start}-{hit.page_end} "
+                                f"(score={hit.score:.4f})"
+                            )
+                            st.caption(hit.text[:240] + ("..." if len(hit.text) > 240 else ""))
                     st.subheader("Citations")
                     for citation in citations:
                         st.write(citation)
@@ -114,6 +144,11 @@ def render_chat_panel(
                 st.error(str(exc))
             except RetrievalError as exc:
                 st.error(str(exc))
+            except ApiModeError as exc:
+                st.error(str(exc))
+                if st.button("Switch to Direct Mode", key=f"api_switch_chat_{workspace_id}"):
+                    st.session_state["api_mode"] = "direct"
+                    set_setting(None, "api_mode", "direct")
             except Exception:
                 st.error("LLM request failed. Please check your network or key.")
 

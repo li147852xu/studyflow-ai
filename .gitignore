@@ -21,3 +21,4 @@ runs/
 bm25*/
 *.pkl
 history/
+*.bin

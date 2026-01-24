@@ -6,6 +6,7 @@ import time
 from core.agents.paper_agent import PaperAgent, PaperCardOutput
 from core.agents.paper_aggregator import AggregationOutput, PaperAggregator
 from core.telemetry.run_logger import log_run
+from service.asset_service import create_asset_version, paper_aggregate_ref_id, paper_ref_id
 
 
 def generate_paper_card(
@@ -31,6 +32,20 @@ def generate_paper_card(
         errors=None,
     )
     output.run_id = run_id
+    version = create_asset_version(
+        workspace_id=workspace_id,
+        kind="paper_card",
+        ref_id=paper_ref_id(doc_id),
+        content=output.content,
+        content_type="text",
+        run_id=run_id,
+        model=os.getenv("STUDYFLOW_LLM_MODEL", ""),
+        prompt_version="v1",
+        hits=output.hits,
+    )
+    output.asset_id = version.asset_id
+    output.asset_version_id = version.id
+    output.asset_version_index = version.version_index
     return output
 
 
@@ -58,4 +73,18 @@ def aggregate_papers(
         errors=None,
     )
     output.run_id = run_id
+    version = create_asset_version(
+        workspace_id=workspace_id,
+        kind="paper_aggregate",
+        ref_id=paper_aggregate_ref_id(doc_ids, question),
+        content=output.content,
+        content_type="text",
+        run_id=run_id,
+        model=os.getenv("STUDYFLOW_LLM_MODEL", ""),
+        prompt_version="v1",
+        hits=output.hits,
+    )
+    output.asset_id = version.asset_id
+    output.asset_version_id = version.id
+    output.asset_version_index = version.version_index
     return output

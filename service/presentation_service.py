@@ -10,6 +10,7 @@ from core.telemetry.run_logger import log_run
 from infra.db import get_workspaces_dir
 from service.paper_service import list_papers
 from service.document_service import list_documents
+from service.asset_service import create_asset_version, slides_ref_id
 
 
 def list_sources(workspace_id: str) -> list[dict]:
@@ -60,4 +61,18 @@ def generate_slides(
         errors=None,
     )
     output.run_id = run_id
+    version = create_asset_version(
+        workspace_id=workspace_id,
+        kind="slides",
+        ref_id=slides_ref_id(doc_id, duration),
+        content=output.deck,
+        content_type="markdown",
+        run_id=run_id,
+        model=os.getenv("STUDYFLOW_LLM_MODEL", ""),
+        prompt_version="v1",
+        hits=output.hits or [],
+    )
+    output.asset_id = version.asset_id
+    output.asset_version_id = version.id
+    output.asset_version_index = version.version_index
     return output

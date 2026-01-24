@@ -58,6 +58,19 @@ def list_documents(workspace_id: str) -> list[dict]:
     return [dict(row) for row in rows]
 
 
+def get_document(doc_id: str) -> dict | None:
+    with get_connection() as connection:
+        row = connection.execute(
+            """
+            SELECT id, workspace_id, filename, path, sha256, page_count, created_at
+            FROM documents
+            WHERE id = ?
+            """,
+            (doc_id,),
+        ).fetchone()
+    return dict(row) if row else None
+
+
 def delete_document_by_id(workspace_id: str, doc_id: str) -> None:
     delete_document_vectors(workspace_id, doc_id)
     delete_document(workspace_id, doc_id)

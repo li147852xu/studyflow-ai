@@ -24,6 +24,9 @@ class SlidesOutput:
     hits: list[Hit] | None = None
     retrieval_mode: str | None = None
     run_id: str | None = None
+    asset_id: str | None = None
+    asset_version_id: str | None = None
+    asset_version_index: int | None = None
 
 
 _DURATION_TO_PAGES = {

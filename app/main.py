@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+import requests
 import streamlit as st
 from dotenv import load_dotenv
 
@@ -12,6 +13,7 @@ from app.components.inspector import (
     render_citations,
     render_download,
     render_metadata,
+    render_asset_versions,
     render_run_info,
     render_section_title,
 )
@@ -31,18 +33,15 @@ from core.ui_state.storage import (
 from infra.db import get_workspaces_dir
 from service.course_service import (
     create_course,
-    generate_cheatsheet,
-    generate_overview,
-    explain_selection,
     link_document,
     list_course_documents,
     list_courses,
 )
 from service.document_service import list_documents
-from service.ingest_service import IngestError, ingest_pdf
-from service.paper_generate_service import aggregate_papers, generate_paper_card
-from service.paper_service import add_tags, ingest_paper, list_papers, list_tags
-from service.presentation_service import generate_slides, list_sources
+from service.ingest_service import IngestError
+from service.paper_service import add_tags, list_papers, list_tags
+from service.presentation_service import list_sources
+from service.api_mode_adapter import ApiModeAdapter, ApiModeError
 
 
 def _ensure_retrieval_mode(workspace_id: str | None) -> str:
@@ -58,6 +57,13 @@ def _ensure_retrieval_mode(workspace_id: str | None) -> str:
 def _set_nav(target: str) -> None:
     st.session_state["active_nav"] = target
     st.rerun()
+
+
+def _api_adapter() -> ApiModeAdapter:
+    return ApiModeAdapter(
+        st.session_state.get("api_mode", "direct"),
+        st.session_state.get("api_base_url", "http://127.0.0.1:8000"),
+    )
 
 
 def render_home(center: st.delta_generator.DeltaGenerator, right: st.delta_generator.DeltaGenerator, workspace_id: str) -> None:
@@ -97,13 +103,26 @@ def render_home(center: st.delta_generator.DeltaGenerator, right: st.delta_gener
 
 
 def render_library(left: st.delta_generator.DeltaGenerator, center: st.delta_generator.DeltaGenerator, right: st.delta_generator.DeltaGenerator, workspace_id: str) -> None:
-    render_library_view(left=left, center=center, right=right, workspace_id=workspace_id)
+    adapter = _api_adapter()
+    render_library_view(
+        left=left,
+        center=center,
+        right=right,
+        workspace_id=workspace_id,
+        api_adapter=adapter,
+    )
     with center:
-        render_chat_panel(workspace_id=workspace_id, default_retrieval_mode=_ensure_retrieval_mode(workspace_id))
+        render_chat_panel(
+            workspace_id=workspace_id,
+            default_retrieval_mode=_ensure_retrieval_mode(workspace_id),
+            api_adapter=adapter,
+            api_mode=st.session_state.get("api_mode", "direct"),
+        )
 
 
 def render_courses(left: st.delta_generator.DeltaGenerator, center: st.delta_generator.DeltaGenerator, right: st.delta_generator.DeltaGenerator, workspace_id: str) -> None:
     courses = list_courses(workspace_id)
+    adapter = _api_adapter()
     with left:
         selected = render_workbench_list(
             title="Courses",
@@ -129,6 +148,15 @@ def render_courses(left: st.delta_generator.DeltaGenerator, center: st.delta_gen
         st.session_state.get("llm_model", ""),
         st.session_state.get("llm_api_key", ""),
     )
+    if st.session_state.get("api_mode") == "api":
+        ready = True
+        reason = ""
+    if st.session_state.get("api_mode") == "api":
+        ready = True
+        reason = ""
+    if st.session_state.get("api_mode") == "api":
+        ready = True
+        reason = ""
     retrieval_mode = _ensure_retrieval_mode(workspace_id)
 
     with center:
@@ -154,16 +182,22 @@ def render_courses(left: st.delta_generator.DeltaGenerator, center: st.delta_gen
         upload = st.file_uploader("Upload PDF", type=["pdf"], key="course_upload")
         if st.button("Ingest & link", disabled=upload is None):
             try:
-                result = ingest_pdf(
+                result = adapter.ingest(
                     workspace_id=workspace_id,
                     filename=upload.name,
                     data=upload.getvalue(),
                     save_dir=get_workspaces_dir() / workspace_id / "uploads",
+                    kind="document",
                 )
-                link_document(course_id, result.doc_id)
+                link_document(course_id, result["doc_id"])
                 st.success("PDF ingested and linked.")
             except IngestError as exc:
                 st.error(str(exc))
+            except ApiModeError as exc:
+                st.error(str(exc))
+                if st.button("Switch to Direct Mode", key="api_switch_course_ingest"):
+                    st.session_state["api_mode"] = "direct"
+                    set_setting(None, "api_mode", "direct")
 
         st.divider()
         st.markdown("#### Actions")
@@ -178,11 +212,14 @@ def render_courses(left: st.delta_generator.DeltaGenerator, center: st.delta_gen
                 progress.progress(min(current / total, 1.0))
 
             try:
-                output = generate_overview(
-                    workspace_id=workspace_id,
-                    course_id=course_id,
-                    retrieval_mode=retrieval_mode,
-                    progress_cb=_progress,
+                output = adapter.generate(
+                    action_type="course_overview",
+                    payload={
+                        "workspace_id": workspace_id,
+                        "course_id": course_id,
+                        "retrieval_mode": retrieval_mode,
+                        "progress_cb": _progress,
+                    },
                 )
                 st.session_state.setdefault("course_outputs", {})[course_id] = {
                     "overview": output
@@ -197,6 +234,11 @@ def render_courses(left: st.delta_generator.DeltaGenerator, center: st.delta_gen
                     run_id=output.run_id,
                 )
                 st.success("Course overview generated.")
+            except ApiModeError as exc:
+                st.error(str(exc))
+                if st.button("Switch to Direct Mode", key="api_switch_course_overview"):
+                    st.session_state["api_mode"] = "direct"
+                    set_setting(None, "api_mode", "direct")
             except Exception as exc:
                 st.error(str(exc))
 
@@ -211,11 +253,14 @@ def render_courses(left: st.delta_generator.DeltaGenerator, center: st.delta_gen
                 progress.progress(min(current / total, 1.0))
 
             try:
-                output = generate_cheatsheet(
-                    workspace_id=workspace_id,
-                    course_id=course_id,
-                    retrieval_mode=retrieval_mode,
-                    progress_cb=_progress_cs,
+                output = adapter.generate(
+                    action_type="course_cheatsheet",
+                    payload={
+                        "workspace_id": workspace_id,
+                        "course_id": course_id,
+                        "retrieval_mode": retrieval_mode,
+                        "progress_cb": _progress_cs,
+                    },
                 )
                 st.session_state.setdefault("course_outputs", {}).setdefault(course_id, {})[
                     "cheatsheet"
@@ -230,6 +275,11 @@ def render_courses(left: st.delta_generator.DeltaGenerator, center: st.delta_gen
                     run_id=output.run_id,
                 )
                 st.success("Exam cheatsheet generated.")
+            except ApiModeError as exc:
+                st.error(str(exc))
+                if st.button("Switch to Direct Mode", key="api_switch_course_cheatsheet"):
+                    st.session_state["api_mode"] = "direct"
+                    set_setting(None, "api_mode", "direct")
             except Exception as exc:
                 st.error(str(exc))
 
@@ -246,12 +296,15 @@ def render_courses(left: st.delta_generator.DeltaGenerator, center: st.delta_gen
             help=reason or "Explain a selection with citations.",
         ):
             try:
-                output = explain_selection(
-                    workspace_id=workspace_id,
-                    course_id=course_id,
-                    selection=selection.strip(),
-                    mode=mode,
-                    retrieval_mode=retrieval_mode,
+                output = adapter.generate(
+                    action_type="course_explain",
+                    payload={
+                        "workspace_id": workspace_id,
+                        "course_id": course_id,
+                        "selection": selection.strip(),
+                        "mode": mode,
+                        "retrieval_mode": retrieval_mode,
+                    },
                 )
                 st.session_state.setdefault("course_outputs", {}).setdefault(course_id, {})[
                     "explain"
@@ -266,6 +319,11 @@ def render_courses(left: st.delta_generator.DeltaGenerator, center: st.delta_gen
                     run_id=output.run_id,
                 )
                 st.success("Explanation generated.")
+            except ApiModeError as exc:
+                st.error(str(exc))
+                if st.button("Switch to Direct Mode", key="api_switch_course_explain"):
+                    st.session_state["api_mode"] = "direct"
+                    set_setting(None, "api_mode", "direct")
             except Exception as exc:
                 st.error(str(exc))
 
@@ -281,6 +339,9 @@ def render_courses(left: st.delta_generator.DeltaGenerator, center: st.delta_gen
                     outputs["overview"].content,
                     "COURSE_OVERVIEW.txt",
                 )
+                st.caption(
+                    f"Asset version: v{outputs['overview'].asset_version_index or '-'}"
+                )
             else:
                 st.caption("No overview yet.")
         with tabs[1]:
@@ -291,15 +352,26 @@ def render_courses(left: st.delta_generator.DeltaGenerator, center: st.delta_gen
                     outputs["cheatsheet"].content,
                     "EXAM_CHEATSHEET.txt",
                 )
+                st.caption(
+                    f"Asset version: v{outputs['cheatsheet'].asset_version_index or '-'}"
+                )
             else:
                 st.caption("No cheatsheet yet.")
         with tabs[2]:
             if outputs.get("explain"):
                 st.write(outputs["explain"].content)
+                st.caption(
+                    f"Asset version: v{outputs['explain'].asset_version_index or '-'}"
+                )
             else:
                 st.caption("No explanation yet.")
 
-        render_chat_panel(workspace_id=workspace_id, default_retrieval_mode=retrieval_mode)
+        render_chat_panel(
+            workspace_id=workspace_id,
+            default_retrieval_mode=retrieval_mode,
+            api_adapter=adapter,
+            api_mode=st.session_state.get("api_mode", "direct"),
+        )
 
     with right:
         st.markdown("### Inspector")
@@ -316,10 +388,16 @@ def render_courses(left: st.delta_generator.DeltaGenerator, center: st.delta_gen
         render_section_title("Citations")
         render_citations(output.citations)
         render_run_info(workspace_id, output.run_id)
+        render_section_title("Versions")
+        render_asset_versions(
+            workspace_id=workspace_id,
+            asset_id=output.asset_id,
+        )
 
 
 def render_papers(left: st.delta_generator.DeltaGenerator, center: st.delta_generator.DeltaGenerator, right: st.delta_generator.DeltaGenerator, workspace_id: str) -> None:
     papers = list_papers(workspace_id)
+    adapter = _api_adapter()
     with left:
         selected = render_workbench_list(
             title="Papers",
@@ -345,17 +423,28 @@ def render_papers(left: st.delta_generator.DeltaGenerator, center: st.delta_gene
         upload = st.file_uploader("Upload paper PDF", type=["pdf"], key="paper_upload")
         if st.button("Ingest paper", disabled=upload is None):
             try:
-                paper_id, metadata = ingest_paper(
+                result = adapter.ingest(
                     workspace_id=workspace_id,
                     filename=upload.name,
                     data=upload.getvalue(),
                     save_dir=get_workspaces_dir() / workspace_id / "uploads",
+                    kind="paper",
                 )
-                st.session_state["selected_paper_id"] = paper_id
+                paper_id = result.get("paper_id")
+                if paper_id:
+                    st.session_state["selected_paper_id"] = paper_id
                 st.success("Paper ingested.")
-                st.caption(f"{metadata.title} · {metadata.authors} · {metadata.year}")
+                if result.get("title"):
+                    st.caption(
+                        f"{result.get('title')} · {result.get('authors')} · {result.get('year')}"
+                    )
             except IngestError as exc:
                 st.error(str(exc))
+            except ApiModeError as exc:
+                st.error(str(exc))
+                if st.button("Switch to Direct Mode", key="api_switch_paper_ingest"):
+                    st.session_state["api_mode"] = "direct"
+                    set_setting(None, "api_mode", "direct")
 
         if not selected:
             st.info("Select a paper to generate outputs.")
@@ -381,11 +470,14 @@ def render_papers(left: st.delta_generator.DeltaGenerator, center: st.delta_gene
                     progress.progress(min(current / total, 1.0))
 
                 try:
-                    output = generate_paper_card(
-                        workspace_id=workspace_id,
-                        doc_id=selected["doc_id"],
-                        retrieval_mode=retrieval_mode,
-                        progress_cb=_progress,
+                    output = adapter.generate(
+                        action_type="paper_card",
+                        payload={
+                            "workspace_id": workspace_id,
+                            "doc_id": selected["doc_id"],
+                            "retrieval_mode": retrieval_mode,
+                            "progress_cb": _progress,
+                        },
                     )
                     st.session_state.setdefault("paper_outputs", {})[selected["id"]] = {
                         "card": output
@@ -400,6 +492,11 @@ def render_papers(left: st.delta_generator.DeltaGenerator, center: st.delta_gene
                         run_id=output.run_id,
                     )
                     st.success("Paper card generated.")
+                except ApiModeError as exc:
+                    st.error(str(exc))
+                    if st.button("Switch to Direct Mode", key="api_switch_paper_card"):
+                        st.session_state["api_mode"] = "direct"
+                        set_setting(None, "api_mode", "direct")
                 except Exception as exc:
                     st.error(str(exc))
 
@@ -421,11 +518,14 @@ def render_papers(left: st.delta_generator.DeltaGenerator, center: st.delta_gene
                     if paper["title"] in selected_papers
                 ]
                 try:
-                    output = aggregate_papers(
-                        workspace_id=workspace_id,
-                        doc_ids=doc_ids,
-                        question=question.strip(),
-                        retrieval_mode=retrieval_mode,
+                    output = adapter.generate(
+                        action_type="paper_aggregate",
+                        payload={
+                            "workspace_id": workspace_id,
+                            "doc_ids": doc_ids,
+                            "question": question.strip(),
+                            "retrieval_mode": retrieval_mode,
+                        },
                     )
                     st.session_state.setdefault("paper_outputs", {}).setdefault(
                         selected["id"], {}
@@ -440,6 +540,11 @@ def render_papers(left: st.delta_generator.DeltaGenerator, center: st.delta_gene
                         run_id=output.run_id,
                     )
                     st.success("Aggregation generated.")
+                except ApiModeError as exc:
+                    st.error(str(exc))
+                    if st.button("Switch to Direct Mode", key="api_switch_paper_agg"):
+                        st.session_state["api_mode"] = "direct"
+                        set_setting(None, "api_mode", "direct")
                 except Exception as exc:
                     st.error(str(exc))
 
@@ -455,15 +560,26 @@ def render_papers(left: st.delta_generator.DeltaGenerator, center: st.delta_gene
                         outputs["card"].content,
                         "PAPER_CARD.txt",
                     )
+                    st.caption(
+                        f"Asset version: v{outputs['card'].asset_version_index or '-'}"
+                    )
                 else:
                     st.caption("No paper card yet.")
             with tabs[1]:
                 if outputs.get("aggregate"):
                     st.write(outputs["aggregate"].content)
+                    st.caption(
+                        f"Asset version: v{outputs['aggregate'].asset_version_index or '-'}"
+                    )
                 else:
                     st.caption("No aggregation yet.")
 
-        render_chat_panel(workspace_id=workspace_id, default_retrieval_mode=retrieval_mode)
+        render_chat_panel(
+            workspace_id=workspace_id,
+            default_retrieval_mode=retrieval_mode,
+            api_adapter=adapter,
+            api_mode=st.session_state.get("api_mode", "direct"),
+        )
 
     with right:
         st.markdown("### Inspector")
@@ -490,12 +606,18 @@ def render_papers(left: st.delta_generator.DeltaGenerator, center: st.delta_gene
             render_section_title("Citations")
             render_citations(output.citations)
             render_run_info(workspace_id, output.run_id)
+            render_section_title("Versions")
+            render_asset_versions(
+                workspace_id=workspace_id,
+                asset_id=output.asset_id,
+            )
         else:
             st.caption("No output selected.")
 
 
 def render_presentations(left: st.delta_generator.DeltaGenerator, center: st.delta_generator.DeltaGenerator, right: st.delta_generator.DeltaGenerator, workspace_id: str) -> None:
     history = list_history(workspace_id, "slides")
+    adapter = _api_adapter()
     with left:
         st.markdown("### Decks")
         if not history:
@@ -530,11 +652,14 @@ def render_presentations(left: st.delta_generator.DeltaGenerator, center: st.del
         ):
             source = next(item for item in sources if item["label"] == source_label)
             try:
-                output = generate_slides(
-                    workspace_id=workspace_id,
-                    doc_id=source["doc_id"],
-                    duration=duration,
-                    retrieval_mode=retrieval_mode,
+                output = adapter.generate(
+                    action_type="slides",
+                    payload={
+                        "workspace_id": workspace_id,
+                        "doc_id": source["doc_id"],
+                        "duration": duration,
+                        "retrieval_mode": retrieval_mode,
+                    },
                 )
                 st.session_state["slides_output"] = output
                 add_history(
@@ -547,6 +672,11 @@ def render_presentations(left: st.delta_generator.DeltaGenerator, center: st.del
                     run_id=output.run_id,
                 )
                 st.success("Slides generated.")
+            except ApiModeError as exc:
+                st.error(str(exc))
+                if st.button("Switch to Direct Mode", key="api_switch_slides"):
+                    st.session_state["api_mode"] = "direct"
+                    set_setting(None, "api_mode", "direct")
             except Exception as exc:
                 st.error(str(exc))
 
@@ -557,8 +687,14 @@ def render_presentations(left: st.delta_generator.DeltaGenerator, center: st.del
             st.code(output.deck[:1200] + ("..." if len(output.deck) > 1200 else ""))
             render_download("Download slides (Markdown)", output.deck, "slides.md")
             render_download("Download Q&A", "\n".join(output.qa), "slides_qa.txt")
+            st.caption(f"Asset version: v{output.asset_version_index or '-'}")
 
-        render_chat_panel(workspace_id=workspace_id, default_retrieval_mode=retrieval_mode)
+        render_chat_panel(
+            workspace_id=workspace_id,
+            default_retrieval_mode=retrieval_mode,
+            api_adapter=adapter,
+            api_mode=st.session_state.get("api_mode", "direct"),
+        )
 
     with right:
         st.markdown("### Inspector")
@@ -569,6 +705,11 @@ def render_presentations(left: st.delta_generator.DeltaGenerator, center: st.del
         render_section_title("Citations")
         render_citations(output.citations)
         render_run_info(workspace_id, output.run_id)
+        render_section_title("Versions")
+        render_asset_versions(
+            workspace_id=workspace_id,
+            asset_id=output.asset_id,
+        )
 
 
 def render_history_page(center: st.delta_generator.DeltaGenerator, right: st.delta_generator.DeltaGenerator, workspace_id: str) -> None:
@@ -642,6 +783,16 @@ def render_settings(center: st.delta_generator.DeltaGenerator, right: st.delta_g
     with center:
         st.markdown("### Settings")
         st.caption("Provider settings are stored locally and do not leave your machine.")
+        mode = st.radio(
+            "UI Mode",
+            options=["direct", "api"],
+            index=0 if st.session_state.get("api_mode", "direct") == "direct" else 1,
+            help="Direct calls local services. API uses FastAPI endpoints.",
+        )
+        api_base_url = st.text_input(
+            "API Base URL",
+            value=st.session_state.get("api_base_url", "http://127.0.0.1:8000"),
+        )
         base_url = st.text_input(
             "LLM Base URL",
             value=st.session_state.get("llm_base_url", ""),
@@ -675,6 +826,8 @@ def render_settings(center: st.delta_generator.DeltaGenerator, right: st.delta_g
             st.session_state["llm_model"] = model
             st.session_state["llm_api_key"] = api_key
             st.session_state["llm_temperature"] = temperature
+            st.session_state["api_mode"] = mode
+            st.session_state["api_base_url"] = api_base_url
             if embed_model:
                 os.environ["STUDYFLOW_EMBED_MODEL"] = embed_model
             if base_url:
@@ -682,9 +835,24 @@ def render_settings(center: st.delta_generator.DeltaGenerator, right: st.delta_g
             if model:
                 set_setting(None, "llm_model", model)
             set_setting(None, "llm_temperature", str(temperature))
+            set_setting(None, "api_mode", mode)
+            set_setting(None, "api_base_url", api_base_url)
             st.success("Settings saved.")
 
         st.markdown("#### Connection tests")
+        if st.button("Ping API server"):
+            try:
+                token = os.getenv("API_TOKEN", "")
+                headers = {}
+                if token:
+                    headers["Authorization"] = f"Bearer {token}"
+                resp = requests.get(f"{api_base_url.rstrip('/')}/health", headers=headers, timeout=10)
+                if resp.status_code >= 400:
+                    st.error(f"API error {resp.status_code}: {resp.text}")
+                else:
+                    st.success(f"API responded: {resp.json()}")
+            except requests.RequestException as exc:
+                st.error(f"API ping failed: {exc}")
         if st.button("Test LLM connection"):
             from service.chat_service import chat, ChatConfigError
 

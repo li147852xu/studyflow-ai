@@ -20,6 +20,9 @@ class AgentOutput:
     hits: list[Hit]
     retrieval_mode: str
     run_id: str | None = None
+    asset_id: str | None = None
+    asset_version_id: str | None = None
+    asset_version_index: int | None = None
 
 
 class CourseAgent:

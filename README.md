@@ -1,36 +1,25 @@
 # StudyFlow-AI
 
-StudyFlow-AI is a stable local workspace UI for uploading PDFs, ingesting text with citations, and completing course/paper/presentation workflows with hybrid retrieval.
+StudyFlow-AI is a local-first study workspace for PDFs with generation workflows, asset versioning, and optional API mode.
 
-## V1.0 Features
-- Config profiles with model presets and env overrides
-- Incremental indexing with hash-based updates
+## v1.x Highlights
+- Asset versioning for generated outputs (pin/rollback/diff)
+- Citations export (JSON + TXT) for any asset version
+- Optional API mode via FastAPI (local/self-hosted)
 - Hybrid retrieval (Vector + BM25) with mode switch
-- Workspace and document management (create/rename/delete)
-- CLI: `studyflow doctor/ingest/query/gen/workspace/document/index`
-- Run logs with run_id for chat/generation
-- Presentation Builder with Marp deck generation (3/5/10/20 min)
-- Speaker notes + Q&A list + references with citations
-- Paper library with metadata extraction (title/authors/year) and tags
-- PAPER_CARD generation with citations
-- Cross-paper aggregation with citations (consensus/divergence/routes/related work)
-- Course workspace with course creation and lecture PDF linking
-- One-click COURSE_OVERVIEW and EXAM_CHEATSHEET generation with citations
-- Explain selection tool (plain/example/pitfall/link_prev)
-- Vector retrieval with Chroma over chunked text
+- Course, Paper, Presentation workbenches with citations
 - Local embeddings via `sentence-transformers`
-- PDF ingest with page-aware chunking (900/150)
-- SQLite storage for documents and chunks with citations
-- Citation preview with filename + page number + snippet
-- Streamlit UI with Courses / Papers / Presentations pages
-- Local workspace management backed by SQLite
-- PDF upload and save to local workspace folders
-- Simple LLM chat (no retrieval)
+- Local-first storage with SQLite + workspace folders
 
 ## Quickstart (3 steps)
 1) Clone: `git clone https://github.com/li147852xu/studyflow-ai.git`
 2) Install: `python -m pip install -e .`
 3) Run: `streamlit run app/main.py`
+
+## API Mode (Optional)
+1) Start server: `studyflow api serve --host 127.0.0.1 --port 8000`
+2) In Settings, switch UI Mode to `api` and set Base URL.
+3) (Optional) set `API_TOKEN` and pass `Authorization: Bearer <token>`.
 
 ## UI Overview
 - Three-column layout: left navigation + collections, center workspace, right inspector.
@@ -53,6 +42,9 @@ The app auto-loads a local `.env` file if present. Do not commit real keys.
 - `studyflow ingest --workspace <id> <pdf_path>`
 - `studyflow query --workspace <id> --mode bm25 "question"`
 - `studyflow gen --workspace <id> --type slides --source <doc_id> --duration 5 --mode bm25`
+- `studyflow asset ls --workspace <id>`
+- `studyflow asset diff --asset <id> --a <ver> --b <ver>`
+- `studyflow api ping --base-url http://127.0.0.1:8000`
 
 ## Using Ingest + Citation Preview
 Upload a PDF on any page and the UI will show:
@@ -98,6 +90,10 @@ Each generation and retrieval chat produces a `run_id` and writes a JSON log to
 - Workspaces, documents, chunks, history, and UI settings are stored in SQLite.
 - Indexes and outputs are derived data in `workspaces/<wid>/`.
 - Backup/restore: copy the entire `workspaces/<wid>/` directory.
+
+## Privacy & Storage
+- All data stays local by default; API mode is for local/self-hosted use.
+- API tokens are read from env only and not stored in the DB.
 
 ## Cleanup + Verification
 Before running version verification, clean local workspaces:

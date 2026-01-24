@@ -36,6 +36,22 @@ HELP_SECTIONS = [
         ],
     },
     {
+        "title": "Asset Versions",
+        "bullets": [
+            "Every generation creates a new asset version.",
+            "Use the Inspector to preview, pin, or compare versions.",
+            "Export citations as JSON/TXT from the Inspector.",
+        ],
+    },
+    {
+        "title": "API Mode",
+        "bullets": [
+            "Switch UI Mode to API in Settings and provide Base URL.",
+            "API mode calls FastAPI endpoints for ingest/query/generate.",
+            "Set API_TOKEN for optional bearer auth.",
+        ],
+    },
+    {
         "title": "History & Data Storage",
         "bullets": [
             "History records recent actions, outputs, and citations counts.",

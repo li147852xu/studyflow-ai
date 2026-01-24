@@ -10,6 +10,8 @@ from cli.commands.index import index_app
 from cli.commands.ingest import ingest
 from cli.commands.query import query
 from cli.commands.gen import gen
+from cli.commands.asset import asset_app
+from cli.commands.api import api_app
 
 app = typer.Typer(help="StudyFlow CLI")
 
@@ -27,6 +29,8 @@ app.command()(doctor)
 app.add_typer(workspace_app, name="workspace")
 app.add_typer(document_app, name="document")
 app.add_typer(index_app, name="index")
+app.add_typer(asset_app, name="asset")
+app.add_typer(api_app, name="api")
 app.command()(ingest)
 app.command()(query)
 app.command()(gen)

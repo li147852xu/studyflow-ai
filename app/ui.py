@@ -13,6 +13,12 @@ def init_app_state() -> None:
     st.session_state.setdefault(
         "llm_temperature", float(get_setting(None, "llm_temperature") or 0.2)
     )
+    st.session_state.setdefault(
+        "api_mode", get_setting(None, "api_mode") or "direct"
+    )
+    st.session_state.setdefault(
+        "api_base_url", get_setting(None, "api_base_url") or "http://127.0.0.1:8000"
+    )
     st.session_state.setdefault("active_nav", "Home")
     st.session_state.setdefault("retrieval_mode", "vector")
 

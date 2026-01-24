@@ -1,0 +1,148 @@
+from __future__ import annotations
+
+import hashlib
+import json
+from dataclasses import dataclass
+
+from core.assets.store import (
+    AssetRecord,
+    AssetVersionRecord,
+    create_or_get_asset,
+    get_asset,
+    get_asset_by_ref,
+    list_asset_versions,
+    list_assets,
+    read_asset_content,
+    save_asset_version,
+    set_active_version,
+)
+from core.assets.diff import diff_text
+from core.assets.citations import export_citations, format_citations_payload
+from core.retrieval.retriever import Hit
+
+
+def _hash_ref(text: str) -> str:
+    digest = hashlib.sha256()
+    digest.update(text.encode("utf-8"))
+    return digest.hexdigest()[:10]
+
+
+def _hits_to_json(hits: list[Hit]) -> str:
+    payload = [
+        {
+            "chunk_id": hit.chunk_id,
+            "filename": hit.filename,
+            "page_start": hit.page_start,
+            "page_end": hit.page_end,
+            "text": hit.text,
+            "score": hit.score,
+        }
+        for hit in hits
+    ]
+    return json.dumps(payload, ensure_ascii=False)
+
+
+@dataclass
+class AssetVersionView:
+    asset: AssetRecord
+    version: AssetVersionRecord
+    content: str
+
+
+def create_asset_version(
+    *,
+    workspace_id: str,
+    kind: str,
+    ref_id: str,
+    content: str,
+    content_type: str,
+    run_id: str | None,
+    model: str | None,
+    prompt_version: str,
+    hits: list[Hit],
+) -> AssetVersionRecord:
+    asset = create_or_get_asset(workspace_id=workspace_id, kind=kind, ref_id=ref_id)
+    hits_json = _hits_to_json(hits) if hits else None
+    citations_json = None
+    if hits_json:
+        citations_json = json.dumps(format_citations_payload(hits_json), ensure_ascii=False)
+    return save_asset_version(
+        workspace_id=workspace_id,
+        asset_id=asset.id,
+        content=content,
+        content_type=content_type,
+        run_id=run_id,
+        model=model,
+        prompt_version=prompt_version,
+        citations_json=citations_json,
+        hits_json=hits_json,
+    )
+
+
+def list_assets_for_workspace(workspace_id: str, kind: str | None = None) -> list[AssetRecord]:
+    return list_assets(workspace_id, kind)
+
+
+def list_versions(asset_id: str) -> list[AssetVersionRecord]:
+    return list_asset_versions(asset_id)
+
+
+def read_version(asset_id: str, version_id: str) -> AssetVersionView:
+    asset = get_asset(asset_id)
+    versions = list_asset_versions(asset_id)
+    version = next((v for v in versions if v.id == version_id), None)
+    if not version:
+        raise RuntimeError("Asset version not found.")
+    content = read_asset_content(version)
+    return AssetVersionView(asset=asset, version=version, content=content)
+
+
+def set_active(asset_id: str, version_id: str) -> None:
+    set_active_version(asset_id, version_id)
+
+
+def diff_versions(asset_id: str, version_a: str, version_b: str) -> str:
+    view_a = read_version(asset_id, version_a)
+    view_b = read_version(asset_id, version_b)
+    return diff_text(view_a.content, view_b.content)
+
+
+def export_version_citations(
+    *,
+    workspace_id: str,
+    asset_id: str,
+    version_id: str,
+    formats: list[str],
+) -> dict[str, str]:
+    view = read_version(asset_id, version_id)
+    payload = []
+    if view.version.hits_json:
+        payload = format_citations_payload(view.version.hits_json)
+    return export_citations(
+        workspace_id=workspace_id,
+        asset_id=asset_id,
+        version_id=version_id,
+        payload=payload,
+        formats=formats,
+    )
+
+
+def course_ref_id(course_id: str) -> str:
+    return course_id
+
+
+def course_explain_ref_id(course_id: str, selection: str, mode: str) -> str:
+    return f"{course_id}:{mode}:{_hash_ref(selection)}"
+
+
+def paper_ref_id(doc_id: str) -> str:
+    return doc_id
+
+
+def paper_aggregate_ref_id(doc_ids: list[str], question: str) -> str:
+    key = ",".join(sorted(doc_ids)) + "::" + question.strip()
+    return f"aggregate:{_hash_ref(key)}"
+
+
+def slides_ref_id(doc_id: str, duration: str) -> str:
+    return f"{doc_id}:{duration}"
