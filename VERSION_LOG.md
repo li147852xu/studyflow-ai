@@ -1,5 +1,21 @@
 # VERSION LOG
 
+## V2.8
+- Added index maintenance CLI (status/rebuild/vacuum) and deep doctor checks
+- Added workspace clean command with dry-run safeguards
+- Hardened bulk import via task queue integration
+- Verification: `python scripts/verify_v2_8.py`, `python -m compileall .`, `pytest -q`
+
+## V2.7
+- Added reproducibility metadata to run logs and asset versions
+- Added citation consistency checks with user-visible warnings
+- Added structured output validation with one retry for key generators
+
+## V2.6
+- Added task queue with resume/retry/cancel and task-based ingest/index
+- Added embedding cache + batch/concurrent embeddings with streaming indexing
+- Added benchmark scripts for ingest/query
+
 ## V2.5
 - Added workspace bundle export/import with sanitized manifests
 - Added submission packs (slides/exam/related) with manifests

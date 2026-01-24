@@ -18,6 +18,8 @@ from core.telemetry.run_logger import log_run
 from service.asset_service import create_asset_version
 from service.paper_service import list_papers
 from infra.db import get_workspaces_dir
+from core.quality.citations_check import check_citations
+from service.metadata_service import llm_metadata
 
 
 class RelatedServiceError(RuntimeError):
@@ -47,16 +49,28 @@ def create_related_project(
         retrieval_mode=retrieval_mode,
     )
     latency_ms = int((time.time() - start) * 1000)
+    meta = llm_metadata(temperature=0.2)
+    citation_ok, citation_error = check_citations(result.draft, result.hits)
+    warnings = getattr(result, "warnings", None)
+    errors = citation_error
+    if warnings:
+        errors = "; ".join(warnings + ([citation_error] if citation_error else []))
     run_id = log_run(
         workspace_id=workspace_id,
         action_type="related_create",
         input_payload={"topic": topic, "prompt_version": result.prompt_version},
         retrieval_mode=result.retrieval_mode,
         hits=result.hits,
-        model=os.getenv("STUDYFLOW_LLM_MODEL", ""),
-        embed_model=os.getenv("STUDYFLOW_EMBED_MODEL", ""),
+        model=meta["model"],
+        provider=meta["provider"],
+        temperature=meta["temperature"],
+        max_tokens=meta["max_tokens"],
+        embed_model=meta["embed_model"],
+        seed=meta["seed"],
+        prompt_version=result.prompt_version,
         latency_ms=latency_ms,
-        errors=None,
+        citation_incomplete=not citation_ok,
+        errors=errors,
     )
     project_id = create_project(
         workspace_id=workspace_id,
@@ -74,7 +88,13 @@ def create_related_project(
         content=result.draft,
         content_type="text",
         run_id=run_id,
-        model=os.getenv("STUDYFLOW_LLM_MODEL", ""),
+        model=meta["model"],
+        provider=meta["provider"],
+        temperature=meta["temperature"],
+        max_tokens=meta["max_tokens"],
+        retrieval_mode=result.retrieval_mode,
+        embed_model=meta["embed_model"],
+        seed=meta["seed"],
         prompt_version=result.prompt_version or "v1",
         hits=result.hits,
     )
@@ -82,6 +102,7 @@ def create_related_project(
         "project_id": project_id,
         "draft": result.draft,
         "citations": result.citations,
+        "warnings": warnings or ([] if citation_ok else [citation_error or "citation check failed"]),
         "asset_version_id": version.id,
         "run_id": run_id,
     }
@@ -110,16 +131,28 @@ def update_related_project(
         retrieval_mode=retrieval_mode,
     )
     latency_ms = int((time.time() - start) * 1000)
+    meta = llm_metadata(temperature=0.2)
+    citation_ok, citation_error = check_citations(result.draft, result.hits)
+    warnings = getattr(result, "warnings", None)
+    errors = citation_error
+    if warnings:
+        errors = "; ".join(warnings + ([citation_error] if citation_error else []))
     run_id = log_run(
         workspace_id=workspace_id,
         action_type="related_update",
         input_payload={"project_id": project_id, "prompt_version": result.prompt_version},
         retrieval_mode=result.retrieval_mode,
         hits=result.hits,
-        model=os.getenv("STUDYFLOW_LLM_MODEL", ""),
-        embed_model=os.getenv("STUDYFLOW_EMBED_MODEL", ""),
+        model=meta["model"],
+        provider=meta["provider"],
+        temperature=meta["temperature"],
+        max_tokens=meta["max_tokens"],
+        embed_model=meta["embed_model"],
+        seed=meta["seed"],
+        prompt_version=result.prompt_version,
         latency_ms=latency_ms,
-        errors=None,
+        citation_incomplete=not citation_ok,
+        errors=errors,
     )
     update_project(
         project_id=project_id,
@@ -136,7 +169,13 @@ def update_related_project(
         content=result.draft,
         content_type="text",
         run_id=run_id,
-        model=os.getenv("STUDYFLOW_LLM_MODEL", ""),
+        model=meta["model"],
+        provider=meta["provider"],
+        temperature=meta["temperature"],
+        max_tokens=meta["max_tokens"],
+        retrieval_mode=result.retrieval_mode,
+        embed_model=meta["embed_model"],
+        seed=meta["seed"],
         prompt_version=result.prompt_version or "v1",
         hits=result.hits,
     )
@@ -145,6 +184,7 @@ def update_related_project(
         "draft": result.draft,
         "citations": result.citations,
         "insert_suggestions": result.insert_suggestions or [],
+        "warnings": warnings or ([] if citation_ok else [citation_error or "citation check failed"]),
         "asset_version_id": version.id,
         "run_id": run_id,
     }

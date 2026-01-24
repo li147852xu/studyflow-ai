@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from pathlib import Path
+import hashlib
 
 from core.ingest.cite import build_citation
 from core.retrieval.embedder import (
@@ -10,6 +11,7 @@ from core.retrieval.embedder import (
     build_embedding_settings,
     embed_texts,
 )
+from core.retrieval.embedding_cache import CacheEntry, get_cached_embeddings, put_cached_embeddings
 import os
 import time
 
@@ -20,6 +22,8 @@ from core.telemetry.run_logger import log_run
 from core.retrieval.vector_store import VectorStore, VectorStoreSettings
 from infra.db import get_connection, get_workspaces_dir
 from service.chat_service import ChatConfigError, chat
+from core.quality.citations_check import check_citations
+from service.metadata_service import llm_metadata
 
 
 class RetrievalError(RuntimeError):
@@ -45,10 +49,10 @@ def _collection_name(workspace_id: str) -> str:
     return f"workspace_{workspace_id}"
 
 
-def _fetch_chunks(workspace_id: str) -> list[dict]:
-    with get_connection() as connection:
-        rows = connection.execute(
-            """
+def _chunk_query(doc_ids: list[str] | None = None) -> tuple[str, tuple]:
+    if doc_ids:
+        placeholders = ",".join(["?"] * len(doc_ids))
+        query = f"""
             SELECT chunks.id as chunk_id,
                    chunks.doc_id as doc_id,
                    chunks.workspace_id as workspace_id,
@@ -59,12 +63,50 @@ def _fetch_chunks(workspace_id: str) -> list[dict]:
                    documents.filename as filename
             FROM chunks
             JOIN documents ON documents.id = chunks.doc_id
-            WHERE chunks.workspace_id = ?
+            WHERE chunks.workspace_id = ? AND chunks.doc_id IN ({placeholders})
             ORDER BY chunks.doc_id, chunks.chunk_index
-            """,
-            (workspace_id,),
-        ).fetchall()
+            LIMIT ? OFFSET ?
+            """
+        return query, tuple(doc_ids)
+    query = """
+        SELECT chunks.id as chunk_id,
+               chunks.doc_id as doc_id,
+               chunks.workspace_id as workspace_id,
+               chunks.chunk_index as chunk_index,
+               chunks.page_start as page_start,
+               chunks.page_end as page_end,
+               chunks.text as text,
+               documents.filename as filename
+        FROM chunks
+        JOIN documents ON documents.id = chunks.doc_id
+        WHERE chunks.workspace_id = ?
+        ORDER BY chunks.doc_id, chunks.chunk_index
+        LIMIT ? OFFSET ?
+        """
+    return query, tuple()
+
+
+def _fetch_chunk_batch(
+    workspace_id: str, doc_ids: list[str] | None, limit: int, offset: int
+) -> list[dict]:
+    query, doc_params = _chunk_query(doc_ids)
+    params = (workspace_id, *doc_params, limit, offset)
+    with get_connection() as connection:
+        rows = connection.execute(query, params).fetchall()
     return [dict(row) for row in rows]
+
+
+def _count_chunks(workspace_id: str, doc_ids: list[str] | None = None) -> int:
+    if doc_ids:
+        placeholders = ",".join(["?"] * len(doc_ids))
+        query = f"SELECT COUNT(*) as count FROM chunks WHERE workspace_id = ? AND doc_id IN ({placeholders})"
+        params = (workspace_id, *doc_ids)
+    else:
+        query = "SELECT COUNT(*) as count FROM chunks WHERE workspace_id = ?"
+        params = (workspace_id,)
+    with get_connection() as connection:
+        row = connection.execute(query, params).fetchone()
+    return int(row["count"]) if row else 0
 
 
 def get_chunks_for_documents(doc_ids: list[str]) -> list[dict]:
@@ -114,10 +156,12 @@ def build_or_refresh_index(
     workspace_id: str,
     reset: bool = True,
     batch_size: int = 32,
+    doc_ids: list[str] | None = None,
     progress_cb: callable | None = None,
+    stop_check: callable | None = None,
 ) -> IndexResult:
-    chunks = _fetch_chunks(workspace_id)
-    if not chunks:
+    total = _count_chunks(workspace_id, doc_ids)
+    if total == 0:
         raise RetrievalError("No chunks available. Please ingest a PDF first.")
 
     try:
@@ -128,15 +172,68 @@ def build_or_refresh_index(
     if reset:
         store.reset()
 
-    total = len(chunks)
     indexed_count = 0
+    cache_enabled = os.getenv("STUDYFLOW_EMBED_CACHE", "off").lower() in (
+        "1",
+        "true",
+        "on",
+        "yes",
+    )
+    cache_path = (
+        get_workspaces_dir() / workspace_id / "cache" / "embeddings.sqlite"
+        if cache_enabled
+        else None
+    )
     for start in range(0, total, batch_size):
-        batch = chunks[start : start + batch_size]
+        if stop_check and stop_check():
+            raise RetrievalError("Indexing stopped by user.")
+        batch = _fetch_chunk_batch(workspace_id, doc_ids, batch_size, start)
         texts = [item["text"] for item in batch]
-        try:
-            embeddings = embed_texts(texts, embed_settings)
-        except EmbeddingError as exc:
-            raise RetrievalError(str(exc)) from exc
+        embeddings: list[list[float]] = []
+        cache_entries: list[CacheEntry] = []
+        if cache_path:
+            keys = [
+                hashlib.sha256(
+                    f"{embed_settings.model}:{text}".encode("utf-8")
+                ).hexdigest()
+                for text in texts
+            ]
+            cached = get_cached_embeddings(cache_path, keys)
+            missing_texts: list[str] = []
+            missing_keys: list[str] = []
+            missing_positions: list[int] = []
+            embeddings = [None] * len(texts)
+            for index, (key, text) in enumerate(zip(keys, texts)):
+                if key in cached:
+                    embeddings[index] = cached[key]
+                else:
+                    missing_keys.append(key)
+                    missing_texts.append(text)
+                    missing_positions.append(index)
+            if missing_texts:
+                try:
+                    computed = embed_texts(missing_texts, embed_settings)
+                except EmbeddingError as exc:
+                    raise RetrievalError(str(exc)) from exc
+                for key, vector, position in zip(
+                    missing_keys, computed, missing_positions
+                ):
+                    embeddings[position] = vector
+                    cache_entries.append(
+                        CacheEntry(
+                            key=key,
+                            vector=vector,
+                            model=embed_settings.model,
+                            created_at=time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+                        )
+                    )
+                put_cached_embeddings(cache_path, cache_entries)
+            embeddings = [item for item in embeddings if item is not None]
+        else:
+            try:
+                embeddings = embed_texts(texts, embed_settings)
+            except EmbeddingError as exc:
+                raise RetrievalError(str(exc)) from exc
         store.upsert(
             ids=[item["chunk_id"] for item in batch],
             embeddings=embeddings,
@@ -175,6 +272,65 @@ def ensure_bm25_index(workspace_id: str) -> Path:
     if index is None:
         return build_bm25_index(workspace_id)
     return _bm25_index_dir(workspace_id) / "index.pkl"
+
+
+def index_status(workspace_id: str) -> dict:
+    chunk_count = _count_chunks(workspace_id)
+    doc_count = _fetch_doc_count(workspace_id)
+    orphan_chunks = _count_orphan_chunks(workspace_id)
+    vector_count = 0
+    try:
+        store = _build_store(workspace_id)
+        vector_count = store.count()
+    except Exception:
+        vector_count = -1
+    bm25_path = _bm25_index_dir(workspace_id) / "index.pkl"
+    return {
+        "workspace_id": workspace_id,
+        "doc_count": doc_count,
+        "chunk_count": chunk_count,
+        "orphan_chunks": orphan_chunks,
+        "vector_count": vector_count,
+        "bm25_exists": bm25_path.exists(),
+    }
+
+
+def _count_orphan_chunks(workspace_id: str) -> int:
+    with get_connection() as connection:
+        row = connection.execute(
+            """
+            SELECT COUNT(*) as count
+            FROM chunks
+            LEFT JOIN documents ON documents.id = chunks.doc_id
+            WHERE chunks.workspace_id = ? AND documents.id IS NULL
+            """,
+            (workspace_id,),
+        ).fetchone()
+    return int(row["count"]) if row else 0
+
+
+def vacuum_index(workspace_id: str) -> dict:
+    with get_connection() as connection:
+        connection.execute(
+            """
+            DELETE FROM document_pages
+            WHERE doc_id NOT IN (SELECT id FROM documents)
+            """
+        )
+        connection.execute(
+            """
+            DELETE FROM chunks
+            WHERE doc_id NOT IN (SELECT id FROM documents)
+            """
+        )
+        connection.commit()
+    status = index_status(workspace_id)
+    if status["chunk_count"] == 0:
+        return status
+    if status["vector_count"] != status["chunk_count"]:
+        build_or_refresh_index(workspace_id=workspace_id, reset=True)
+    build_bm25_index(workspace_id)
+    return index_status(workspace_id)
 
 
 def retrieve_hits(
@@ -345,16 +501,24 @@ def answer_with_retrieval(
         citations.append(f"[{idx}] {citation.render()}")
 
     latency_ms = int((time.time() - start) * 1000)
+    meta = llm_metadata(temperature=None)
+    citation_ok, citation_error = check_citations(answer, hits)
     run_id = log_run(
         workspace_id=workspace_id,
         action_type="chat",
         input_payload={"query": query},
         retrieval_mode=used_mode,
         hits=hits,
-        model=os.getenv("STUDYFLOW_LLM_MODEL", ""),
-        embed_model=os.getenv("STUDYFLOW_EMBED_MODEL", ""),
+        model=meta["model"],
+        provider=meta["provider"],
+        temperature=meta["temperature"],
+        max_tokens=meta["max_tokens"],
+        embed_model=meta["embed_model"],
+        seed=meta["seed"],
+        prompt_version=None,
         latency_ms=latency_ms,
-        errors=None,
+        citation_incomplete=not citation_ok,
+        errors=citation_error,
     )
 
     return answer, hits, citations, run_id

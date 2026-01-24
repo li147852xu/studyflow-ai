@@ -8,6 +8,7 @@ from core.prompts.registry import build_prompt
 from core.retrieval.retriever import Hit
 from service.chat_service import ChatConfigError, chat
 from service.retrieval_service import retrieve_hits_mode
+from core.quality.validators import validate_related_payload_safe
 
 
 class RelatedManagerError(RuntimeError):
@@ -24,6 +25,7 @@ class RelatedResult:
     retrieval_mode: str
     prompt_version: str | None = None
     insert_suggestions: list[str] | None = None
+    warnings: list[str] | None = None
 
 
 def _merge_hits(batches: list[list[Hit]]) -> list[Hit]:
@@ -67,6 +69,7 @@ def build_related(
         context=bundle.numbered_context,
         topic=topic,
     )
+    warnings: list[str] | None = None
     try:
         response = chat(prompt=prompt, temperature=0.2)
     except ChatConfigError as exc:
@@ -75,6 +78,30 @@ def build_related(
         payload = json.loads(response)
     except json.JSONDecodeError as exc:
         raise RelatedManagerError("Related work output returned invalid JSON.") from exc
+    valid, error = validate_related_payload_safe(payload)
+    if not valid:
+        strict_prompt = (
+            prompt
+            + "\n\nReturn JSON with keys: comparison_axes (list), sections (list of {title, bullets}), draft."
+        )
+        try:
+            response = chat(prompt=strict_prompt, temperature=0.1)
+        except ChatConfigError as exc:
+            raise RelatedManagerError(str(exc)) from exc
+        try:
+            payload = json.loads(response)
+        except json.JSONDecodeError as exc:
+            raise RelatedManagerError("Related work output returned invalid JSON.") from exc
+        valid, error = validate_related_payload_safe(payload)
+        if not valid:
+            warnings = [
+                "Related work validation failed. Consider rebuilding index or retrying."
+            ]
+            payload = {
+                "comparison_axes": [],
+                "sections": [{"title": "Overview", "bullets": []}],
+                "draft": "Validation failed. Please retry after rebuilding index.",
+            }
     return RelatedResult(
         comparison_axes=payload.get("comparison_axes", []),
         sections=payload.get("sections", []),
@@ -83,6 +110,7 @@ def build_related(
         citations=bundle.citations,
         retrieval_mode=used_mode,
         prompt_version=prompt_version,
+        warnings=warnings,
     )
 
 
@@ -111,6 +139,7 @@ def update_related(
         topic=topic,
         existing_outline=existing_outline,
     )
+    warnings: list[str] | None = None
     try:
         response = chat(prompt=prompt, temperature=0.2)
     except ChatConfigError as exc:
@@ -119,6 +148,31 @@ def update_related(
         payload = json.loads(response)
     except json.JSONDecodeError as exc:
         raise RelatedManagerError("Related update output returned invalid JSON.") from exc
+    valid, error = validate_related_payload_safe(payload)
+    if not valid:
+        strict_prompt = (
+            prompt
+            + "\n\nReturn JSON with keys: comparison_axes (list), sections (list of {title, bullets}), draft."
+        )
+        try:
+            response = chat(prompt=strict_prompt, temperature=0.1)
+        except ChatConfigError as exc:
+            raise RelatedManagerError(str(exc)) from exc
+        try:
+            payload = json.loads(response)
+        except json.JSONDecodeError as exc:
+            raise RelatedManagerError("Related update output returned invalid JSON.") from exc
+        valid, error = validate_related_payload_safe(payload)
+        if not valid:
+            warnings = [
+                "Related update validation failed. Consider rebuilding index or retrying."
+            ]
+            payload = {
+                "comparison_axes": [],
+                "sections": [{"title": "Overview", "bullets": []}],
+                "draft": "Validation failed. Please retry after rebuilding index.",
+                "insert_suggestions": [],
+            }
     return RelatedResult(
         comparison_axes=payload.get("comparison_axes", []),
         sections=payload.get("sections", []),
@@ -128,4 +182,5 @@ def update_related(
         retrieval_mode=used_mode,
         prompt_version=prompt_version,
         insert_suggestions=payload.get("insert_suggestions", []),
+        warnings=warnings,
     )

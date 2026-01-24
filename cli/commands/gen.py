@@ -40,6 +40,8 @@ def gen(
         try:
             output = generate_paper_card(workspace_id=workspace, doc_id=source, retrieval_mode=mode)
             typer.echo(output.content)
+            if output.warnings:
+                typer.echo(f"warnings: {'; '.join(output.warnings)}")
             typer.echo(f"run_id: {output.run_id}")
         except ChatConfigError as exc:
             typer.echo(f"LLM not configured: {exc}")
@@ -56,6 +58,8 @@ def gen(
                 save_outputs=False,
             )
             typer.echo(output.deck)
+            if output.warnings:
+                typer.echo(f"warnings: {'; '.join(output.warnings)}")
             typer.echo(f"run_id: {output.run_id}")
         except ChatConfigError as exc:
             typer.echo(f"LLM not configured: {exc}")

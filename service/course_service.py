@@ -14,6 +14,8 @@ from service.asset_service import (
     course_ref_id,
     create_asset_version,
 )
+from service.metadata_service import llm_metadata
+from core.quality.citations_check import check_citations
 
 
 def _now_iso() -> str:
@@ -102,16 +104,24 @@ def generate_overview(
     agent = CourseAgent(workspace_id, course_id, doc_ids, retrieval_mode)
     output = agent.generate_overview(progress_cb=progress_cb)
     latency_ms = int((time.time() - start) * 1000)
+    meta = llm_metadata(temperature=0.2)
+    citation_ok, citation_error = check_citations(output.content, output.hits)
     run_id = log_run(
         workspace_id=workspace_id,
         action_type="course_overview",
         input_payload={"course_id": course_id},
         retrieval_mode=output.retrieval_mode,
         hits=output.hits,
-        model=os.getenv("STUDYFLOW_LLM_MODEL", ""),
-        embed_model=os.getenv("STUDYFLOW_EMBED_MODEL", ""),
+        model=meta["model"],
+        provider=meta["provider"],
+        temperature=meta["temperature"],
+        max_tokens=meta["max_tokens"],
+        embed_model=meta["embed_model"],
+        seed=meta["seed"],
+        prompt_version=output.prompt_version,
         latency_ms=latency_ms,
-        errors=None,
+        citation_incomplete=not citation_ok,
+        errors=citation_error,
     )
     output.run_id = run_id
     version = create_asset_version(
@@ -121,7 +131,13 @@ def generate_overview(
         content=output.content,
         content_type="text",
         run_id=run_id,
-        model=os.getenv("STUDYFLOW_LLM_MODEL", ""),
+        model=meta["model"],
+        provider=meta["provider"],
+        temperature=meta["temperature"],
+        max_tokens=meta["max_tokens"],
+        retrieval_mode=output.retrieval_mode,
+        embed_model=meta["embed_model"],
+        seed=meta["seed"],
         prompt_version=output.prompt_version or "v1",
         hits=output.hits,
     )
@@ -145,16 +161,24 @@ def generate_cheatsheet(
     agent = CourseAgent(workspace_id, course_id, doc_ids, retrieval_mode)
     output = agent.generate_cheatsheet(progress_cb=progress_cb)
     latency_ms = int((time.time() - start) * 1000)
+    meta = llm_metadata(temperature=0.2)
+    citation_ok, citation_error = check_citations(output.content, output.hits)
     run_id = log_run(
         workspace_id=workspace_id,
         action_type="course_cheatsheet",
         input_payload={"course_id": course_id},
         retrieval_mode=output.retrieval_mode,
         hits=output.hits,
-        model=os.getenv("STUDYFLOW_LLM_MODEL", ""),
-        embed_model=os.getenv("STUDYFLOW_EMBED_MODEL", ""),
+        model=meta["model"],
+        provider=meta["provider"],
+        temperature=meta["temperature"],
+        max_tokens=meta["max_tokens"],
+        embed_model=meta["embed_model"],
+        seed=meta["seed"],
+        prompt_version=output.prompt_version,
         latency_ms=latency_ms,
-        errors=None,
+        citation_incomplete=not citation_ok,
+        errors=citation_error,
     )
     output.run_id = run_id
     version = create_asset_version(
@@ -164,7 +188,13 @@ def generate_cheatsheet(
         content=output.content,
         content_type="text",
         run_id=run_id,
-        model=os.getenv("STUDYFLOW_LLM_MODEL", ""),
+        model=meta["model"],
+        provider=meta["provider"],
+        temperature=meta["temperature"],
+        max_tokens=meta["max_tokens"],
+        retrieval_mode=output.retrieval_mode,
+        embed_model=meta["embed_model"],
+        seed=meta["seed"],
         prompt_version=output.prompt_version or "v1",
         hits=output.hits,
     )
@@ -189,16 +219,24 @@ def explain_selection(
     agent = CourseAgent(workspace_id, course_id, doc_ids, retrieval_mode)
     output = agent.explain_selection(selection, mode)
     latency_ms = int((time.time() - start) * 1000)
+    meta = llm_metadata(temperature=0.2)
+    citation_ok, citation_error = check_citations(output.content, output.hits)
     run_id = log_run(
         workspace_id=workspace_id,
         action_type="course_explain",
         input_payload={"course_id": course_id, "mode": mode},
         retrieval_mode=output.retrieval_mode,
         hits=output.hits,
-        model=os.getenv("STUDYFLOW_LLM_MODEL", ""),
-        embed_model=os.getenv("STUDYFLOW_EMBED_MODEL", ""),
+        model=meta["model"],
+        provider=meta["provider"],
+        temperature=meta["temperature"],
+        max_tokens=meta["max_tokens"],
+        embed_model=meta["embed_model"],
+        seed=meta["seed"],
+        prompt_version=output.prompt_version,
         latency_ms=latency_ms,
-        errors=None,
+        citation_incomplete=not citation_ok,
+        errors=citation_error,
     )
     output.run_id = run_id
     version = create_asset_version(
@@ -208,7 +246,13 @@ def explain_selection(
         content=output.content,
         content_type="text",
         run_id=run_id,
-        model=os.getenv("STUDYFLOW_LLM_MODEL", ""),
+        model=meta["model"],
+        provider=meta["provider"],
+        temperature=meta["temperature"],
+        max_tokens=meta["max_tokens"],
+        retrieval_mode=output.retrieval_mode,
+        embed_model=meta["embed_model"],
+        seed=meta["seed"],
         prompt_version=output.prompt_version or "v1",
         hits=output.hits,
     )

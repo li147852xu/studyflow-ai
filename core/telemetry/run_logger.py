@@ -20,8 +20,14 @@ class RunLog:
     retrieval_mode: str
     retrieval_hits: list[dict]
     model: str
+    provider: str
+    temperature: float | None
+    max_tokens: int | None
     embed_model: str
+    seed: int | None
+    prompt_version: str | None
     latency_ms: int
+    citation_incomplete: bool | None = None
     errors: str | None = None
 
 
@@ -41,8 +47,14 @@ def log_run(
     retrieval_mode: str,
     hits: list[Hit],
     model: str,
+    provider: str,
+    temperature: float | None,
+    max_tokens: int | None,
     embed_model: str,
+    seed: int | None,
+    prompt_version: str | None,
     latency_ms: int,
+    citation_incomplete: bool | None = None,
     errors: str | None = None,
 ) -> str:
     run_id = str(uuid.uuid4())
@@ -64,8 +76,14 @@ def log_run(
             for hit in hits
         ],
         model=model,
+        provider=provider,
+        temperature=temperature,
+        max_tokens=max_tokens,
         embed_model=embed_model,
+        seed=seed,
+        prompt_version=prompt_version,
         latency_ms=latency_ms,
+        citation_incomplete=citation_incomplete,
         errors=errors,
     )
     try:

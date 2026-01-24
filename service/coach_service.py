@@ -17,6 +17,8 @@ from core.coach.store import (
     write_session_file,
 )
 from core.telemetry.run_logger import log_run
+from core.quality.citations_check import check_citations
+from service.metadata_service import llm_metadata
 
 
 def _hits_to_json(hits) -> str | None:
@@ -50,16 +52,24 @@ def start_coach(
     start = time.time()
     output = agent.phase_a(problem)
     latency_ms = int((time.time() - start) * 1000)
+    meta = llm_metadata(temperature=0.2)
+    citation_ok, citation_error = check_citations(output.content, output.hits)
     run_id = log_run(
         workspace_id=workspace_id,
         action_type="coach_phase_a",
         input_payload={"problem": problem, "prompt_version": output.prompt_version},
         retrieval_mode=output.retrieval_mode,
         hits=output.hits,
-        model=os.getenv("STUDYFLOW_LLM_MODEL", ""),
-        embed_model=os.getenv("STUDYFLOW_EMBED_MODEL", ""),
+        model=meta["model"],
+        provider=meta["provider"],
+        temperature=meta["temperature"],
+        max_tokens=meta["max_tokens"],
+        embed_model=meta["embed_model"],
+        seed=meta["seed"],
+        prompt_version=output.prompt_version,
         latency_ms=latency_ms,
-        errors=None,
+        citation_incomplete=not citation_ok,
+        errors=citation_error,
     )
     output.run_id = run_id
     update_phase_a(
@@ -84,16 +94,24 @@ def submit_coach(
     start = time.time()
     output = agent.phase_b(session.problem, answer)
     latency_ms = int((time.time() - start) * 1000)
+    meta = llm_metadata(temperature=0.2)
+    citation_ok, citation_error = check_citations(output.content, output.hits)
     run_id = log_run(
         workspace_id=workspace_id,
         action_type="coach_phase_b",
         input_payload={"session_id": session_id, "prompt_version": output.prompt_version},
         retrieval_mode=output.retrieval_mode,
         hits=output.hits,
-        model=os.getenv("STUDYFLOW_LLM_MODEL", ""),
-        embed_model=os.getenv("STUDYFLOW_EMBED_MODEL", ""),
+        model=meta["model"],
+        provider=meta["provider"],
+        temperature=meta["temperature"],
+        max_tokens=meta["max_tokens"],
+        embed_model=meta["embed_model"],
+        seed=meta["seed"],
+        prompt_version=output.prompt_version,
         latency_ms=latency_ms,
-        errors=None,
+        citation_incomplete=not citation_ok,
+        errors=citation_error,
     )
     output.run_id = run_id
     update_phase_b(

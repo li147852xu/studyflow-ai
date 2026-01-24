@@ -14,6 +14,8 @@ def chat_completion(
     model: str,
     messages: list[dict],
     temperature: float | None = None,
+    max_tokens: int | None = None,
+    seed: int | None = None,
     timeout: int = 60,
 ) -> str:
     url = base_url.rstrip("/") + "/chat/completions"
@@ -27,6 +29,10 @@ def chat_completion(
     }
     if temperature is not None:
         payload["temperature"] = temperature
+    if max_tokens is not None and max_tokens > 0:
+        payload["max_tokens"] = max_tokens
+    if seed is not None and seed > 0:
+        payload["seed"] = seed
     last_exc: Exception | None = None
     for _ in range(3):
         try:

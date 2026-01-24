@@ -9,9 +9,26 @@ from urllib.parse import urlparse
 import typer
 
 from core.config.loader import load_config, apply_profile, ConfigError
+from infra.db import get_connection, get_workspaces_dir
+from service.retrieval_service import index_status
+from service.workspace_service import list_workspaces
 
 
-def doctor() -> None:
+def _dir_size(path: str) -> int:
+    total = 0
+    for root, _, files in os.walk(path):
+        for name in files:
+            try:
+                total += (os.path.getsize(os.path.join(root, name)) or 0)
+            except OSError:
+                continue
+    return total
+
+
+def doctor(
+    deep: bool = typer.Option(False, "--deep"),
+    workspace: str | None = typer.Option(None, "--workspace"),
+) -> None:
     typer.echo(f"Python: {sys.version.split()[0]}")
     try:
         config = load_config()
@@ -65,3 +82,55 @@ def doctor() -> None:
         typer.echo("Download support: available (arXiv/DOI/URL imports)")
     except Exception:
         typer.echo("Download support: missing (install requests)")
+
+    if not deep:
+        return
+
+    workspaces = (
+        [workspace]
+        if workspace
+        else [item["id"] for item in list_workspaces()]
+    )
+    if not workspaces:
+        typer.echo("No workspaces found for deep scan.")
+        return
+    for workspace_id in workspaces:
+        typer.echo(f"Deep scan: {workspace_id}")
+        status = index_status(workspace_id)
+        typer.echo(
+            f"  docs={status['doc_count']} chunks={status['chunk_count']} "
+            f"orphans={status['orphan_chunks']} vector={status['vector_count']} bm25={status['bm25_exists']}"
+        )
+        with get_connection() as connection:
+            dup_rows = connection.execute(
+                """
+                SELECT sha256, COUNT(*) as count
+                FROM documents
+                WHERE workspace_id = ? AND sha256 IS NOT NULL
+                GROUP BY sha256
+                HAVING COUNT(*) > 1
+                """,
+                (workspace_id,),
+            ).fetchall()
+        if dup_rows:
+            typer.echo(f"  duplicate docs: {len(dup_rows)}")
+        else:
+            typer.echo("  duplicate docs: 0")
+        workspace_dir = get_workspaces_dir() / workspace_id
+        size_bytes = _dir_size(str(workspace_dir))
+        typer.echo(f"  disk usage: {size_bytes} bytes")
+        cache_path = workspace_dir / "cache" / "embeddings.sqlite"
+        if cache_path.exists():
+            try:
+                import sqlite3
+
+                conn = sqlite3.connect(cache_path)
+                row = conn.execute(
+                    "SELECT COUNT(*) as count FROM embeddings_cache"
+                ).fetchone()
+                conn.close()
+                typer.echo(f"  embedding cache: {row[0]} entries")
+            except Exception:
+                typer.echo("  embedding cache: unreadable")
+        else:
+            typer.echo("  embedding cache: missing")

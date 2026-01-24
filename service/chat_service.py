@@ -56,6 +56,8 @@ def chat(
     api_key: str | None = None,
     model: str | None = None,
     temperature: float | None = None,
+    max_tokens: int | None = None,
+    seed: int | None = None,
 ) -> str:
     settings = build_settings(base_url=base_url, api_key=api_key, model=model)
     client = LLMClient(settings)
@@ -63,4 +65,4 @@ def chat(
         {"role": "system", "content": "You are a helpful study assistant."},
         {"role": "user", "content": prompt},
     ]
-    return client.chat(messages, temperature=temperature)
+    return client.chat(messages, temperature=temperature, max_tokens=max_tokens, seed=seed)

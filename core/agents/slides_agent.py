@@ -9,6 +9,7 @@ from core.prompts.registry import build_prompt
 from core.retrieval.retriever import Hit
 from service.chat_service import ChatConfigError, chat
 from service.retrieval_service import retrieve_hits_mode
+from core.quality.validators import validate_slides_deck
 
 
 class SlidesAgentError(RuntimeError):
@@ -23,6 +24,7 @@ class SlidesOutput:
     saved_path: str | None = None
     hits: list[Hit] | None = None
     retrieval_mode: str | None = None
+    warnings: list[str] | None = None
     run_id: str | None = None
     asset_id: str | None = None
     asset_version_id: str | None = None
@@ -92,6 +94,24 @@ class SlidesAgent:
             raise SlidesAgentError(str(exc)) from exc
 
         deck = _normalize_deck(deck, page_count)
+        warnings: list[str] | None = None
+        valid, _ = validate_slides_deck(deck)
+        if not valid:
+            strict_prompt = (
+                deck_prompt
+                + "\n\nReturn a Marp deck with clear slide titles, bullet lists, and Notes section."
+            )
+            try:
+                deck = chat(prompt=strict_prompt, temperature=0.1)
+            except ChatConfigError as exc:
+                raise SlidesAgentError(str(exc)) from exc
+            deck = _normalize_deck(deck, page_count)
+            valid, _ = validate_slides_deck(deck)
+            if not valid:
+                warnings = [
+                    "Slides failed structured validation. Consider rebuilding index or retrying generation."
+                ]
+                deck = _normalize_deck("Title\n- TBD\n\nNotes:\n- TBD", page_count)
 
         qa_lines = [line.strip() for line in qa_text.splitlines() if line.strip()]
         qa = qa_lines[:10]
@@ -112,6 +132,7 @@ class SlidesAgent:
             hits=merged_hits,
             retrieval_mode=used_mode,
             prompt_version=prompt_version,
+            warnings=warnings,
         )
 
 

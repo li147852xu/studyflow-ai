@@ -20,7 +20,13 @@ class LLMClient:
     def __init__(self, settings: LLMSettings) -> None:
         self.settings = settings
 
-    def chat(self, messages: list[dict], temperature: float | None = None) -> str:
+    def chat(
+        self,
+        messages: list[dict],
+        temperature: float | None = None,
+        max_tokens: int | None = None,
+        seed: int | None = None,
+    ) -> str:
         try:
             return chat_completion(
                 base_url=self.settings.base_url,
@@ -28,6 +34,8 @@ class LLMClient:
                 model=self.settings.model,
                 messages=messages,
                 temperature=temperature,
+                max_tokens=max_tokens,
+                seed=seed,
             )
         except OpenAICompatError as exc:
             raise LLMClientError(str(exc)) from exc

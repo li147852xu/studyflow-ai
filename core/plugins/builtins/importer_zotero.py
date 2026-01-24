@@ -7,7 +7,8 @@ from core.external.zotero import list_pdf_attachments
 from core.plugins.base import PluginBase, PluginContext, PluginResult
 from infra.db import get_workspaces_dir
 from service.document_service import set_document_source
-from service.ingest_service import ingest_pdf, IngestError
+from service.ingest_service import IngestError
+from service.tasks_service import enqueue_ingest_task, run_task_by_id
 from service.paper_service import extract_paper_metadata, ensure_paper
 
 
@@ -69,40 +70,31 @@ class ImportZoteroPlugin(PluginBase):
                 skipped += 1
                 continue
             try:
-                data = attachment.file_path.read_bytes()
                 target_path = docs_dir / attachment.file_path.name
-                if copy_mode:
-                    result = ingest_pdf(
-                        workspace_id=context.workspace_id,
-                        filename=target_path.name,
-                        data=data,
-                        save_dir=docs_dir,
-                        ocr_mode=ocr_mode,
-                        ocr_threshold=ocr_threshold,
-                    )
-                else:
+                if not copy_mode:
                     if not target_path.exists():
                         target_path.symlink_to(attachment.file_path)
-                    result = ingest_pdf(
-                        workspace_id=context.workspace_id,
-                        filename=target_path.name,
-                        data=data,
-                        save_dir=docs_dir,
-                        write_file=False,
-                        existing_path=target_path,
-                        ocr_mode=ocr_mode,
-                        ocr_threshold=ocr_threshold,
-                    )
+                task_id = enqueue_ingest_task(
+                    workspace_id=context.workspace_id,
+                    path=str(attachment.file_path),
+                    ocr_mode=ocr_mode,
+                    ocr_threshold=ocr_threshold,
+                    save_dir=str(docs_dir),
+                    write_file=copy_mode,
+                    existing_path=str(target_path) if not copy_mode else None,
+                )
+                task_result = run_task_by_id(task_id)
+                result_doc_id = task_result["doc_id"]
                 set_document_source(
-                    doc_id=result.doc_id,
+                    doc_id=result_doc_id,
                     source_type="zotero",
                     source_ref=attachment.item_key,
                 )
                 try:
-                    metadata = extract_paper_metadata(Path(result.path))
+                    metadata = extract_paper_metadata(Path(target_path))
                     ensure_paper(
                         workspace_id=context.workspace_id,
-                        doc_id=result.doc_id,
+                        doc_id=result_doc_id,
                         metadata=metadata,
                     )
                 except Exception:
@@ -111,7 +103,7 @@ class ImportZoteroPlugin(PluginBase):
                     source_id=source_id,
                     external_id=attachment.item_key,
                     external_sub_id=attachment.attachment_key,
-                    doc_id=result.doc_id,
+                    doc_id=result_doc_id,
                     status="ok",
                     meta={"filename": attachment.file_path.name},
                 )

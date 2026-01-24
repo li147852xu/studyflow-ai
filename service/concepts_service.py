@@ -15,6 +15,7 @@ from core.ingest.cite import build_citation
 from service.course_service import list_course_doc_ids
 from service.document_service import get_document
 from service.paper_service import list_papers
+from service.metadata_service import llm_metadata
 
 
 class ConceptsServiceError(RuntimeError):
@@ -102,6 +103,7 @@ def build_concept_cards(
             )
         created += 1
     latency_ms = int((time.time() - start) * 1000)
+    meta = llm_metadata(temperature=0.2)
     log_run(
         workspace_id=workspace_id,
         action_type="concepts_build",
@@ -111,8 +113,13 @@ def build_concept_cards(
         },
         retrieval_mode=result.retrieval_mode,
         hits=result.hits,
-        model=os.getenv("STUDYFLOW_LLM_MODEL", ""),
-        embed_model=os.getenv("STUDYFLOW_EMBED_MODEL", ""),
+        model=meta["model"],
+        provider=meta["provider"],
+        temperature=meta["temperature"],
+        max_tokens=meta["max_tokens"],
+        embed_model=meta["embed_model"],
+        seed=meta["seed"],
+        prompt_version=result.prompt_version,
         latency_ms=latency_ms,
         errors=None,
     )

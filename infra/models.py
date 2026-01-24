@@ -84,6 +84,22 @@ def init_db() -> None:
         )
         cursor.execute(
             """
+            CREATE TABLE IF NOT EXISTS tasks (
+                id TEXT PRIMARY KEY,
+                workspace_id TEXT NOT NULL,
+                type TEXT NOT NULL,
+                status TEXT NOT NULL,
+                progress REAL,
+                error TEXT,
+                payload_json TEXT,
+                created_at TEXT NOT NULL,
+                updated_at TEXT NOT NULL,
+                FOREIGN KEY(workspace_id) REFERENCES workspaces(id)
+            )
+            """
+        )
+        cursor.execute(
+            """
             CREATE TABLE IF NOT EXISTS courses (
                 id TEXT PRIMARY KEY,
                 workspace_id TEXT NOT NULL,
@@ -193,6 +209,12 @@ def init_db() -> None:
                 version_index INTEGER NOT NULL,
                 run_id TEXT,
                 model TEXT,
+                provider TEXT,
+                temperature REAL,
+                max_tokens INTEGER,
+                retrieval_mode TEXT,
+                embed_model TEXT,
+                seed INTEGER,
                 prompt_version TEXT,
                 content_path TEXT NOT NULL,
                 content_type TEXT NOT NULL,
@@ -348,3 +370,9 @@ def init_db() -> None:
     _ensure_column("assets", "active_version_id", "TEXT")
     _ensure_column("chunks", "text_source", "TEXT")
     _ensure_column("chunks", "metadata_json", "TEXT")
+    _ensure_column("asset_versions", "provider", "TEXT")
+    _ensure_column("asset_versions", "temperature", "REAL")
+    _ensure_column("asset_versions", "max_tokens", "INTEGER")
+    _ensure_column("asset_versions", "retrieval_mode", "TEXT")
+    _ensure_column("asset_versions", "embed_model", "TEXT")
+    _ensure_column("asset_versions", "seed", "INTEGER")

@@ -10,6 +10,9 @@ StudyFlow-AI is a local-first study workspace for PDFs with OCR, coaching, asset
 - Standardized importers (Zotero, arXiv/DOI/URL, folder sync)
 - Concept cards and related work manager
 - Workspace bundles and submission packs
+- Task queue + benchmarks + embedding cache
+- Structured validation + citation checks
+- Index maintenance and storage hygiene
 - Asset versioning for generated outputs (pin/rollback/diff)
 - Optional API mode via FastAPI (local/self-hosted)
 - Hybrid retrieval (Vector + BM25) with mode switch
@@ -60,6 +63,10 @@ The app auto-loads a local `.env` file if present. Do not commit real keys.
 - `studyflow bundle export --workspace <id> --with-pdf`
 - `studyflow bundle import --path <bundle.zip>`
 - `studyflow pack make --workspace <id> --type slides --source <doc_id>`
+- `studyflow tasks ls --workspace <id>`
+- `studyflow index status <workspace_id>`
+- `studyflow index vacuum <workspace_id>`
+- `studyflow clean --workspace <id> --dry-run`
 
 ## Using Ingest + Citation Preview
 Upload a PDF on any page and the UI will show:
@@ -102,6 +109,21 @@ Use the Retrieval Mode selector on each page.
 2) Import a bundle to create a new workspace and rebuild indexes as needed.
 3) Generate submission packs for slides/exam/related work from existing assets.
 
+## Performance + Reliability (V2.6)
+1) Ingest and index tasks are queued with resume/retry/cancel.
+2) Embedding cache avoids recomputing unchanged chunks.
+3) Repeatable benchmark scripts output JSON metrics.
+
+## Quality + Reproducibility (V2.7)
+1) Run logs and asset versions record full generation metadata.
+2) Citation consistency checks flag missing or invalid references.
+3) Structured output validation retries once on failure.
+
+## Scalability + Maintenance (V2.8)
+1) Index status/rebuild/vacuum CLI keeps vectors and BM25 healthy.
+2) `doctor --deep` reports orphans, disk usage, cache, and OCR readiness.
+3) `clean` safely removes cache/outputs/exports with dry-run by default.
+
 ## Run Logs
 Each generation and retrieval chat produces a `run_id` and writes a JSON log to
 `workspaces/<wid>/runs/`. The UI shows the run_id and log path after completion.
@@ -117,6 +139,16 @@ Each generation and retrieval chat produces a `run_id` and writes a JSON log to
 - Workspaces, documents, chunks, history, and UI settings are stored in SQLite.
 - Indexes and outputs are derived data in `workspaces/<wid>/`.
 - Backup/restore: copy the entire `workspaces/<wid>/` directory.
+
+### Workspace Layout
+- `docs/` imported PDFs
+- `cache/` embeddings cache (optional)
+- `index/` vector + BM25 indexes
+- `outputs/` generated exports, packs, benchmarks
+- `exports/` bundle exports
+- `runs/` run logs
+- `logs/` runtime logs
+- `history/` UI history snapshots
 
 ## Privacy & Storage
 - All data stays local by default; API mode is for local/self-hosted use.

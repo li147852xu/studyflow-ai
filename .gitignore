@@ -18,6 +18,10 @@ chroma*/
 qdrant_data/
 outputs/
 runs/
+exports/
+cache/
+indexes/
+outputs/benchmarks/
 bm25*/
 *.pkl
 history/

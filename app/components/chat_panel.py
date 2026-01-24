@@ -9,6 +9,7 @@ from core.telemetry.run_logger import _run_dir, log_run
 from service.chat_service import ChatConfigError, chat
 from service.retrieval_service import RetrievalError, answer_with_retrieval
 from service.api_mode_adapter import ApiModeAdapter, ApiModeError
+from service.metadata_service import llm_metadata
 
 
 def render_chat_panel(
@@ -116,15 +117,24 @@ def render_chat_panel(
                     )
                     st.success("Answer ready.")
                     st.write(response)
+                    llm_meta = llm_metadata(
+                        temperature=st.session_state.get("llm_temperature")
+                    )
                     run_id = log_run(
                         workspace_id=workspace_id,
                         action_type="chat",
                         input_payload={"query": query.strip()},
                         retrieval_mode="none",
                         hits=[],
-                        model=os.getenv("STUDYFLOW_LLM_MODEL", ""),
-                        embed_model=os.getenv("STUDYFLOW_EMBED_MODEL", ""),
+                        model=llm_meta["model"],
+                        provider=llm_meta["provider"],
+                        temperature=llm_meta["temperature"],
+                        max_tokens=llm_meta["max_tokens"],
+                        embed_model=llm_meta["embed_model"],
+                        seed=llm_meta["seed"],
+                        prompt_version=None,
                         latency_ms=0,
+                        citation_incomplete=None,
                         errors=None,
                     )
                     st.caption(

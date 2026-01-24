@@ -20,6 +20,8 @@ from cli.commands.concepts_cmd import concepts_app
 from cli.commands.related_cmd import related_app
 from cli.commands.bundle_cmd import bundle_app
 from cli.commands.pack_cmd import pack_app
+from cli.commands.tasks_cmd import tasks_app
+from cli.commands.clean_cmd import clean
 
 app = typer.Typer(help="StudyFlow CLI")
 
@@ -47,9 +49,11 @@ app.add_typer(concepts_app, name="concepts")
 app.add_typer(related_app, name="related")
 app.add_typer(bundle_app, name="bundle")
 app.add_typer(pack_app, name="pack")
+app.add_typer(tasks_app, name="tasks")
 app.command()(ingest)
 app.command()(query)
 app.command()(gen)
+app.command()(clean)
 
 if __name__ == "__main__":
     app()

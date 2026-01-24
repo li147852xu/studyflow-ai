@@ -4,8 +4,7 @@ from pathlib import Path
 
 import typer
 
-from infra.db import get_workspaces_dir
-from service.ingest_service import ingest_pdf
+from service.tasks_service import enqueue_ingest_task, run_task_by_id
 
 
 def ingest(
@@ -17,13 +16,11 @@ def ingest(
     path = Path(pdf_path)
     if not path.exists():
         raise typer.BadParameter("PDF path does not exist.")
-    data = path.read_bytes()
-    result = ingest_pdf(
+    task_id = enqueue_ingest_task(
         workspace_id=workspace,
-        filename=path.name,
-        data=data,
-        save_dir=get_workspaces_dir() / workspace / "uploads",
+        path=str(path),
         ocr_mode=ocr,
         ocr_threshold=ocr_threshold,
     )
-    typer.echo(f"{result.doc_id} {result.page_count} pages")
+    result = run_task_by_id(task_id)
+    typer.echo(f"{task_id} {result['doc_id']} {result['page_count']} pages")

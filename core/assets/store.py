@@ -33,6 +33,12 @@ class AssetVersionRecord:
     version_index: int
     run_id: str | None
     model: str | None
+    provider: str | None
+    temperature: float | None
+    max_tokens: int | None
+    retrieval_mode: str | None
+    embed_model: str | None
+    seed: int | None
     prompt_version: str | None
     content_path: str
     content_type: str
@@ -115,7 +121,8 @@ def list_asset_versions(asset_id: str) -> list[AssetVersionRecord]:
     with get_connection() as connection:
         rows = connection.execute(
             """
-            SELECT id, asset_id, version_index, run_id, model, prompt_version, content_path,
+            SELECT id, asset_id, version_index, run_id, model, provider, temperature, max_tokens,
+                   retrieval_mode, embed_model, seed, prompt_version, content_path,
                    content_type, citations_json, hits_json, created_at
             FROM asset_versions
             WHERE asset_id = ?
@@ -151,6 +158,12 @@ def save_asset_version(
     content_type: str,
     run_id: str | None = None,
     model: str | None = None,
+    provider: str | None = None,
+    temperature: float | None = None,
+    max_tokens: int | None = None,
+    retrieval_mode: str | None = None,
+    embed_model: str | None = None,
+    seed: int | None = None,
     prompt_version: str | None = None,
     citations_json: str | None = None,
     hits_json: str | None = None,
@@ -167,10 +180,11 @@ def save_asset_version(
         connection.execute(
             """
             INSERT INTO asset_versions (
-                id, asset_id, version_index, run_id, model, prompt_version,
+                id, asset_id, version_index, run_id, model, provider, temperature,
+                max_tokens, retrieval_mode, embed_model, seed, prompt_version,
                 content_path, content_type, citations_json, hits_json, created_at
             )
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (
                 version_id,
@@ -178,6 +192,12 @@ def save_asset_version(
                 version_index,
                 run_id,
                 model,
+                provider,
+                temperature,
+                max_tokens,
+                retrieval_mode,
+                embed_model,
+                seed,
                 prompt_version,
                 str(content_path),
                 content_type,
@@ -197,6 +217,12 @@ def save_asset_version(
         version_index=version_index,
         run_id=run_id,
         model=model,
+        provider=provider,
+        temperature=temperature,
+        max_tokens=max_tokens,
+        retrieval_mode=retrieval_mode,
+        embed_model=embed_model,
+        seed=seed,
         prompt_version=prompt_version,
         content_path=str(content_path),
         content_type=content_type,
