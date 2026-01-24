@@ -1,14 +1,10 @@
 from __future__ import annotations
 
-import os
-import requests
 import streamlit as st
 from dotenv import load_dotenv
 
 from app.ui import init_app_state
-from app.components.chat_panel import render_chat_panel
 from app.components.dialogs import confirm_action
-from app.components.help_view import render_help
 from app.components.inspector import (
     render_citations,
     render_download,
@@ -17,9 +13,16 @@ from app.components.inspector import (
     render_run_info,
     render_section_title,
 )
-from app.components.layout import three_column_layout
-from app.components.library_view import render_library_view
-from app.components.sidebar import render_sidebar
+from app.components.shell import app_shell
+from app.components.nav import render_nav
+from app.components.library_panel import render_library_panel
+from app.components.workflow_wizard import render_workflow_selector, render_workflow_steps
+from app.components.tasks_center import render_tasks_center
+from app.components.plugins_center import render_plugins_center
+from app.components.settings_center import render_settings_center
+from app.components.exports_center import render_exports_center
+from app.components.diagnostics_center import render_diagnostics_center
+from app.components.help_center import render_help_center
 from app.components.workbench_view import render_workbench_list
 from core.config.loader import load_config, apply_profile, ConfigError
 from core.ui_state.guards import llm_ready
@@ -49,8 +52,6 @@ from service.coach_service import (
     start_coach,
     submit_coach,
 )
-from core.plugins.registry import load_builtin_plugins, list_plugins, get_plugin
-from core.plugins.base import PluginContext
 
 
 def _ensure_retrieval_mode(workspace_id: str | None) -> str:
@@ -75,8 +76,12 @@ def _api_adapter() -> ApiModeAdapter:
     )
 
 
-def render_home(center: st.delta_generator.DeltaGenerator, right: st.delta_generator.DeltaGenerator, workspace_id: str) -> None:
-    from app.components.sidebar import _index_status
+def render_home(
+    center: st.delta_generator.DeltaGenerator,
+    right: st.delta_generator.DeltaGenerator,
+    workspace_id: str,
+) -> None:
+    from app.components.nav import _index_status
 
     status = _index_status(workspace_id)
     with center:
@@ -92,10 +97,8 @@ def render_home(center: st.delta_generator.DeltaGenerator, right: st.delta_gener
         st.write("1) Import PDFs → 2) Build Index → 3) Ask or Generate")
         if st.button("Go to Library"):
             _set_nav("Library")
-        if st.button("Go to Courses"):
-            _set_nav("Courses")
-        if st.button("Go to Papers"):
-            _set_nav("Papers")
+        if st.button("Go to Workflows"):
+            _set_nav("Workflows")
 
     with right:
         st.markdown("### Recent activity")
@@ -111,22 +114,39 @@ def render_home(center: st.delta_generator.DeltaGenerator, right: st.delta_gener
                     st.caption(entry["preview"][:180])
 
 
-def render_library(left: st.delta_generator.DeltaGenerator, center: st.delta_generator.DeltaGenerator, right: st.delta_generator.DeltaGenerator, workspace_id: str) -> None:
+def render_library(
+    left: st.delta_generator.DeltaGenerator,
+    center: st.delta_generator.DeltaGenerator,
+    right: st.delta_generator.DeltaGenerator,
+    workspace_id: str,
+) -> None:
     adapter = _api_adapter()
-    render_library_view(
+    render_library_panel(
         left=left,
         center=center,
         right=right,
         workspace_id=workspace_id,
         api_adapter=adapter,
+        retrieval_mode=_ensure_retrieval_mode(workspace_id),
+        api_mode=st.session_state.get("api_mode", "direct"),
     )
-    with center:
-        render_chat_panel(
-            workspace_id=workspace_id,
-            default_retrieval_mode=_ensure_retrieval_mode(workspace_id),
-            api_adapter=adapter,
-            api_mode=st.session_state.get("api_mode", "direct"),
-        )
+
+
+def render_workflows(
+    left: st.delta_generator.DeltaGenerator,
+    center: st.delta_generator.DeltaGenerator,
+    right: st.delta_generator.DeltaGenerator,
+    workspace_id: str,
+) -> None:
+    with left:
+        workflow_key = render_workflow_selector()
+    render_workflow_steps(center, workflow_key)
+    if workflow_key == "courses":
+        render_courses(left, center, right, workspace_id)
+    elif workflow_key == "papers":
+        render_papers(left, center, right, workspace_id)
+    else:
+        render_presentations(left, center, right, workspace_id)
 
 
 def render_courses(left: st.delta_generator.DeltaGenerator, center: st.delta_generator.DeltaGenerator, right: st.delta_generator.DeltaGenerator, workspace_id: str) -> None:
@@ -823,49 +843,34 @@ def render_coach(left: st.delta_generator.DeltaGenerator, center: st.delta_gener
             st.write(session.phase_b_output[:600] + ("..." if len(session.phase_b_output) > 600 else ""))
 
 
-def render_plugins(left: st.delta_generator.DeltaGenerator, center: st.delta_generator.DeltaGenerator, right: st.delta_generator.DeltaGenerator, workspace_id: str) -> None:
-    load_builtin_plugins()
-    plugins = list_plugins()
-    with left:
-        st.markdown("### Plugins")
-        for plugin in plugins:
-            st.write(f"{plugin.name} · {plugin.version}")
-            st.caption(plugin.description)
-
+def render_plugins(
+    left: st.delta_generator.DeltaGenerator,
+    center: st.delta_generator.DeltaGenerator,
+    right: st.delta_generator.DeltaGenerator,
+    workspace_id: str,
+) -> None:
     with center:
-        st.markdown("### Run Plugin")
-        plugin_names = [plugin.name for plugin in plugins]
-        selected = st.selectbox("Select plugin", options=plugin_names)
-        path = st.text_input("Path (for importer/exporter)", value="")
-        ocr_mode = st.selectbox("OCR mode", options=["off", "auto", "on"], index=0)
-        ocr_threshold = st.slider("OCR threshold", 10, 200, 50, step=10)
-        if st.button("Run plugin", disabled=not selected):
-            plugin = get_plugin(selected)
-            context = PluginContext(
-                workspace_id=workspace_id,
-                args={
-                    "path": path or None,
-                    "ocr_mode": ocr_mode,
-                    "ocr_threshold": ocr_threshold,
-                    "formats": ["json", "txt"],
-                },
-            )
-            result = plugin.run(context)
-            st.success(result.message if result.ok else result.message)
+        render_plugins_center(workspace_id=workspace_id)
 
-    with right:
-        st.markdown("### Plugin Info")
-        if not selected:
-            st.caption("No plugin selected.")
-            return
-        plugin = get_plugin(selected)
-        render_metadata(
-            {
-                "Name": plugin.name,
-                "Version": plugin.version,
-                "Description": plugin.description,
-            }
-        )
+
+def render_tasks(center: st.delta_generator.DeltaGenerator, workspace_id: str | None) -> None:
+    with center:
+        render_tasks_center(workspace_id=workspace_id)
+
+
+def render_exports(center: st.delta_generator.DeltaGenerator, workspace_id: str | None) -> None:
+    with center:
+        render_exports_center(workspace_id=workspace_id)
+
+
+def render_diagnostics(center: st.delta_generator.DeltaGenerator, workspace_id: str | None) -> None:
+    with center:
+        render_diagnostics_center(workspace_id=workspace_id)
+
+
+def render_help_page(center: st.delta_generator.DeltaGenerator) -> None:
+    with center:
+        render_help_center()
 
 def render_history_page(center: st.delta_generator.DeltaGenerator, right: st.delta_generator.DeltaGenerator, workspace_id: str) -> None:
     with center:
@@ -934,162 +939,12 @@ def render_history_page(center: st.delta_generator.DeltaGenerator, right: st.del
             st.write(selected_entry["preview"])
 
 
-def render_settings(center: st.delta_generator.DeltaGenerator, right: st.delta_generator.DeltaGenerator, workspace_id: str | None) -> None:
-    with center:
-        st.markdown("### Settings")
-        st.caption("Provider settings are stored locally and do not leave your machine.")
-        mode = st.radio(
-            "UI Mode",
-            options=["direct", "api"],
-            index=0 if st.session_state.get("api_mode", "direct") == "direct" else 1,
-            help="Direct calls local services. API uses FastAPI endpoints.",
-        )
-        api_base_url = st.text_input(
-            "API Base URL",
-            value=st.session_state.get("api_base_url", "http://127.0.0.1:8000"),
-        )
-        base_url = st.text_input(
-            "LLM Base URL",
-            value=st.session_state.get("llm_base_url", ""),
-            key="settings_llm_base_url",
-        )
-        model = st.text_input(
-            "LLM Model",
-            value=st.session_state.get("llm_model", ""),
-            key="settings_llm_model",
-        )
-        api_key = st.text_input(
-            "LLM API Key",
-            value=st.session_state.get("llm_api_key", ""),
-            type="password",
-            key="settings_llm_api_key",
-        )
-        temperature = st.slider(
-            "Temperature",
-            min_value=0.0,
-            max_value=1.0,
-            value=float(st.session_state.get("llm_temperature", 0.2)),
-            step=0.05,
-        )
-        embed_model = st.text_input(
-            "Embedding model (optional)",
-            value=os.getenv("STUDYFLOW_EMBED_MODEL", ""),
-            key="settings_embed_model",
-        )
-        st.markdown("#### OCR Settings")
-        ocr_mode = st.selectbox(
-            "OCR mode",
-            options=["off", "auto", "on"],
-            index=["off", "auto", "on"].index(
-                st.session_state.get("ocr_mode", "off")
-            ),
-            help="Auto triggers OCR on low-text pages.",
-        )
-        ocr_threshold = st.slider(
-            "OCR threshold (chars)",
-            min_value=10,
-            max_value=200,
-            value=int(st.session_state.get("ocr_threshold", 50)),
-            step=10,
-        )
-        st.markdown("#### Prompt Version")
-        prompt_version = st.selectbox(
-            "Prompt version",
-            options=["v1"],
-            index=0,
-            help="Select prompt version for generation and coach.",
-        )
-        if st.button("Save settings"):
-            st.session_state["llm_base_url"] = base_url
-            st.session_state["llm_model"] = model
-            st.session_state["llm_api_key"] = api_key
-            st.session_state["llm_temperature"] = temperature
-            st.session_state["api_mode"] = mode
-            st.session_state["api_base_url"] = api_base_url
-            st.session_state["ocr_mode"] = ocr_mode
-            st.session_state["ocr_threshold"] = ocr_threshold
-            st.session_state["prompt_version"] = prompt_version
-            if embed_model:
-                os.environ["STUDYFLOW_EMBED_MODEL"] = embed_model
-            if base_url:
-                set_setting(None, "llm_base_url", base_url)
-            if model:
-                set_setting(None, "llm_model", model)
-            set_setting(None, "llm_temperature", str(temperature))
-            set_setting(None, "api_mode", mode)
-            set_setting(None, "api_base_url", api_base_url)
-            set_setting(None, "ocr_mode", ocr_mode)
-            set_setting(None, "ocr_threshold", str(ocr_threshold))
-            set_setting(None, "prompt_version", prompt_version)
-            st.success("Settings saved.")
-
-        st.markdown("#### Connection tests")
-        if st.button("Ping API server"):
-            try:
-                token = os.getenv("API_TOKEN", "")
-                headers = {}
-                if token:
-                    headers["Authorization"] = f"Bearer {token}"
-                resp = requests.get(f"{api_base_url.rstrip('/')}/health", headers=headers, timeout=10)
-                if resp.status_code >= 400:
-                    st.error(f"API error {resp.status_code}: {resp.text}")
-                else:
-                    st.success(f"API responded: {resp.json()}")
-            except requests.RequestException as exc:
-                st.error(f"API ping failed: {exc}")
-        if st.button("Test LLM connection"):
-            from service.chat_service import chat, ChatConfigError
-
-            try:
-                response = chat(
-                    prompt="Reply with 'OK' if you can read this.",
-                    base_url=base_url,
-                    api_key=api_key,
-                    model=model,
-                    temperature=0.1,
-                )
-                st.success(f"LLM responded: {response[:120]}")
-            except ChatConfigError as exc:
-                st.error(str(exc))
-            except Exception as exc:
-                st.error(f"LLM test failed: {exc}")
-
-        if st.button("Test embedding model"):
-            from core.retrieval.embedder import build_embedding_settings, embed_texts, EmbeddingError
-
-            try:
-                settings = build_embedding_settings()
-                embed_texts(["ping"], settings)
-                st.success("Embedding model loaded successfully.")
-            except EmbeddingError as exc:
-                st.error(str(exc))
-            except Exception as exc:
-                st.error(f"Embedding test failed: {exc}")
-
-    with right:
-        st.markdown("### Storage")
-        workspace_dir = get_workspaces_dir()
-        st.code(str(workspace_dir))
-        if workspace_id:
-            st.caption(f"Active workspace: {workspace_id}")
-            st.caption(f"Indexes: {workspace_dir}/{workspace_id}/index/")
-            st.caption(f"Runs: {workspace_dir}/{workspace_id}/runs/")
-            st.caption(f"Outputs: {workspace_dir}/{workspace_id}/outputs/")
-        st.caption("Backup tip: copy the workspace folder to another location.")
-        st.markdown("### Retrieval mode")
-        mode = st.selectbox(
-            "Default mode",
-            options=["vector", "bm25", "hybrid"],
-            index=["vector", "bm25", "hybrid"].index(
-                get_setting(workspace_id, "retrieval_mode") if workspace_id else "vector"
-            )
-            if workspace_id
-            else 0,
-        )
-        if workspace_id and st.button("Save retrieval mode"):
-            set_setting(workspace_id, "retrieval_mode", mode)
-            st.session_state["retrieval_mode"] = mode
-            st.success("Retrieval mode saved.")
+def render_settings(
+    center: st.delta_generator.DeltaGenerator,
+    right: st.delta_generator.DeltaGenerator,
+    workspace_id: str | None,
+) -> None:
+    render_settings_center(center=center, right=right, workspace_id=workspace_id)
 
 
 def main() -> None:
@@ -1102,19 +957,19 @@ def main() -> None:
     st.set_page_config(page_title="StudyFlow-AI", layout="wide")
     init_app_state()
 
-    left, center, right = three_column_layout()
+    left, center, right = app_shell()
     with left:
-        workspace_id, nav = render_sidebar()
+        workspace_id, nav = render_nav()
 
-    if not workspace_id and nav not in ["Settings", "Help"]:
+    if not workspace_id and nav not in ["Settings", "Help", "Diagnostics"]:
         with center:
             st.markdown("### Welcome to StudyFlow-AI")
-            st.info("Create a workspace to start importing PDFs and building indexes.")
+            st.info("Create a project to start importing PDFs and building indexes.")
             if st.button("Open Settings"):
                 _set_nav("Settings")
         with right:
             st.markdown("### Quick tips")
-            st.write("Use the left panel to create a workspace.")
+            st.write("Use the left panel to create a project.")
             st.write("Then open Library to upload PDFs.")
         return
 
@@ -1122,14 +977,14 @@ def main() -> None:
         render_home(center, right, workspace_id)
     elif nav == "Library":
         render_library(left, center, right, workspace_id)
-    elif nav == "Courses":
-        render_courses(left, center, right, workspace_id)
-    elif nav == "Papers":
-        render_papers(left, center, right, workspace_id)
-    elif nav == "Presentations":
-        render_presentations(left, center, right, workspace_id)
+    elif nav == "Workflows":
+        render_workflows(left, center, right, workspace_id)
     elif nav == "Coach":
         render_coach(left, center, right, workspace_id)
+    elif nav == "Exports":
+        render_exports(center, workspace_id)
+    elif nav == "Tasks":
+        render_tasks(center, workspace_id)
     elif nav == "Plugins":
         render_plugins(left, center, right, workspace_id)
     elif nav == "History":
@@ -1137,11 +992,9 @@ def main() -> None:
     elif nav == "Settings":
         render_settings(center, right, workspace_id)
     elif nav == "Help":
-        with center:
-            render_help()
-        with right:
-            st.markdown("### Help topics")
-            st.caption("Quickstart, workflows, troubleshooting.")
+        render_help_page(center)
+    elif nav == "Diagnostics":
+        render_diagnostics(center, workspace_id)
 
 
 if __name__ == "__main__":

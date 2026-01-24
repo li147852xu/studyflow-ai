@@ -29,7 +29,8 @@ StudyFlow-AI is a local-first study workspace for PDFs with OCR, coaching, asset
 
 ## UI Overview
 - Three-column layout: left navigation + collections, center workspace, right inspector.
-- Pages: Home, Library, Courses, Papers, Presentations, History, Settings, Help.
+- Pages: Home, Library, Workflows, Coach, Exports, Tasks, Plugins, History, Settings, Help, Diagnostics.
+- Workflows wrap Courses, Papers, and Presentations into guided steps.
 - Help entry lives inside the app (open Help in the left navigation).
 - Local data lives under `workspaces/<wid>/` (uploads, indexes, runs, outputs).
 
@@ -163,6 +164,9 @@ Each generation and retrieval chat produces a `run_id` and writes a JSON log to
 ## Cleanup + Verification
 Before running version verification, clean local workspaces:
 `python scripts/cleanup_workspaces.py`
+
+UI refactor smoke check:
+`python scripts/verify_ui_app.py`
 
 V0.1 real flow example:
 `python scripts/real_flow_v0_1.py`

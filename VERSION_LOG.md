@@ -1,5 +1,11 @@
 # VERSION LOG
 
+## UI Refactor (no version bump)
+- Added single-page router with three-column shell and unified navigation
+- Added Workflows hub, Tasks/Exports/Diagnostics centers, and in-app Help center
+- Added UI facade helpers and UI smoke verification script
+- Verification: `python scripts/verify_ui_app.py`, `python -m compileall .`, `pytest -q`, `python -c "import app.main"`
+
 ## V2.8
 - Added index maintenance CLI (status/rebuild/vacuum) and deep doctor checks
 - Added workspace clean command with dry-run safeguards

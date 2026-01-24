@@ -3,10 +3,10 @@ HELP_SECTIONS = [
         "title": "Quickstart",
         "expanded": True,
         "bullets": [
-            "Create or select a workspace on the left.",
-            "Upload PDFs in Library or within a workbench.",
+            "Create or select a project on the left.",
+            "Upload PDFs in Library or within a workflow.",
             "Build the vector index if you plan to use Vector/Hybrid retrieval.",
-            "Open a workbench to generate outputs or use Chat.",
+            "Use Workflows to generate outputs or open Library Chat.",
         ],
         "code": "streamlit run app/main.py",
     },
@@ -31,6 +31,7 @@ HELP_SECTIONS = [
     {
         "title": "Workbenches",
         "bullets": [
+            "Workflows wrap Courses, Papers, and Presentations with guided steps.",
             "Courses: generate COURSE_OVERVIEW, EXAM_CHEATSHEET, and explain selections.",
             "Papers: generate PAPER_CARD and aggregate questions across papers.",
             "Presentations: generate Marp decks and Q&A lists.",
@@ -64,6 +65,14 @@ HELP_SECTIONS = [
             "Every generation creates a new asset version.",
             "Use the Inspector to preview, pin, or compare versions.",
             "Export citations as JSON/TXT from the Inspector.",
+        ],
+    },
+    {
+        "title": "Tasks & Diagnostics",
+        "bullets": [
+            "Tasks center shows ingest/index jobs with retry and resume.",
+            "Diagnostics includes doctor, index status, and cleanup tools.",
+            "Exports lets you build workspace bundles and submission packs.",
         ],
     },
     {
