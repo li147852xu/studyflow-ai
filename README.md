@@ -32,6 +32,12 @@ StudyFlow-AI is a stable local workspace UI for uploading PDFs, ingesting text w
 2) Install: `python -m pip install -e .`
 3) Run: `streamlit run app/main.py`
 
+## UI Overview
+- Three-column layout: left navigation + collections, center workspace, right inspector.
+- Pages: Home, Library, Courses, Papers, Presentations, History, Settings, Help.
+- Help entry lives inside the app (open Help in the left navigation).
+- Local data lives under `workspaces/<wid>/` (uploads, indexes, runs, outputs).
+
 ## Configuration
 Create `config.toml` from `config.example.toml`, then set your API key in env:
 - `STUDYFLOW_PROFILE` (optional, selects profile)
@@ -84,9 +90,9 @@ Each generation and retrieval chat produces a `run_id` and writes a JSON log to
 `workspaces/<wid>/runs/`. The UI shows the run_id and log path after completion.
 
 ## UI Guide
-- The UI includes a Help / Docs page with full workflows and troubleshooting.
-- Sidebar contains workspace management, provider config, retrieval mode, and status.
-- History is stored in SQLite and shown in the sidebar per workspace.
+- The UI includes a Help page with full workflows and troubleshooting.
+- Navigation, workspace management, and status live in the left column.
+- History is stored in SQLite and shown in the History page per workspace.
 
 ### Persistence
 - Workspaces, documents, chunks, history, and UI settings are stored in SQLite.

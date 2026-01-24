@@ -48,7 +48,7 @@ def list_documents(workspace_id: str) -> list[dict]:
     with get_connection() as connection:
         rows = connection.execute(
             """
-            SELECT id, workspace_id, filename, path, created_at
+            SELECT id, workspace_id, filename, path, page_count, created_at
             FROM documents
             WHERE workspace_id = ?
             ORDER BY created_at DESC

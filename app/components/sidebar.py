@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import streamlit as st
 
+from app.components.dialogs import confirm_action
 from core.ui_state.storage import get_setting, set_setting
 from service.workspace_service import (
     create_workspace,
@@ -11,6 +12,17 @@ from service.workspace_service import (
 )
 from infra.db import get_connection, get_workspaces_dir
 from core.retrieval.vector_store import VectorStore, VectorStoreSettings
+
+NAV_ITEMS = [
+    "Home",
+    "Library",
+    "Courses",
+    "Papers",
+    "Presentations",
+    "History",
+    "Settings",
+    "Help",
+]
 
 
 def _index_status(workspace_id: str) -> dict:
@@ -41,116 +53,86 @@ def _index_status(workspace_id: str) -> dict:
     }
 
 
-def sidebar_workspace() -> str | None:
-    st.sidebar.header("Workspace")
+def render_sidebar() -> tuple[str | None, str]:
+    st.markdown("## StudyFlow-AI")
+    st.caption("Workspaces, navigation, and status.")
+
     workspaces = list_workspaces()
     workspace_names = {ws["name"]: ws["id"] for ws in workspaces}
-    last_workspace = get_setting(None, "last_workspace_id")
-    options = ["(new)"] + list(workspace_names.keys())
+    last_workspace = get_setting(None, "last_workspace_id") or ""
+    options = ["(new workspace)"] + list(workspace_names.keys())
     default_index = 0
     if last_workspace:
         for idx, name in enumerate(options):
             if workspace_names.get(name) == last_workspace:
                 default_index = idx
                 break
-    selected_name = st.sidebar.selectbox(
-        "Select workspace",
+    selected_name = st.selectbox(
+        "Workspace",
         options=options,
         index=default_index,
         help="Choose an existing workspace or create a new one.",
     )
 
     workspace_id = None
-    if selected_name == "(new)":
-        new_name = st.sidebar.text_input("New workspace name")
-        if st.sidebar.button("Create workspace"):
-            if not new_name.strip():
-                st.sidebar.error("Workspace name cannot be empty.")
-            else:
-                workspace_id = create_workspace(new_name.strip())
-                st.session_state["workspace_id"] = workspace_id
-                set_setting(None, "last_workspace_id", workspace_id)
-                st.sidebar.success("Workspace created.")
+    if selected_name == "(new workspace)":
+        new_name = st.text_input("New workspace name")
+        if st.button("Create workspace", disabled=not new_name.strip()):
+            workspace_id = create_workspace(new_name.strip())
+            st.session_state["workspace_id"] = workspace_id
+            set_setting(None, "last_workspace_id", workspace_id)
+            st.success("Workspace created.")
     else:
         workspace_id = workspace_names[selected_name]
         st.session_state["workspace_id"] = workspace_id
         set_setting(None, "last_workspace_id", workspace_id)
 
     if workspace_id:
-        st.sidebar.caption(f"Active workspace: {workspace_id}")
-
-        st.sidebar.subheader("Manage")
-        rename_to = st.sidebar.text_input("Rename to", value="")
-        if st.sidebar.button("Rename workspace"):
-            if not rename_to.strip():
-                st.sidebar.error("New name cannot be empty.")
-            else:
+        st.caption(f"Active workspace: {workspace_id}")
+        with st.expander("Manage workspace"):
+            rename_to = st.text_input("Rename to", value="", key="rename_workspace")
+            if st.button("Rename workspace", disabled=not rename_to.strip()):
                 rename_workspace(workspace_id, rename_to.strip())
-                st.sidebar.success("Workspace renamed. Refresh list.")
+                st.success("Workspace renamed. Refresh list.")
 
-        confirm = st.sidebar.checkbox("Confirm delete")
-        if st.sidebar.button("Delete workspace", disabled=not confirm):
-            delete_workspace(workspace_id)
-            ws_dir = get_workspaces_dir() / workspace_id
-            if ws_dir.exists():
-                import shutil
+            confirm = confirm_action(
+                key="confirm_workspace_delete",
+                label="Confirm delete",
+                help_text="Deletes workspace metadata and local files.",
+            )
+            if st.button("Delete workspace", disabled=not confirm, type="primary"):
+                delete_workspace(workspace_id)
+                ws_dir = get_workspaces_dir() / workspace_id
+                if ws_dir.exists():
+                    import shutil
 
-                shutil.rmtree(ws_dir)
-            st.sidebar.success("Workspace deleted. Refresh list.")
-            st.session_state.pop("workspace_id", None)
+                    shutil.rmtree(ws_dir)
+                st.success("Workspace deleted. Refresh list.")
+                st.session_state.pop("workspace_id", None)
+                workspace_id = None
 
-        st.sidebar.subheader("Index Status")
+        st.subheader("Navigation")
+        nav = st.radio(
+            "Go to",
+            options=NAV_ITEMS,
+            index=NAV_ITEMS.index(st.session_state.get("active_nav", "Home")),
+            label_visibility="collapsed",
+        )
+        st.session_state["active_nav"] = nav
+
+        st.subheader("Workspace status")
         status = _index_status(workspace_id)
-        st.sidebar.write(f"Documents: {status['documents']}")
-        st.sidebar.write(f"Chunks: {status['chunks']}")
-        st.sidebar.write(f"Vector index items: {status['vector_index']}")
-        st.sidebar.write(f"BM25 index present: {status['bm25_index']}")
+        st.metric("Documents", status["documents"])
+        st.metric("Chunks", status["chunks"])
+        st.caption(f"Vector index items: {status['vector_index']}")
+        st.caption(f"BM25 index present: {status['bm25_index']}")
+    else:
+        nav = st.radio(
+            "Go to",
+            options=NAV_ITEMS,
+            index=NAV_ITEMS.index("Home"),
+            label_visibility="collapsed",
+        )
+        st.session_state["active_nav"] = nav
 
-    return workspace_id
-
-
-def sidebar_llm() -> None:
-    st.sidebar.header("LLM Provider")
-    base_url = st.sidebar.text_input(
-        "Base URL",
-        value=st.session_state.get("llm_base_url", ""),
-        key="llm_base_url",
-        help="Example: https://api.openai.com/v1",
-    )
-    model = st.sidebar.text_input(
-        "Chat Model",
-        value=st.session_state.get("llm_model", ""),
-        key="llm_model",
-        help="Example: gpt-4o-mini or deepseek-chat",
-    )
-    api_key = st.sidebar.text_input(
-        "API Key",
-        value=st.session_state.get("llm_api_key", ""),
-        type="password",
-        key="llm_api_key",
-        help="Stored only in session. Prefer environment variables.",
-    )
-    if base_url:
-        set_setting(None, "llm_base_url", base_url)
-    if model:
-        set_setting(None, "llm_model", model)
-
-
-def sidebar_retrieval_mode(workspace_id: str | None) -> str:
-    st.sidebar.header("Retrieval Mode")
-    default_mode = "vector"
-    if workspace_id:
-        stored = get_setting(workspace_id, "retrieval_mode")
-        if stored:
-            default_mode = stored
-    mode = st.sidebar.selectbox(
-        "Mode",
-        options=["vector", "bm25", "hybrid"],
-        index=["vector", "bm25", "hybrid"].index(default_mode)
-        if default_mode in ["vector", "bm25", "hybrid"]
-        else 0,
-        help="Vector uses embeddings, BM25 uses lexical match, Hybrid fuses both.",
-    )
-    if workspace_id:
-        set_setting(workspace_id, "retrieval_mode", mode)
-    return mode
+    return workspace_id, nav

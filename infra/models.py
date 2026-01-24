@@ -70,6 +70,7 @@ def init_db() -> None:
                 summary TEXT,
                 preview TEXT,
                 source_ref TEXT,
+                run_id TEXT,
                 citations_count INTEGER,
                 created_at TEXT NOT NULL,
                 FOREIGN KEY(workspace_id) REFERENCES workspaces(id)
@@ -149,3 +150,4 @@ def init_db() -> None:
     _ensure_column("documents", "sha256", "TEXT")
     _ensure_column("documents", "page_count", "INTEGER")
     _ensure_column("documents", "updated_at", "TEXT")
+    _ensure_column("ui_history", "run_id", "TEXT")

@@ -6,9 +6,15 @@ from core.ui_state.storage import get_setting
 
 def init_app_state() -> None:
     init_db()
+    st.session_state.setdefault("workspace_id", get_setting(None, "last_workspace_id") or "")
     st.session_state.setdefault("llm_base_url", get_setting(None, "llm_base_url") or "")
     st.session_state.setdefault("llm_model", get_setting(None, "llm_model") or "")
     st.session_state.setdefault("llm_api_key", "")
+    st.session_state.setdefault(
+        "llm_temperature", float(get_setting(None, "llm_temperature") or 0.2)
+    )
+    st.session_state.setdefault("active_nav", "Home")
+    st.session_state.setdefault("retrieval_mode", "vector")
 
 
 def require_workspace() -> str | None:

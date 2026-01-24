@@ -26,7 +26,6 @@ studyflow = "cli.main:app"
 [tool.setuptools]
 packages = [
   "app",
-  "app.pages",
   "app.components",
   "cli",
   "cli.commands",

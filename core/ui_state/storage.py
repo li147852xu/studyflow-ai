@@ -78,14 +78,15 @@ def add_history(
     preview: str,
     source_ref: str | None,
     citations_count: int,
+    run_id: str | None = None,
 ) -> None:
     with get_connection() as connection:
         connection.execute(
             """
             INSERT INTO ui_history (
-                id, workspace_id, action_type, summary, preview, source_ref, citations_count, created_at
+                id, workspace_id, action_type, summary, preview, source_ref, run_id, citations_count, created_at
             )
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (
                 str(uuid.uuid4()),
@@ -94,6 +95,7 @@ def add_history(
                 summary,
                 preview,
                 source_ref,
+                run_id,
                 citations_count,
                 _now_iso(),
             ),
