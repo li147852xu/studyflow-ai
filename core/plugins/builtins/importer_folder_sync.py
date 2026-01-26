@@ -25,6 +25,7 @@ class ImportFolderSyncPlugin(PluginBase):
         ignore_globs = context.args.get("ignore", []) or []
         ocr_mode = context.args.get("ocr_mode", "off")
         ocr_threshold = int(context.args.get("ocr_threshold", 50))
+        doc_type = context.args.get("doc_type", "other")
 
         root = Path(folder)
         if not root.exists():
@@ -81,6 +82,7 @@ class ImportFolderSyncPlugin(PluginBase):
                     path=str(file.path),
                     ocr_mode=ocr_mode,
                     ocr_threshold=ocr_threshold,
+                    doc_type=doc_type,
                     save_dir=str(docs_dir),
                     write_file=copy_mode,
                     existing_path=str(target_path) if not copy_mode else None,

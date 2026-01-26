@@ -6,6 +6,8 @@ import streamlit as st
 
 from core.plugins.base import PluginContext
 from core.plugins.registry import get_plugin, list_plugins, load_builtin_plugins
+from app.ui.locks import running_task_summary
+from service.recent_activity_service import add_activity
 
 
 def render_plugins_center(*, workspace_id: str | None) -> None:
@@ -13,6 +15,9 @@ def render_plugins_center(*, workspace_id: str | None) -> None:
     if not workspace_id:
         st.info("Select a project to run plugins.")
         return
+    locked, lock_msg = running_task_summary(workspace_id)
+    if lock_msg:
+        st.info(lock_msg)
 
     load_builtin_plugins()
     plugins = list_plugins()
@@ -31,7 +36,7 @@ def render_plugins_center(*, workspace_id: str | None) -> None:
         height=120,
         help="Provide plugin args in JSON format.",
     )
-    if st.button("Run plugin"):
+    if st.button("Run plugin", disabled=locked, help=lock_msg or None):
         try:
             args = json.loads(args_text) if args_text.strip() else {}
         except json.JSONDecodeError:
@@ -40,6 +45,14 @@ def render_plugins_center(*, workspace_id: str | None) -> None:
         result = plugin.run(PluginContext(workspace_id=workspace_id, args=args))
         if result.ok:
             st.success(result.message)
+            add_activity(
+                workspace_id=workspace_id,
+                type="plugin_run",
+                title=plugin.name,
+                status="succeeded",
+                output_ref=None,
+                citations_summary=None,
+            )
             if result.data:
                 st.json(result.data)
         else:

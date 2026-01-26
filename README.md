@@ -28,10 +28,12 @@ StudyFlow-AI is a local-first study workspace for PDFs with OCR, coaching, asset
 3) (Optional) set `API_TOKEN` and pass `Authorization: Bearer <token>`.
 
 ## UI Overview
-- Three-column layout: left navigation + collections, center workspace, right inspector.
-- Pages: Home, Library, Workflows, Coach, Exports, Tasks, Plugins, History, Settings, Help, Diagnostics.
-- Workflows wrap Courses, Papers, and Presentations into guided steps.
-- Help entry lives inside the app (open Help in the left navigation).
+- Light, app-like layout: left nav, main workspace, right inspector.
+- Primary pages: Start, Library, Create, Tools.
+- Start focuses on setup readiness plus quick entry to Import/Ask/Generate.
+- Library is a Zotero-like list with status + inspector actions.
+- Create provides short wizards for Course, Paper, and Presentation outputs.
+- Tools groups Coach, Tasks, Recent Activity, Exports, Plugins, Diagnostics, and Settings.
 - Local data lives under `workspaces/<wid>/` (uploads, indexes, runs, outputs).
 
 ## Configuration
@@ -69,18 +71,20 @@ The app auto-loads a local `.env` file if present. Do not commit real keys.
 - `studyflow index vacuum <workspace_id>`
 - `studyflow clean --workspace <id> --dry-run`
 
-## Using Ingest + Citation Preview
-Upload a PDF on any page and the UI will show:
-- page count, chunk count, and page range
-- a "Show citations preview" button that displays 3 sample citations
+## Import + Auto-Process
+Upload a PDF from Start or Library and the UI will:
+- ingest and OCR automatically (when needed)
+- build or update indexes in the task queue
+- refresh status while tasks run
+- require a doc type (Course/Paper/Other) for filtering and outputs
 
 ## Retrieval Modes
 - Vector: embedding retrieval only
 - BM25: lexical retrieval only
 - Hybrid: fused score (Vector + BM25)
 
-After ingesting, click "Build/Refresh Vector Index" to create the vector index.
-Use the Retrieval Mode selector on each page.
+Indexes are built automatically after ingest. Retrieval defaults to Auto and can be
+adjusted in Tools → Settings if needed.
 
 ## Course Workspace (V0.1)
 1) Create/select a course on the Courses page.
@@ -137,12 +141,12 @@ Each generation and retrieval chat produces a `run_id` and writes a JSON log to
 - Prompt overrides live in `workspaces/<wid>/prompts_override.json`.
 
 ### Persistence
-- Workspaces, documents, chunks, history, and UI settings are stored in SQLite.
+- Workspaces, documents, chunks, recent activity, and UI settings are stored in SQLite.
 - Indexes and outputs are derived data in `workspaces/<wid>/`.
 - Backup/restore: copy the entire `workspaces/<wid>/` directory.
 
 ### Workspace Layout
-- `docs/` imported PDFs
+- `uploads/` imported PDFs
 - `cache/` embeddings cache (optional)
 - `index/` vector + BM25 indexes
 - `outputs/` generated exports, packs, benchmarks
@@ -166,7 +170,10 @@ Before running version verification, clean local workspaces:
 `python scripts/cleanup_workspaces.py`
 
 UI refactor smoke check:
-`python scripts/verify_ui_app.py`
+`python scripts/verify_ui_app_v2.py`
+
+UI v2.9 verification:
+`python scripts/verify_ui_app_v2_9.py`
 
 V0.1 real flow example:
 `python scripts/real_flow_v0_1.py`

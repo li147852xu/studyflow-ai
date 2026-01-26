@@ -149,6 +149,7 @@ def ingest_paper(
         save_dir=save_dir,
         ocr_mode=ocr_mode,
         ocr_threshold=ocr_threshold,
+        doc_type="paper",
     )
     metadata = extract_paper_metadata(Path(ingest_result.path))
     existing = find_paper_by_doc(workspace_id, ingest_result.doc_id)

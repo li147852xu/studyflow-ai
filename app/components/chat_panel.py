@@ -1,15 +1,20 @@
 from __future__ import annotations
 
+import json
 import os
 import streamlit as st
 
 from core.ui_state.storage import add_history, list_history, set_setting
 from core.ui_state.guards import llm_ready
 from core.telemetry.run_logger import _run_dir, log_run
+from core.retrieval.retriever import Hit
 from service.chat_service import ChatConfigError, chat
 from service.retrieval_service import RetrievalError, answer_with_retrieval
 from service.api_mode_adapter import ApiModeAdapter, ApiModeError
 from service.metadata_service import llm_metadata
+from app.ui.locks import running_task_summary
+from service.asset_service import create_asset_version, ask_ref_id
+from service.recent_activity_service import add_activity
 
 
 def render_chat_panel(
@@ -26,6 +31,7 @@ def render_chat_panel(
             st.session_state.get("llm_model", ""),
             st.session_state.get("llm_api_key", ""),
         )
+        locked, lock_msg = running_task_summary(workspace_id)
         if api_mode == "api":
             ready = True
             reason = ""
@@ -49,8 +55,8 @@ def render_chat_panel(
         if st.button(
             "Send",
             key=f"chat_send_{workspace_id}",
-            disabled=not query.strip() or not ready,
-            help=reason or "Ask with or without retrieval.",
+            disabled=locked or not query.strip() or not ready,
+            help=lock_msg or reason or "Ask with or without retrieval.",
         ):
             if not query.strip():
                 st.error("Please enter a question.")
@@ -105,6 +111,54 @@ def render_chat_panel(
                         citations_count=len(citations),
                         run_id=run_id,
                     )
+                    hit_records = [
+                        Hit(
+                            chunk_id=item.get("chunk_id", ""),
+                            doc_id=item.get("doc_id", ""),
+                            workspace_id=item.get("workspace_id", ""),
+                            filename=item.get("filename", ""),
+                            page_start=int(item.get("page_start") or 0),
+                            page_end=int(item.get("page_end") or 0),
+                            text=item.get("text", ""),
+                            score=float(item.get("score") or 0),
+                        )
+                        if isinstance(item, dict)
+                        else item
+                        for item in hits
+                    ]
+                    version = create_asset_version(
+                        workspace_id=workspace_id,
+                        kind="ask",
+                        ref_id=ask_ref_id(query.strip(), run_id),
+                        content=response,
+                        content_type="text",
+                        run_id=run_id,
+                        model=None,
+                        provider=None,
+                        temperature=None,
+                        max_tokens=None,
+                        retrieval_mode=retrieval_mode,
+                        embed_model=None,
+                        seed=None,
+                        prompt_version="v1",
+                        hits=hit_records,
+                    )
+                    add_activity(
+                        workspace_id=workspace_id,
+                        type="ask",
+                        title=query.strip()[:80],
+                        status="succeeded",
+                        output_ref=json.dumps(
+                            {
+                                "asset_version_id": version.id,
+                                "asset_id": version.asset_id,
+                                "source_id": None,
+                                "kind": "ask",
+                            },
+                            ensure_ascii=False,
+                        ),
+                        citations_summary="; ".join(citations[:3]) if citations else None,
+                    )
                     st.text_area("Answer (copy)", value=response, height=200)
                     st.text_area("Citations (copy)", value="\n".join(citations), height=160)
                 else:
@@ -148,6 +202,39 @@ def render_chat_panel(
                         source_ref=None,
                         citations_count=0,
                         run_id=run_id,
+                    )
+                    version = create_asset_version(
+                        workspace_id=workspace_id,
+                        kind="ask",
+                        ref_id=ask_ref_id(query.strip(), run_id),
+                        content=response,
+                        content_type="text",
+                        run_id=run_id,
+                        model=None,
+                        provider=None,
+                        temperature=None,
+                        max_tokens=None,
+                        retrieval_mode="none",
+                        embed_model=None,
+                        seed=None,
+                        prompt_version="v1",
+                        hits=[],
+                    )
+                    add_activity(
+                        workspace_id=workspace_id,
+                        type="ask",
+                        title=query.strip()[:80],
+                        status="succeeded",
+                        output_ref=json.dumps(
+                            {
+                                "asset_version_id": version.id,
+                                "asset_id": version.asset_id,
+                                "source_id": None,
+                                "kind": "ask",
+                            },
+                            ensure_ascii=False,
+                        ),
+                        citations_summary=None,
                     )
                     st.text_area("Answer (copy)", value=response, height=200)
             except ChatConfigError as exc:

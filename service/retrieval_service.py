@@ -18,12 +18,21 @@ import time
 from core.retrieval.retriever import Hit, retrieve
 from core.retrieval.bm25_index import build_bm25_index, query_bm25, load_bm25_index
 from core.retrieval.hybrid import fuse_scores
+from core.prompts.instructions import (
+    general_knowledge_label,
+    grounded_label,
+    language_instruction,
+    rag_balance_instruction,
+    normalize_language,
+)
 from core.telemetry.run_logger import log_run
 from core.retrieval.vector_store import VectorStore, VectorStoreSettings
 from infra.db import get_connection, get_workspaces_dir
 from service.chat_service import ChatConfigError, chat
 from core.quality.citations_check import check_citations
 from service.metadata_service import llm_metadata
+from service.document_service import filter_doc_ids_by_types
+from core.ui_state.storage import get_setting
 
 
 class RetrievalError(RuntimeError):
@@ -60,7 +69,8 @@ def _chunk_query(doc_ids: list[str] | None = None) -> tuple[str, tuple]:
                    chunks.page_start as page_start,
                    chunks.page_end as page_end,
                    chunks.text as text,
-                   documents.filename as filename
+                   documents.filename as filename,
+                   documents.doc_type as doc_type
             FROM chunks
             JOIN documents ON documents.id = chunks.doc_id
             WHERE chunks.workspace_id = ? AND chunks.doc_id IN ({placeholders})
@@ -76,7 +86,8 @@ def _chunk_query(doc_ids: list[str] | None = None) -> tuple[str, tuple]:
                chunks.page_start as page_start,
                chunks.page_end as page_end,
                chunks.text as text,
-               documents.filename as filename
+               documents.filename as filename,
+               documents.doc_type as doc_type
         FROM chunks
         JOIN documents ON documents.id = chunks.doc_id
         WHERE chunks.workspace_id = ?
@@ -244,6 +255,7 @@ def build_or_refresh_index(
                     "doc_id": item["doc_id"],
                     "workspace_id": item["workspace_id"],
                     "filename": item["filename"],
+                "doc_type": item.get("doc_type") or "other",
                     "page_start": item["page_start"],
                     "page_end": item["page_end"],
                 }
@@ -339,7 +351,11 @@ def retrieve_hits(
     query: str,
     top_k: int = 8,
     doc_ids: list[str] | None = None,
+    doc_types: list[str] | None = None,
 ) -> list[Hit]:
+    if doc_ids and doc_types:
+        doc_ids = filter_doc_ids_by_types(doc_ids, doc_types)
+        doc_types = None
     ensure_index(workspace_id)
     try:
         embed_settings = build_embedding_settings()
@@ -353,6 +369,7 @@ def retrieve_hits(
             store=store,
             top_k=top_k,
             doc_ids=doc_ids,
+        doc_types=doc_types,
         )
     except EmbeddingError as exc:
         raise RetrievalError(str(exc)) from exc
@@ -365,16 +382,72 @@ def retrieve_hits_mode(
     mode: str,
     top_k: int = 8,
     doc_ids: list[str] | None = None,
+    doc_types: list[str] | None = None,
+    max_per_doc: int | None = None,
+    min_docs: int | None = None,
 ) -> tuple[list[Hit], str]:
+    if doc_ids and doc_types:
+        doc_ids = filter_doc_ids_by_types(doc_ids, doc_types)
+        doc_types = None
+    def _apply_doc_diversity(hits: list[Hit]) -> list[Hit]:
+        if not hits or not max_per_doc:
+            return hits
+        doc_counts: dict[str, int] = {}
+        seen_chunks: set[str] = set()
+        balanced: list[Hit] = []
+
+        if min_docs:
+            for hit in hits:
+                if hit.chunk_id in seen_chunks:
+                    continue
+                if hit.doc_id in doc_counts:
+                    continue
+                balanced.append(hit)
+                seen_chunks.add(hit.chunk_id)
+                doc_counts[hit.doc_id] = 1
+                if len(doc_counts) >= min_docs:
+                    break
+
+        for hit in hits:
+            if hit.chunk_id in seen_chunks:
+                continue
+            count = doc_counts.get(hit.doc_id, 0)
+            if count >= max_per_doc:
+                continue
+            balanced.append(hit)
+            seen_chunks.add(hit.chunk_id)
+            doc_counts[hit.doc_id] = count + 1
+            if len(balanced) >= top_k:
+                break
+
+        return balanced
+
     if mode == "vector":
+        candidate_k = top_k
+        if max_per_doc and doc_ids and len(doc_ids) > 1:
+            candidate_k = max(top_k * 3, 20)
         hits = retrieve_hits(
-            workspace_id=workspace_id, query=query, top_k=top_k, doc_ids=doc_ids
+            workspace_id=workspace_id,
+            query=query,
+            top_k=candidate_k,
+            doc_ids=doc_ids,
+            doc_types=doc_types,
         )
+        if max_per_doc and doc_ids and len(doc_ids) > 1:
+            hits = _apply_doc_diversity(hits)
+        hits = hits[:top_k]
         return hits, "vector"
     if mode == "bm25":
         ensure_bm25_index(workspace_id)
+        candidate_k = 20
+        if max_per_doc and doc_ids and len(doc_ids) > 1:
+            candidate_k = max(top_k * 3, 20)
         results = query_bm25(
-            workspace_id=workspace_id, query=query, top_k=20, doc_ids=doc_ids
+            workspace_id=workspace_id,
+            query=query,
+            top_k=candidate_k,
+            doc_ids=doc_ids,
+            doc_types=doc_types,
         )
         hits = [
             Hit(
@@ -387,17 +460,31 @@ def retrieve_hits_mode(
                 text=item["text"],
                 score=item["score"],
             )
-            for item in results[:top_k]
+            for item in results[:candidate_k]
         ]
+        if max_per_doc and doc_ids and len(doc_ids) > 1:
+            hits = _apply_doc_diversity(hits)
+        hits = hits[:top_k]
         return hits, "bm25"
 
     if mode == "hybrid":
         bm25_results = query_bm25(
-            workspace_id=workspace_id, query=query, top_k=20, doc_ids=doc_ids
+            workspace_id=workspace_id,
+            query=query,
+            top_k=20,
+            doc_ids=doc_ids,
+            doc_types=doc_types,
         )
         try:
+            candidate_k = 20
+            if max_per_doc and doc_ids and len(doc_ids) > 1:
+                candidate_k = max(top_k * 3, 20)
             vector_hits = retrieve_hits(
-                workspace_id=workspace_id, query=query, top_k=20, doc_ids=doc_ids
+                workspace_id=workspace_id,
+                query=query,
+                top_k=candidate_k,
+                doc_ids=doc_ids,
+                doc_types=doc_types,
             )
             vec_dicts = [
                 {
@@ -412,7 +499,9 @@ def retrieve_hits_mode(
                 }
                 for hit in vector_hits
             ]
-            fused = fuse_scores(vector_hits=vec_dicts, bm25_hits=bm25_results, top_k=top_k)
+            fused = fuse_scores(
+                vector_hits=vec_dicts, bm25_hits=bm25_results, top_k=candidate_k
+            )
             hits = [
                 Hit(
                     chunk_id=item.chunk_id,
@@ -426,6 +515,9 @@ def retrieve_hits_mode(
                 )
                 for item in fused
             ]
+            if max_per_doc and doc_ids and len(doc_ids) > 1:
+                hits = _apply_doc_diversity(hits)
+            hits = hits[:top_k]
             return hits, "hybrid"
         except RetrievalError:
             # fallback to BM25 if vector fails
@@ -442,6 +534,9 @@ def retrieve_hits_mode(
                 )
                 for item in bm25_results[:top_k]
             ]
+            if max_per_doc and doc_ids and len(doc_ids) > 1:
+                hits = _apply_doc_diversity(hits)
+            hits = hits[:top_k]
             return hits, "bm25"
 
     raise RetrievalError("Unknown retrieval mode.")
@@ -477,9 +572,17 @@ def answer_with_retrieval(
         raise RetrievalError("No retrieval hits found. Try another query.")
 
     context = _build_context(hits)
+    language = get_setting(workspace_id, "output_language") or get_setting(
+        None, "output_language"
+    )
+    lang = normalize_language(language or "en")
+    grounded = grounded_label(lang)
+    general = general_knowledge_label(lang)
     prompt = (
-        "Answer the question using the context below. "
-        "Cite sources with [n] inline.\n\n"
+        "Answer the question using the context below.\n"
+        f"{language_instruction(lang)}\n"
+        f"{rag_balance_instruction(lang)}"
+        f"Output format:\n- {grounded}: include citations like [n]\n- {general}: no citations\n\n"
         f"Context:\n{context}\n\n"
         f"Question: {query}"
     )

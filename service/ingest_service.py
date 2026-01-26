@@ -13,6 +13,7 @@ from core.indexing.planner import plan_document
 from core.indexing.sync import delete_document, delete_document_vectors
 from core.retrieval.bm25_index import build_bm25_index
 from infra.db import get_connection, get_workspaces_dir
+from service.document_service import normalize_doc_type
 
 
 class IngestError(RuntimeError):
@@ -25,6 +26,7 @@ class IngestResult:
     workspace_id: str
     filename: str
     path: str
+    doc_type: str
     sha256: str
     page_count: int
     chunk_count: int
@@ -50,7 +52,7 @@ def _get_existing_document(workspace_id: str, sha256: str) -> dict | None:
         row = connection.execute(
             """
             SELECT id, workspace_id, filename, path, sha256, page_count,
-                   ocr_mode, ocr_pages_count, image_pages_count
+                   ocr_mode, ocr_pages_count, image_pages_count, doc_type
             FROM documents
             WHERE workspace_id = ? AND sha256 = ?
             """,
@@ -74,6 +76,7 @@ def _insert_document(
     filename: str,
     path: str,
     sha256: str,
+    doc_type: str,
     page_count: int,
     ocr_mode: str,
     ocr_pages_count: int,
@@ -84,16 +87,17 @@ def _insert_document(
         connection.execute(
             """
             INSERT INTO documents (
-                id, workspace_id, filename, path, sha256, page_count,
+                id, workspace_id, filename, path, doc_type, sha256, page_count,
                 ocr_mode, ocr_pages_count, image_pages_count, created_at, updated_at
             )
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (
                 doc_id,
                 workspace_id,
                 filename,
                 path,
+                doc_type,
                 sha256,
                 page_count,
                 ocr_mode,
@@ -185,9 +189,11 @@ def ingest_pdf(
     existing_path: Path | None = None,
     ocr_mode: str = "off",
     ocr_threshold: int = 50,
+    doc_type: str = "other",
     progress_cb: callable | None = None,
     stop_check: callable | None = None,
 ) -> IngestResult:
+    doc_type = normalize_doc_type(doc_type)
     if not data:
         raise IngestError("Uploaded PDF is empty.")
     if ocr_mode not in ["off", "auto", "on"]:
@@ -210,6 +216,7 @@ def ingest_pdf(
                 workspace_id=workspace_id,
                 filename=existing["filename"],
                 path=existing["path"],
+                doc_type=existing.get("doc_type") or doc_type,
                 sha256=sha256,
                 page_count=existing.get("page_count") or 0,
                 chunk_count=chunk_count,
@@ -247,6 +254,7 @@ def ingest_pdf(
         filename=filename,
         path=str(target_path),
         sha256=sha256,
+        doc_type=doc_type,
         page_count=parse_result.page_count,
         ocr_mode=ocr_mode,
         ocr_pages_count=ocr_pages_count,
@@ -268,6 +276,7 @@ def ingest_pdf(
         workspace_id=workspace_id,
         filename=filename,
         path=str(target_path),
+        doc_type=doc_type,
         sha256=sha256,
         page_count=parse_result.page_count,
         chunk_count=len(chunks),

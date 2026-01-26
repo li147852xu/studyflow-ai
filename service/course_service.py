@@ -7,6 +7,7 @@ import os
 import time
 
 from infra.db import get_connection
+from service.document_service import get_document
 from core.agents.course_agent import CourseAgent, AgentOutput
 from core.telemetry.run_logger import log_run
 from service.asset_service import (
@@ -51,6 +52,9 @@ def list_courses(workspace_id: str) -> list[dict]:
 
 
 def link_document(course_id: str, doc_id: str) -> None:
+    doc = get_document(doc_id)
+    if doc and doc.get("doc_type") != "course":
+        raise RuntimeError("Only course documents can be linked to a course.")
     with get_connection() as connection:
         connection.execute(
             """
@@ -66,10 +70,10 @@ def list_course_documents(course_id: str) -> list[dict]:
     with get_connection() as connection:
         rows = connection.execute(
             """
-            SELECT documents.id, documents.filename, documents.path, documents.page_count
+            SELECT documents.id, documents.filename, documents.path, documents.page_count, documents.doc_type
             FROM course_documents
             JOIN documents ON documents.id = course_documents.doc_id
-            WHERE course_documents.course_id = ?
+            WHERE course_documents.course_id = ? AND documents.doc_type = 'course'
             ORDER BY documents.created_at DESC
             """,
             (course_id,),
@@ -81,9 +85,10 @@ def list_course_doc_ids(course_id: str) -> list[str]:
     with get_connection() as connection:
         rows = connection.execute(
             """
-            SELECT doc_id
+            SELECT course_documents.doc_id as doc_id
             FROM course_documents
-            WHERE course_id = ?
+            JOIN documents ON documents.id = course_documents.doc_id
+            WHERE course_documents.course_id = ? AND documents.doc_type = 'course'
             """,
             (course_id,),
         ).fetchall()

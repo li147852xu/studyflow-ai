@@ -9,6 +9,7 @@ from core.telemetry.run_logger import log_run
 from service.asset_service import create_asset_version, paper_aggregate_ref_id, paper_ref_id
 from core.quality.citations_check import check_citations
 from service.metadata_service import llm_metadata
+from service.document_service import filter_doc_ids_by_type, get_document
 
 
 def generate_paper_card(
@@ -18,6 +19,9 @@ def generate_paper_card(
     retrieval_mode: str = "vector",
     progress_cb: callable | None = None,
 ) -> PaperCardOutput:
+    doc = get_document(doc_id)
+    if not doc or doc.get("doc_type") != "paper":
+        raise RuntimeError("Paper outputs require a doc_type of 'paper'.")
     start = time.time()
     agent = PaperAgent(workspace_id, doc_id, retrieval_mode)
     output = agent.generate_paper_card(progress_cb=progress_cb)
@@ -81,8 +85,11 @@ def aggregate_papers(
     retrieval_mode: str = "vector",
     progress_cb: callable | None = None,
 ) -> AggregationOutput:
+    filtered_doc_ids = filter_doc_ids_by_type(doc_ids, "paper")
+    if not filtered_doc_ids:
+        raise RuntimeError("Paper aggregation requires paper documents.")
     start = time.time()
-    aggregator = PaperAggregator(workspace_id, doc_ids, retrieval_mode)
+    aggregator = PaperAggregator(workspace_id, filtered_doc_ids, retrieval_mode)
     output = aggregator.aggregate(question, progress_cb=progress_cb)
     latency_ms = int((time.time() - start) * 1000)
     meta = llm_metadata(temperature=0.2)
@@ -92,7 +99,7 @@ def aggregate_papers(
     run_id = log_run(
         workspace_id=workspace_id,
         action_type="paper_aggregate",
-        input_payload={"doc_ids": doc_ids, "question": question},
+        input_payload={"doc_ids": filtered_doc_ids, "question": question},
         retrieval_mode=output.retrieval_mode,
         hits=output.hits,
         model=meta["model"],
@@ -110,7 +117,7 @@ def aggregate_papers(
     version = create_asset_version(
         workspace_id=workspace_id,
         kind="paper_aggregate",
-        ref_id=paper_aggregate_ref_id(doc_ids, question),
+        ref_id=paper_aggregate_ref_id(filtered_doc_ids, question),
         content=output.content,
         content_type="text",
         run_id=run_id,

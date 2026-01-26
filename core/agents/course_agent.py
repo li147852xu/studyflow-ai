@@ -40,12 +40,16 @@ class CourseAgent:
         self.retrieval_mode = retrieval_mode
 
     def _retrieve_hits(self, query: str, top_k: int = 8) -> tuple[list[Hit], str]:
+        max_per_doc = 2 if len(self.doc_ids) > 1 else None
+        min_docs = min(4, len(self.doc_ids)) if len(self.doc_ids) > 1 else None
         hits, used_mode = retrieve_hits_mode(
             workspace_id=self.workspace_id,
             query=query,
             mode=self.retrieval_mode,
             top_k=top_k,
             doc_ids=self.doc_ids,
+            max_per_doc=max_per_doc,
+            min_docs=min_docs,
         )
         if not hits:
             raise CourseAgentError("No retrieval hits found for this course.")
@@ -54,10 +58,32 @@ class CourseAgent:
     def _merge_hits(self, batches: list[list[Hit]]) -> list[Hit]:
         seen = set()
         merged = []
+        doc_counts: dict[str, int] = {}
+        max_per_doc = 2 if len(self.doc_ids) > 1 else None
+        min_docs = min(4, len(self.doc_ids)) if len(self.doc_ids) > 1 else None
+        if min_docs:
+            for batch in batches:
+                for hit in batch:
+                    if hit.chunk_id in seen:
+                        continue
+                    if hit.doc_id in doc_counts:
+                        continue
+                    seen.add(hit.chunk_id)
+                    merged.append(hit)
+                    doc_counts[hit.doc_id] = 1
+                    if len(doc_counts) >= min_docs:
+                        break
+                if len(doc_counts) >= min_docs:
+                    break
         for batch in batches:
             for hit in batch:
                 if hit.chunk_id in seen:
                     continue
+                if max_per_doc is not None:
+                    count = doc_counts.get(hit.doc_id, 0)
+                    if count >= max_per_doc:
+                        continue
+                    doc_counts[hit.doc_id] = count + 1
                 seen.add(hit.chunk_id)
                 merged.append(hit)
         return merged

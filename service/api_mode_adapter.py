@@ -79,6 +79,7 @@ class ApiModeAdapter:
         kind: str = "document",
         ocr_mode: str = "off",
         ocr_threshold: int = 50,
+        doc_type: str = "other",
     ) -> dict:
         if self.mode == "direct":
             if kind == "paper":
@@ -103,6 +104,7 @@ class ApiModeAdapter:
                 save_dir=save_dir,
                 ocr_mode=ocr_mode,
                 ocr_threshold=ocr_threshold,
+                doc_type=doc_type,
             )
             return result.__dict__
         payload = {
@@ -112,6 +114,7 @@ class ApiModeAdapter:
             "kind": kind,
             "ocr_mode": ocr_mode,
             "ocr_threshold": ocr_threshold,
+            "doc_type": doc_type,
         }
         return self._post("/ingest", payload)
 

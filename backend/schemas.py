@@ -25,6 +25,7 @@ class IngestRequest(BaseModel):
     kind: str = "document"
     ocr_mode: str = "off"
     ocr_threshold: int = 50
+    doc_type: str = "other"
 
 
 class IngestResponse(BaseModel):
@@ -32,6 +33,7 @@ class IngestResponse(BaseModel):
     workspace_id: str
     filename: str
     path: str
+    doc_type: str | None = None
     sha256: str
     page_count: int
     chunk_count: int

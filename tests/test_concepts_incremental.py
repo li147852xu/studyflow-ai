@@ -13,10 +13,10 @@ def _insert_document(ws_id: str, doc_id: str, sha256: str) -> None:
     with get_connection() as connection:
         connection.execute(
             """
-            INSERT INTO documents (id, workspace_id, filename, path, sha256, created_at)
-            VALUES (?, ?, ?, ?, ?, ?)
+            INSERT INTO documents (id, workspace_id, filename, path, sha256, doc_type, created_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
             """,
-            (doc_id, ws_id, "doc.pdf", "path", sha256, "2024-01-01T00:00:00Z"),
+            (doc_id, ws_id, "doc.pdf", "path", sha256, "course", "2024-01-01T00:00:00Z"),
         )
         connection.commit()
 

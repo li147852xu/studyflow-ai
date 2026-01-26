@@ -35,7 +35,8 @@ def build_bm25_index(workspace_id: str) -> Path:
                    chunks.page_start as page_start,
                    chunks.page_end as page_end,
                    chunks.text as text,
-                   documents.filename as filename
+                   documents.filename as filename,
+                   documents.doc_type as doc_type
             FROM chunks
             JOIN documents ON documents.id = chunks.doc_id
             WHERE chunks.workspace_id = ?
@@ -60,6 +61,7 @@ def build_bm25_index(workspace_id: str) -> Path:
                 "doc_id": chunk["doc_id"],
                 "workspace_id": chunk["workspace_id"],
                 "filename": chunk["filename"],
+                "doc_type": chunk.get("doc_type") or "other",
                 "page_start": chunk["page_start"],
                 "page_end": chunk["page_end"],
                 "text": chunk["text"],
@@ -89,6 +91,7 @@ def query_bm25(
     query: str,
     top_k: int = 20,
     doc_ids: list[str] | None = None,
+    doc_types: list[str] | None = None,
 ) -> list[dict]:
     index = load_bm25_index(workspace_id)
     if index is None:
@@ -101,6 +104,8 @@ def query_bm25(
     scored = list(zip(index.metadatas, scores))
     if doc_ids:
         scored = [item for item in scored if item[0]["doc_id"] in doc_ids]
+    if doc_types:
+        scored = [item for item in scored if item[0].get("doc_type") in doc_types]
     scored.sort(key=lambda x: x[1], reverse=True)
     results = []
     for metadata, score in scored[:top_k]:

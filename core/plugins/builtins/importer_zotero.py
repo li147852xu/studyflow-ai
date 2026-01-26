@@ -24,6 +24,7 @@ class ImportZoteroPlugin(PluginBase):
         copy_mode = context.args.get("copy", True)
         ocr_mode = context.args.get("ocr_mode", "off")
         ocr_threshold = int(context.args.get("ocr_threshold", 50))
+        doc_type = context.args.get("doc_type", "paper")
 
         root = Path(data_dir)
         if not root.exists():
@@ -79,6 +80,7 @@ class ImportZoteroPlugin(PluginBase):
                     path=str(attachment.file_path),
                     ocr_mode=ocr_mode,
                     ocr_threshold=ocr_threshold,
+                    doc_type=doc_type,
                     save_dir=str(docs_dir),
                     write_file=copy_mode,
                     existing_path=str(target_path) if not copy_mode else None,

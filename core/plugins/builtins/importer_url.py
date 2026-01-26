@@ -19,6 +19,7 @@ class ImportUrlPlugin(PluginBase):
             return PluginResult(ok=False, message="Missing URL.")
         ocr_mode = context.args.get("ocr_mode", "off")
         ocr_threshold = int(context.args.get("ocr_threshold", 50))
+        doc_type = context.args.get("doc_type", "other")
 
         source = find_source(
             workspace_id=context.workspace_id,
@@ -40,6 +41,7 @@ class ImportUrlPlugin(PluginBase):
                 save_dir=docs_dir,
                 ocr_mode=ocr_mode,
                 ocr_threshold=ocr_threshold,
+                doc_type=doc_type,
             )
             set_document_source(
                 doc_id=result.doc_id,

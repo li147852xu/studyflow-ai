@@ -3,7 +3,13 @@ from __future__ import annotations
 import streamlit as st
 from dotenv import load_dotenv
 
-from app.ui import init_app_state
+from app.ui import apply_theme, init_app_state
+from app.ui.layout import render_main_columns, render_sidebar
+from app.ui.pages_start import render_start_page
+from app.ui.pages_library import render_library_page
+from app.ui.pages_create import render_create_page
+from app.ui.pages_tools import render_tools_page
+from app.ui.auto_refresh import maybe_auto_refresh
 from app.components.dialogs import confirm_action
 from app.components.inspector import (
     render_citations,
@@ -955,46 +961,41 @@ def main() -> None:
         pass
 
     st.set_page_config(page_title="StudyFlow-AI", layout="wide")
+    apply_theme()
     init_app_state()
 
-    left, center, right = app_shell()
-    with left:
-        workspace_id, nav = render_nav()
+    workspace_id, nav = render_sidebar()
+    maybe_auto_refresh(workspace_id=workspace_id)
 
-    if not workspace_id and nav not in ["Settings", "Help", "Diagnostics"]:
-        with center:
-            st.markdown("### Welcome to StudyFlow-AI")
-            st.info("Create a project to start importing PDFs and building indexes.")
-            if st.button("Open Settings"):
-                _set_nav("Settings")
-        with right:
-            st.markdown("### Quick tips")
-            st.write("Use the left panel to create a project.")
-            st.write("Then open Library to upload PDFs.")
-        return
+    main_col, inspector_col = render_main_columns()
+    api_adapter = _api_adapter()
 
-    if nav == "Home":
-        render_home(center, right, workspace_id)
+    if nav == "Start":
+        render_start_page(
+            main_col=main_col,
+            inspector_col=inspector_col,
+            workspace_id=workspace_id,
+            api_adapter=api_adapter,
+        )
     elif nav == "Library":
-        render_library(left, center, right, workspace_id)
-    elif nav == "Workflows":
-        render_workflows(left, center, right, workspace_id)
-    elif nav == "Coach":
-        render_coach(left, center, right, workspace_id)
-    elif nav == "Exports":
-        render_exports(center, workspace_id)
-    elif nav == "Tasks":
-        render_tasks(center, workspace_id)
-    elif nav == "Plugins":
-        render_plugins(left, center, right, workspace_id)
-    elif nav == "History":
-        render_history_page(center, right, workspace_id)
-    elif nav == "Settings":
-        render_settings(center, right, workspace_id)
-    elif nav == "Help":
-        render_help_page(center)
-    elif nav == "Diagnostics":
-        render_diagnostics(center, workspace_id)
+        render_library_page(
+            main_col=main_col,
+            inspector_col=inspector_col,
+            workspace_id=workspace_id,
+        )
+    elif nav == "Create":
+        render_create_page(
+            main_col=main_col,
+            inspector_col=inspector_col,
+            workspace_id=workspace_id,
+            api_adapter=api_adapter,
+        )
+    elif nav == "Tools":
+        render_tools_page(
+            main_col=main_col,
+            inspector_col=inspector_col,
+            workspace_id=workspace_id,
+        )
 
 
 if __name__ == "__main__":

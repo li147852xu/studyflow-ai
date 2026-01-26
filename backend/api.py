@@ -127,6 +127,7 @@ def ingest(payload: IngestRequest) -> IngestResponse:
             workspace_id=payload.workspace_id,
             filename=doc["filename"] if doc else payload.filename,
             path=doc["path"] if doc else "",
+            doc_type="paper",
             sha256=doc.get("sha256") if doc else "",
             page_count=int(doc.get("page_count") or 0) if doc else 0,
             chunk_count=chunk_count,
@@ -143,6 +144,7 @@ def ingest(payload: IngestRequest) -> IngestResponse:
         save_dir=get_workspaces_dir() / payload.workspace_id / "uploads",
         ocr_mode=payload.ocr_mode,
         ocr_threshold=payload.ocr_threshold,
+        doc_type=payload.doc_type,
     )
     return IngestResponse(**result.__dict__)
 

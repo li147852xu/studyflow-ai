@@ -19,6 +19,7 @@ class ImportDoiPlugin(PluginBase):
             return PluginResult(ok=False, message="Missing DOI.")
         ocr_mode = context.args.get("ocr_mode", "off")
         ocr_threshold = int(context.args.get("ocr_threshold", 50))
+        doc_type = context.args.get("doc_type", "paper")
 
         source = find_source(
             workspace_id=context.workspace_id,
@@ -40,6 +41,7 @@ class ImportDoiPlugin(PluginBase):
                 save_dir=docs_dir,
                 ocr_mode=ocr_mode,
                 ocr_threshold=ocr_threshold,
+                doc_type=doc_type,
             )
             set_document_source(
                 doc_id=result.doc_id,

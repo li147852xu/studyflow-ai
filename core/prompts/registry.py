@@ -67,6 +67,12 @@ def build_prompt(name: str, workspace_id: str | None, **kwargs) -> tuple[str, st
     if not spec:
         raise RuntimeError("Unknown prompt name.")
     version = _selected_version(workspace_id, spec.version)
+    if "language" not in kwargs:
+        language = None
+        if workspace_id:
+            language = get_setting(workspace_id, "output_language")
+        language = language or get_setting(None, "output_language") or "en"
+        kwargs["language"] = language
     if workspace_id:
         override = load_override(workspace_id)
         override_text = (

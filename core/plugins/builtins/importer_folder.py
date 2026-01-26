@@ -18,6 +18,7 @@ class ImportFolderPlugin(PluginBase):
             return PluginResult(ok=False, message="Missing path.")
         ocr_mode = context.args.get("ocr_mode", "off")
         ocr_threshold = int(context.args.get("ocr_threshold", 50))
+        doc_type = context.args.get("doc_type", "other")
         path = Path(folder)
         if not path.exists():
             return PluginResult(ok=False, message="Folder not found.")
@@ -34,6 +35,7 @@ class ImportFolderPlugin(PluginBase):
                     save_dir=get_workspaces_dir() / context.workspace_id / "uploads",
                     ocr_mode=ocr_mode,
                     ocr_threshold=ocr_threshold,
+                    doc_type=doc_type,
                 )
                 count += 1
             except IngestError:

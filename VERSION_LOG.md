@@ -1,5 +1,18 @@
 # VERSION LOG
 
+## V2.9 (UI + persistence polish, no version bump)
+- Added required doc_type (course/paper/other) across ingest, storage, retrieval filtering
+- Start page setup checklist + quick-entry cards with settings-first flow
+- Background tasks with write locks, exit confirmation, and recent activity history (max 30)
+- Recent Activity tab with output viewing + download/export shortcuts
+- Verification: `python scripts/verify_ui_app_v2_9.py`, `python -m compileall .`, `pytest -q`, `python -c "import app.main"`
+
+## UI Refresh (light, app-like; no version bump)
+- Added light theme and simplified Start/Library/Create/Tools navigation
+- Added auto-processing import flows with task-aware refresh
+- Added right-side inspector and new UI facade helpers
+- Verification: `python scripts/verify_ui_app_v2.py`, `python -m compileall .`, `pytest -q`, `python -c "import app.main"`
+
 ## UI Refactor (no version bump)
 - Added single-page router with three-column shell and unified navigation
 - Added Workflows hub, Tasks/Exports/Diagnostics centers, and in-app Help center

@@ -36,6 +36,7 @@ def init_db() -> None:
                 image_pages_count INTEGER,
                 source_type TEXT,
                 source_ref TEXT,
+                doc_type TEXT NOT NULL DEFAULT 'other',
                 updated_at TEXT,
                 created_at TEXT NOT NULL,
                 FOREIGN KEY(workspace_id) REFERENCES workspaces(id)
@@ -77,6 +78,21 @@ def init_db() -> None:
                 source_ref TEXT,
                 run_id TEXT,
                 citations_count INTEGER,
+                created_at TEXT NOT NULL,
+                FOREIGN KEY(workspace_id) REFERENCES workspaces(id)
+            )
+            """
+        )
+        cursor.execute(
+            """
+            CREATE TABLE IF NOT EXISTS recent_activity (
+                id TEXT PRIMARY KEY,
+                workspace_id TEXT NOT NULL,
+                type TEXT NOT NULL,
+                title TEXT,
+                status TEXT,
+                output_ref TEXT,
+                citations_summary TEXT,
                 created_at TEXT NOT NULL,
                 FOREIGN KEY(workspace_id) REFERENCES workspaces(id)
             )
@@ -366,6 +382,7 @@ def init_db() -> None:
     _ensure_column("documents", "image_pages_count", "INTEGER")
     _ensure_column("documents", "source_type", "TEXT")
     _ensure_column("documents", "source_ref", "TEXT")
+    _ensure_column("documents", "doc_type", "TEXT NOT NULL DEFAULT 'other'")
     _ensure_column("ui_history", "run_id", "TEXT")
     _ensure_column("assets", "active_version_id", "TEXT")
     _ensure_column("chunks", "text_source", "TEXT")
@@ -376,3 +393,9 @@ def init_db() -> None:
     _ensure_column("asset_versions", "retrieval_mode", "TEXT")
     _ensure_column("asset_versions", "embed_model", "TEXT")
     _ensure_column("asset_versions", "seed", "INTEGER")
+
+    with get_connection() as connection:
+        connection.execute(
+            "UPDATE documents SET doc_type = 'other' WHERE doc_type IS NULL OR doc_type = ''"
+        )
+        connection.commit()

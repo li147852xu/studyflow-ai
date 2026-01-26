@@ -109,6 +109,60 @@ def read_version(asset_id: str, version_id: str) -> AssetVersionView:
     return AssetVersionView(asset=asset, version=version, content=content)
 
 
+def read_version_by_id(version_id: str) -> AssetVersionView:
+    from infra.db import get_connection
+
+    with get_connection() as connection:
+        row = connection.execute(
+            """
+            SELECT assets.id as asset_id, assets.workspace_id, assets.kind, assets.ref_id,
+                   assets.active_version_id, assets.created_at as asset_created_at,
+                   asset_versions.id as version_id, asset_versions.version_index,
+                   asset_versions.run_id, asset_versions.model, asset_versions.provider,
+                   asset_versions.temperature, asset_versions.max_tokens, asset_versions.retrieval_mode,
+                   asset_versions.embed_model, asset_versions.seed, asset_versions.prompt_version,
+                   asset_versions.content_path, asset_versions.content_type,
+                   asset_versions.citations_json, asset_versions.hits_json,
+                   asset_versions.created_at as version_created_at
+            FROM asset_versions
+            JOIN assets ON assets.id = asset_versions.asset_id
+            WHERE asset_versions.id = ?
+            """,
+            (version_id,),
+        ).fetchone()
+    if not row:
+        raise RuntimeError("Asset version not found.")
+    asset = AssetRecord(
+        id=row["asset_id"],
+        workspace_id=row["workspace_id"],
+        kind=row["kind"],
+        ref_id=row["ref_id"],
+        active_version_id=row["active_version_id"],
+        created_at=row["asset_created_at"],
+    )
+    version = AssetVersionRecord(
+        id=row["version_id"],
+        asset_id=row["asset_id"],
+        version_index=row["version_index"],
+        run_id=row["run_id"],
+        model=row["model"],
+        provider=row["provider"],
+        temperature=row["temperature"],
+        max_tokens=row["max_tokens"],
+        retrieval_mode=row["retrieval_mode"],
+        embed_model=row["embed_model"],
+        seed=row["seed"],
+        prompt_version=row["prompt_version"],
+        content_path=row["content_path"],
+        content_type=row["content_type"],
+        citations_json=row["citations_json"],
+        hits_json=row["hits_json"],
+        created_at=row["version_created_at"],
+    )
+    content = read_asset_content(version)
+    return AssetVersionView(asset=asset, version=version, content=content)
+
+
 def set_active(asset_id: str, version_id: str) -> None:
     set_active_version(asset_id, version_id)
 
@@ -158,3 +212,8 @@ def paper_aggregate_ref_id(doc_ids: list[str], question: str) -> str:
 
 def slides_ref_id(doc_id: str, duration: str) -> str:
     return f"{doc_id}:{duration}"
+
+
+def ask_ref_id(query: str, run_id: str | None) -> str:
+    key = f"{run_id or ''}:{query.strip()}"
+    return f"ask:{_hash_ref(key)}"

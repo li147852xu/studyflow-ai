@@ -9,7 +9,8 @@ from cli.commands.clean_cmd import _targets
 from cli.commands.doctor import doctor
 from infra.db import get_workspaces_dir
 from service.retrieval_service import index_status, vacuum_index
-from service.tasks_service import enqueue_index_task, run_task_by_id
+from service.tasks_service import enqueue_index_task, run_task_in_background
+from app.ui.locks import running_task_summary
 
 
 def render_diagnostics_center(*, workspace_id: str | None) -> None:
@@ -26,6 +27,9 @@ def render_diagnostics_center(*, workspace_id: str | None) -> None:
     if not workspace_id:
         st.info("Select a project to run workspace diagnostics.")
         return
+    locked, lock_msg = running_task_summary(workspace_id)
+    if lock_msg:
+        st.info(lock_msg)
 
     st.markdown("#### Index status")
     try:
@@ -36,12 +40,12 @@ def render_diagnostics_center(*, workspace_id: str | None) -> None:
 
     col1, col2 = st.columns(2)
     with col1:
-        if st.button("Rebuild index"):
+        if st.button("Rebuild index", disabled=locked, help=lock_msg or None):
             task_id = enqueue_index_task(workspace_id=workspace_id, reset=True)
-            result = run_task_by_id(task_id)
-            st.success(f"Index rebuilt. {result}")
+            run_task_in_background(task_id)
+            st.success("Index rebuild queued.")
     with col2:
-        if st.button("Vacuum index"):
+        if st.button("Vacuum index", disabled=locked, help=lock_msg or None):
             result = vacuum_index(workspace_id)
             st.success(f"Vacuum complete: {result}")
 
@@ -64,7 +68,7 @@ def render_diagnostics_center(*, workspace_id: str | None) -> None:
     for path in targets:
         st.code(str(path))
 
-    if st.button("Run cleanup"):
+    if st.button("Run cleanup", disabled=locked, help=lock_msg or None):
         if dry_run or not confirm_apply:
             st.info("Dry-run only. Toggle off dry-run and confirm delete to apply.")
             return

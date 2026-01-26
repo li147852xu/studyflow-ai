@@ -51,6 +51,7 @@ def test_api_endpoints(tmp_path: Path, monkeypatch):
             "filename": "doc.pdf",
             "data_base64": base64.b64encode(data).decode("utf-8"),
             "kind": "document",
+            "doc_type": "paper",
         },
     )
     assert resp.status_code == 200

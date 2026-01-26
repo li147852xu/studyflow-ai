@@ -20,9 +20,10 @@ def list_sources(workspace_id: str) -> list[dict]:
     for doc in list_documents(workspace_id):
         sources.append(
             {
-                "label": f"Document: {doc['filename']}",
+                "label": f"{doc.get('doc_type', 'other').title()}: {doc['filename']}",
                 "doc_id": doc["id"],
                 "type": "document",
+                "doc_type": doc.get("doc_type") or "other",
             }
         )
     for paper in list_papers(workspace_id):
@@ -31,6 +32,7 @@ def list_sources(workspace_id: str) -> list[dict]:
                 "label": f"Paper: {paper['title']}",
                 "doc_id": paper["doc_id"],
                 "type": "paper",
+                "doc_type": "paper",
             }
         )
     return sources
