@@ -4,7 +4,6 @@ import streamlit as st
 
 from service.bundle_service import bundle_export, bundle_import
 from service.pack_service import make_pack, PackServiceError
-from service.recent_activity_service import add_activity
 from app.ui.locks import running_task_summary
 
 
@@ -31,14 +30,6 @@ def render_exports_center(*, workspace_id: str | None) -> None:
                 with_prompts=with_prompts,
             )
             st.success(f"Bundle exported: {path}")
-            add_activity(
-                workspace_id=workspace_id,
-                type="export_pack",
-                title="Bundle export",
-                status="succeeded",
-                output_ref=path,
-                citations_summary=None,
-            )
 
         st.divider()
         import_path = st.text_input("Import bundle path")
@@ -50,14 +41,6 @@ def render_exports_center(*, workspace_id: str | None) -> None:
         ):
             new_workspace = bundle_import(path=import_path.strip(), rebuild_index=rebuild_index)
             st.success(f"Bundle imported into workspace: {new_workspace}")
-            add_activity(
-                workspace_id=workspace_id,
-                type="import",
-                title="Bundle import",
-                status="succeeded",
-                output_ref=import_path.strip(),
-                citations_summary=None,
-            )
 
     with st.expander("Submission Pack"):
         pack_type = st.selectbox(
@@ -78,13 +61,5 @@ def render_exports_center(*, workspace_id: str | None) -> None:
                     source_id=source_id.strip(),
                 )
                 st.success(f"Pack created: {path}")
-                add_activity(
-                    workspace_id=workspace_id,
-                    type="export_pack",
-                    title=f"{pack_type} pack",
-                    status="succeeded",
-                    output_ref=path,
-                    citations_summary=None,
-                )
             except PackServiceError as exc:
                 st.error(str(exc))

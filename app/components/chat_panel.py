@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import json
 import os
 import streamlit as st
 
@@ -14,7 +13,6 @@ from service.api_mode_adapter import ApiModeAdapter, ApiModeError
 from service.metadata_service import llm_metadata
 from app.ui.locks import running_task_summary
 from service.asset_service import create_asset_version, ask_ref_id
-from service.recent_activity_service import add_activity
 
 
 def render_chat_panel(
@@ -143,22 +141,6 @@ def render_chat_panel(
                         prompt_version="v1",
                         hits=hit_records,
                     )
-                    add_activity(
-                        workspace_id=workspace_id,
-                        type="ask",
-                        title=query.strip()[:80],
-                        status="succeeded",
-                        output_ref=json.dumps(
-                            {
-                                "asset_version_id": version.id,
-                                "asset_id": version.asset_id,
-                                "source_id": None,
-                                "kind": "ask",
-                            },
-                            ensure_ascii=False,
-                        ),
-                        citations_summary="; ".join(citations[:3]) if citations else None,
-                    )
                     st.text_area("Answer (copy)", value=response, height=200)
                     st.text_area("Citations (copy)", value="\n".join(citations), height=160)
                 else:
@@ -219,22 +201,6 @@ def render_chat_panel(
                         seed=None,
                         prompt_version="v1",
                         hits=[],
-                    )
-                    add_activity(
-                        workspace_id=workspace_id,
-                        type="ask",
-                        title=query.strip()[:80],
-                        status="succeeded",
-                        output_ref=json.dumps(
-                            {
-                                "asset_version_id": version.id,
-                                "asset_id": version.asset_id,
-                                "source_id": None,
-                                "kind": "ask",
-                            },
-                            ensure_ascii=False,
-                        ),
-                        citations_summary=None,
                     )
                     st.text_area("Answer (copy)", value=response, height=200)
             except ChatConfigError as exc:

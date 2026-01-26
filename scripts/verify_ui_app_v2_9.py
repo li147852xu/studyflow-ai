@@ -8,6 +8,7 @@ import fitz
 
 from infra.db import get_workspaces_dir
 from infra.models import init_db
+from infra.db import get_connection
 from service.document_service import get_document, list_documents_by_type, set_document_type
 from service.ingest_service import ingest_pdf
 from service.workspace_service import create_workspace, delete_workspace, list_workspaces
@@ -52,6 +53,12 @@ def _cleanup_workspaces(keep_name: str = "test1") -> None:
     remaining_names = {ws["name"] for ws in remaining}
     if keep_name not in remaining_names:
         create_workspace(keep_name)
+
+    with get_connection() as connection:
+        connection.execute("DELETE FROM tasks")
+        connection.execute("DELETE FROM recent_activity")
+        connection.execute("DELETE FROM ui_history")
+        connection.commit()
 
 
 def main() -> int:

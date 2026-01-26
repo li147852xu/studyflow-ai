@@ -16,6 +16,9 @@ from service.document_service import list_documents
 from service.retrieval_service import index_status
 from app.ui.locks import running_task_summary
 from service.tasks_service import enqueue_generate_task, run_task_in_background
+from service.recent_activity_service import list_recent_activity
+from service.asset_service import read_version_by_id
+import json
 
 
 def _auto_retrieval_mode(workspace_id: str) -> str:
@@ -320,6 +323,44 @@ def render_create_page(
                     )
                     run_task_in_background(task_id)
                     st.success(t("task_queued", workspace_id))
+
+        st.divider()
+        st.markdown(f"### {t('latest_output', workspace_id)}")
+        activity = list_recent_activity(workspace_id, limit=20)
+        desired_prefix = {
+            "course": "generate_course_",
+            "paper": "generate_paper_",
+            "presentation": "generate_slides",
+        }.get(selected_tab, "")
+        match = next(
+            (entry for entry in activity if entry["type"].startswith(desired_prefix)),
+            None,
+        )
+        if not match:
+            st.caption(t("no_recent_activity", workspace_id))
+        else:
+            output_ref = match.get("output_ref")
+            try:
+                ref = json.loads(output_ref) if output_ref else {}
+            except json.JSONDecodeError:
+                ref = {"asset_version_id": output_ref}
+            version_id = ref.get("asset_version_id")
+            if version_id:
+                view = read_version_by_id(version_id)
+                st.caption(f"{match['created_at']} · {match.get('title') or match['type']}")
+                st.text_area("Output", value=view.content, height=260)
+                st.download_button(
+                    t("download_output", workspace_id),
+                    data=view.content,
+                    file_name=f"{match['type']}.txt",
+                )
+                if st.button(t("open_recent_activity", workspace_id)):
+                    st.session_state["active_nav"] = "Tools"
+                    st.session_state["tools_tab"] = "recent_activity"
+                    st.session_state["recent_activity_selected_id"] = match["id"]
+                    st.rerun()
+            else:
+                st.caption(t("no_recent_activity", workspace_id))
 
     with inspector_col:
         if not workspace_id:

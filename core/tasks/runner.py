@@ -97,16 +97,6 @@ def _run_index(task_id: str, payload: dict) -> dict:
         stop_check=_stop_check(task_id),
     )
     build_bm25_index(workspace_id)
-    from service.recent_activity_service import add_activity
-
-    add_activity(
-        workspace_id=workspace_id,
-        type="index",
-        title=payload.get("title") or "Index refresh",
-        status="succeeded",
-        output_ref=None,
-        citations_summary=None,
-    )
     return {
         "indexed_count": result.indexed_count,
         "chunk_count": result.chunk_count,
@@ -125,16 +115,6 @@ def _run_ingest_index(task_id: str, payload: dict) -> dict:
             "doc_ids": [ingest_result["doc_id"]],
             "batch_size": payload.get("batch_size", 32),
         },
-    )
-    from service.recent_activity_service import add_activity
-
-    add_activity(
-        workspace_id=payload["workspace_id"],
-        type="import",
-        title=payload.get("path", "").split("/")[-1],
-        status="succeeded",
-        output_ref=None,
-        citations_summary=None,
     )
     return {"ingest": ingest_result, "index": index_result}
 
@@ -156,7 +136,8 @@ def _run_generate(task_id: str, payload: dict) -> dict:
         payload.get("api_base_url", "http://127.0.0.1:8000"),
     )
     action_type = payload.get("action_type", "")
-    action_payload = payload.get("payload", {})
+    action_payload = dict(payload.get("payload", {}))
+    title = action_payload.pop("title", None)
     output = adapter.generate(action_type=action_type, payload=action_payload)
 
     content = getattr(output, "content", None)
@@ -212,7 +193,7 @@ def _run_generate(task_id: str, payload: dict) -> dict:
     add_activity(
         workspace_id=payload["workspace_id"],
         type=f"generate_{action_type}",
-        title=action_payload.get("title") or action_type,
+        title=title or action_type,
         status="succeeded",
         output_ref=json.dumps(
             {
@@ -281,22 +262,6 @@ def _run_ask(task_id: str, payload: dict) -> dict:
         seed=None,
         prompt_version="v1",
         hits=hits,
-    )
-    add_activity(
-        workspace_id=payload["workspace_id"],
-        type="ask",
-        title=payload.get("query", "")[:80],
-        status="succeeded",
-        output_ref=json.dumps(
-            {
-                "asset_version_id": version.id,
-                "asset_id": version.asset_id,
-                "source_id": None,
-                "kind": "ask",
-            },
-            ensure_ascii=False,
-        ),
-        citations_summary="; ".join(result.citations[:3]) if result.citations else None,
     )
     return {
         "asset_id": version.asset_id,
