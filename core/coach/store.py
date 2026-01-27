@@ -24,22 +24,46 @@ class CoachSession:
     status: str | None
     created_at: str
     updated_at: str
+    name: str | None = None
 
 
-def create_session(workspace_id: str, problem: str) -> CoachSession:
+def _next_session_index(workspace_id: str) -> int:
+    """Get the next session index for default naming."""
+    with get_connection() as connection:
+        row = connection.execute(
+            "SELECT COUNT(*) as count FROM coach_sessions WHERE workspace_id = ?",
+            (workspace_id,),
+        ).fetchone()
+    return (row["count"] if row else 0) + 1
+
+
+def create_session(workspace_id: str, problem: str, name: str | None = None) -> CoachSession:
     session_id = str(uuid.uuid4())
+    if not name:
+        index = _next_session_index(workspace_id)
+        name = f"\u4f1a\u8bdd {index}"
     with get_connection() as connection:
         connection.execute(
             """
             INSERT INTO coach_sessions (
-                id, workspace_id, problem, status, created_at, updated_at
+                id, workspace_id, problem, name, status, created_at, updated_at
             )
-            VALUES (?, ?, ?, ?, ?, ?)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
             """,
-            (session_id, workspace_id, problem, "phase_a", _now_iso(), _now_iso()),
+            (session_id, workspace_id, problem, name, "phase_a", _now_iso(), _now_iso()),
         )
         connection.commit()
     return get_session(session_id)
+
+
+def rename_session(session_id: str, new_name: str) -> None:
+    """Rename a coach session."""
+    with get_connection() as connection:
+        connection.execute(
+            "UPDATE coach_sessions SET name = ?, updated_at = ? WHERE id = ?",
+            (new_name, _now_iso(), session_id),
+        )
+        connection.commit()
 
 
 def update_phase_a(
@@ -109,6 +133,7 @@ def write_session_file(session: CoachSession) -> str:
     payload = {
         "session_id": session.id,
         "workspace_id": session.workspace_id,
+        "name": session.name,
         "problem": session.problem,
         "phase_a_output": session.phase_a_output,
         "phase_b_output": session.phase_b_output,

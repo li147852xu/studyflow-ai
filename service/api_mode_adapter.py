@@ -170,6 +170,17 @@ class ApiModeAdapter:
                     asset_version_id=output.asset_version_id,
                     asset_version_index=output.asset_version_index,
                 )
+            if action_type == "course_qa":
+                from service.course_service import answer_course_question
+                output = answer_course_question(**payload)
+                return TextGenerationResult(
+                    content=output.content,
+                    citations=output.citations,
+                    run_id=output.run_id,
+                    asset_id=output.asset_id,
+                    asset_version_id=output.asset_version_id,
+                    asset_version_index=output.asset_version_index,
+                )
             if action_type == "paper_card":
                 output = generate_paper_card(**payload)
                 return TextGenerationResult(

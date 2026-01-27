@@ -74,22 +74,29 @@ def run_with_progress(
     work: callable,
     success_label: str | None = None,
     error_label: str | None = None,
+    use_status: bool = True,
 ) -> tuple[bool, object | None]:
-    status = st.status(label, expanded=False)
+    status = st.status(label, expanded=False) if use_status else st.empty()
     progress = st.progress(0.05)
     try:
         result = work()
         progress.progress(1.0)
-        status.update(
-            label=success_label or label,
-            state="complete",
-        )
+        if use_status:
+            status.update(
+                label=success_label or label,
+                state="complete",
+            )
+        else:
+            status.success(success_label or label)
         return True, result
     except Exception as exc:
         progress.progress(1.0)
-        status.update(
-            label=error_label or label,
-            state="error",
-        )
+        if use_status:
+            status.update(
+                label=error_label or label,
+                state="error",
+            )
+        else:
+            status.error(error_label or label)
         st.error(str(exc))
         return False, None

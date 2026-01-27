@@ -60,19 +60,48 @@ def parse_paper_card(content: str) -> PaperCardSchema:
         "weaknesses": [],
         "extensions": [],
     }
+    # Map various header variations to canonical names
+    header_map = {
+        "summary": "summary",
+        "abstract": "summary",
+        "overview": "summary",
+        "contributions": "contributions",
+        "key contributions": "contributions",
+        "contribution": "contributions",
+        "strengths": "strengths",
+        "strength": "strengths",
+        "pros": "strengths",
+        "weaknesses": "weaknesses",
+        "weakness": "weaknesses",
+        "limitations": "weaknesses",
+        "cons": "weaknesses",
+        "extensions": "extensions",
+        "extension ideas": "extensions",
+        "future work": "extensions",
+        "extension": "extensions",
+    }
     current = None
     for line in content.splitlines():
         stripped = line.strip()
         if not stripped:
             continue
-        header = stripped.lower().rstrip(":")
-        if header in sections:
-            current = header
+        # Check for header (with or without colon, with optional markdown #)
+        header = stripped.lstrip("#").strip().lower().rstrip(":")
+        if header in header_map:
+            current = header_map[header]
             continue
         if current in ("contributions", "strengths", "weaknesses", "extensions"):
-            if stripped.startswith("-"):
-                sections[current].append(stripped.lstrip("- ").strip())
-            else:
+            # Handle bullet points with various markers
+            if stripped.startswith(("-", "*", "•", "·")):
+                item = stripped.lstrip("-*•· ").strip()
+                if item and item.lower() not in ("tbd", "n/a", "none"):
+                    sections[current].append(item)
+            elif stripped[0].isdigit() and ("." in stripped[:3] or ")" in stripped[:3]):
+                # Handle numbered lists like "1. item" or "1) item"
+                item = stripped.split(".", 1)[-1].split(")", 1)[-1].strip()
+                if item and item.lower() not in ("tbd", "n/a", "none"):
+                    sections[current].append(item)
+            elif current and stripped:
                 sections[current].append(stripped)
         elif current == "summary":
             sections["summary"] += (stripped + " ")

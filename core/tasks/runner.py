@@ -156,6 +156,8 @@ def _run_generate(task_id: str, payload: dict) -> dict:
                 action_payload.get("selection", ""),
                 action_payload.get("mode", "plain"),
             )
+        elif action_type == "course_qa":
+            ref_id = f"course_qa:{action_payload.get('course_id', '')}:{action_payload.get('question', '')[:50]}"
         elif action_type == "paper_card":
             ref_id = paper_ref_id(action_payload.get("doc_id", ""))
         elif action_type == "paper_aggregate":
@@ -278,6 +280,7 @@ _TASK_HANDLERS = {
     "generate_course_overview": _run_generate,
     "generate_course_cheatsheet": _run_generate,
     "generate_course_explain": _run_generate,
+    "generate_course_qa": _run_generate,
     "generate_paper_card": _run_generate,
     "generate_paper_aggregate": _run_generate,
     "generate_slides": _run_generate,

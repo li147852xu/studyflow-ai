@@ -13,7 +13,7 @@ from core.ingest.pdf_reader import read_pdf
 from core.parsing.metadata import PaperMetadata, extract_metadata
 from service.tasks_service import enqueue_index_task, run_task_in_background
 from service.tasks_service import list_tasks_for_workspace
-from service.document_service import list_document_tags, list_documents
+from service.document_service import list_documents
 from service.course_service import link_document, list_courses
 from service.paper_service import ensure_paper
 from app.ui.locks import running_task_summary
@@ -118,12 +118,18 @@ def render_library_page(
                 format_func=lambda value: t(f"doc_type_{value}", workspace_id),
             )
             st.session_state["library_doc_type"] = doc_type
-            source = st.radio(
+            if "library_import_source" not in st.session_state:
+                st.session_state["library_import_source"] = "upload"
+            st.radio(
                 t("import_source_label", workspace_id),
                 options=["upload", "zotero", "folder", "arxiv"],
+                index=["upload", "zotero", "folder", "arxiv"].index(st.session_state.get("library_import_source", "upload")),
                 format_func=lambda value: t(f"import_source_{value}", workspace_id),
                 horizontal=True,
+                key="library_import_source_radio",
+                on_change=lambda: st.session_state.update({"library_import_source": st.session_state["library_import_source_radio"]}),
             )
+            source = st.session_state.get("library_import_source", "upload")
             before_ids = {doc["id"] for doc in list_documents(workspace_id)}
             if source == "upload":
                 uploads = st.file_uploader(
@@ -158,7 +164,12 @@ def render_library_page(
                         else:
                             st.error(result.error or t("import_failed_error", workspace_id))
             elif source == "zotero":
-                data_dir = st.text_input(t("zotero_data_dir", workspace_id), key="library_zotero_dir")
+                data_dir = st.text_input(
+                    t("zotero_data_dir", workspace_id),
+                    key="library_zotero_dir",
+                    placeholder=t("zotero_path_placeholder", workspace_id),
+                    help=t("zotero_path_help", workspace_id),
+                )
                 st.caption(
                     t("doc_type_suggested", workspace_id).format(
                         value=t("doc_type_paper", workspace_id)
@@ -197,9 +208,15 @@ def render_library_page(
                         work=_work,
                         success_label=t("import_complete", workspace_id),
                         error_label=t("import_failed", workspace_id),
+                        use_status=False,
                     )
             elif source == "folder":
-                folder = st.text_input(t("folder_path", workspace_id), key="library_folder_path")
+                folder = st.text_input(
+                    t("folder_path", workspace_id),
+                    key="library_folder_path",
+                    placeholder=t("folder_path_placeholder", workspace_id),
+                    help=t("folder_path_help", workspace_id),
+                )
                 st.caption(
                     t("doc_type_suggested", workspace_id).format(
                         value=t(f"doc_type_{doc_type}", workspace_id)
@@ -238,9 +255,15 @@ def render_library_page(
                         work=_work,
                         success_label=t("import_complete", workspace_id),
                         error_label=t("import_failed", workspace_id),
+                        use_status=False,
                     )
             else:
-                source_value = st.text_input(t("source_id_label", workspace_id), key="library_source")
+                source_value = st.text_input(
+                    t("source_id_label", workspace_id),
+                    key="library_source",
+                    placeholder=t("source_id_placeholder", workspace_id),
+                    help=t("source_id_help", workspace_id),
+                )
                 st.caption(
                     t("doc_type_suggested", workspace_id).format(
                         value=t("doc_type_paper", workspace_id)
@@ -250,7 +273,7 @@ def render_library_page(
                 with col1:
                     if st.button(
                         t("import_from_arxiv", workspace_id),
-                        disabled=locked,
+                        disabled=locked or not source_value.strip(),
                         help=lock_msg or None,
                     ):
                         def _work() -> None:
@@ -259,7 +282,7 @@ def render_library_page(
                             result = plugin.run(
                                 PluginContext(
                                     workspace_id=workspace_id,
-                                    args={"id": source_value.strip(), "ocr_mode": "auto", "doc_type": doc_type},
+                                    args={"arxiv_id": source_value.strip(), "ocr_mode": "auto", "doc_type": doc_type},
                                 )
                             )
                             if result.ok:
@@ -275,11 +298,12 @@ def render_library_page(
                             work=_work,
                             success_label=t("import_complete", workspace_id),
                             error_label=t("import_failed", workspace_id),
+                            use_status=False,
                         )
                 with col2:
                     if st.button(
                         t("import_from_doi", workspace_id),
-                        disabled=locked,
+                        disabled=locked or not source_value.strip(),
                         help=lock_msg or None,
                     ):
                         def _work() -> None:
@@ -288,7 +312,7 @@ def render_library_page(
                             result = plugin.run(
                                 PluginContext(
                                     workspace_id=workspace_id,
-                                    args={"id": source_value.strip(), "ocr_mode": "auto", "doc_type": doc_type},
+                                    args={"doi": source_value.strip(), "ocr_mode": "auto", "doc_type": doc_type},
                                 )
                             )
                             if result.ok:
@@ -304,11 +328,12 @@ def render_library_page(
                             work=_work,
                             success_label=t("import_complete", workspace_id),
                             error_label=t("import_failed", workspace_id),
+                            use_status=False,
                         )
                 with col3:
                     if st.button(
                         t("import_from_url", workspace_id),
-                        disabled=locked,
+                        disabled=locked or not source_value.strip(),
                         help=lock_msg or None,
                     ):
                         def _work() -> None:
@@ -333,6 +358,7 @@ def render_library_page(
                             work=_work,
                             success_label=t("import_complete", workspace_id),
                             error_label=t("import_failed", workspace_id),
+                            use_status=False,
                         )
             card_footer()
 
@@ -452,9 +478,46 @@ def render_library_page(
             if value != "all"
             else t("all_types", workspace_id),
         )
+
+        # Course sub-filter: when filtering by course type, allow selecting specific course
+        course_filter = None
+        if doc_type_filter == "course":
+            from service.course_service import list_courses, list_course_documents
+            courses = list_courses(workspace_id)
+            if courses:
+                course_options = {"all_courses": None}
+                course_options.update({course["name"]: course["id"] for course in courses})
+                course_options["uncategorized"] = "uncategorized"
+                selected_course = st.selectbox(
+                    t("filter_by_course", workspace_id),
+                    options=list(course_options.keys()),
+                    format_func=lambda v: (
+                        t("all_course_docs_label", workspace_id) if v == "all_courses"
+                        else t("uncategorized_course_docs", workspace_id) if v == "uncategorized"
+                        else v
+                    ),
+                )
+                course_filter = course_options.get(selected_course)
+
         chunk_counts = facade.doc_chunk_counts(workspace_id)
         running = _collect_running_tasks(workspace_id)
         vector_ready = bool(status_payload and status_payload.get("vector_count", 0) >= status_payload.get("chunk_count", 0))
+
+        # Get course-linked document IDs if filtering by specific course
+        course_linked_ids: set[str] = set()
+        if course_filter and course_filter != "uncategorized":
+            from service.course_service import list_course_documents
+            linked_docs = list_course_documents(course_filter)
+            course_linked_ids = {doc["id"] for doc in linked_docs}
+        elif course_filter == "uncategorized":
+            # Get all documents linked to any course
+            from service.course_service import list_courses, list_course_documents
+            courses = list_courses(workspace_id)
+            all_linked = set()
+            for course in courses:
+                linked = list_course_documents(course["id"])
+                all_linked.update(doc["id"] for doc in linked)
+            course_linked_ids = all_linked
 
         def _matches(doc: dict) -> bool:
             if search and search.lower() not in doc["filename"].lower():
@@ -462,7 +525,16 @@ def render_library_page(
             if doc_type_filter != "all" and doc.get("doc_type") != doc_type_filter:
                 return False
             if selected_tags:
-                return any(tag in doc.get("tags", []) for tag in selected_tags)
+                if not any(tag in doc.get("tags", []) for tag in selected_tags):
+                    return False
+            # Course sub-filter
+            if course_filter:
+                if course_filter == "uncategorized":
+                    # Show only docs NOT linked to any course
+                    return doc["id"] not in course_linked_ids
+                else:
+                    # Show only docs linked to selected course
+                    return doc["id"] in course_linked_ids
             return True
 
         filtered_docs = [doc for doc in docs if _matches(doc)]
@@ -480,16 +552,20 @@ def render_library_page(
             pages = doc.get("page_count") or "-"
             return f"{doc['filename']} · {status} · {pages} {t('pages_label', workspace_id)}"
 
-        selected_doc_id = st.radio(
+        st.radio(
             t("select_document", workspace_id),
             options=list(options.keys()),
             format_func=_format_doc,
             key="library_selected_doc",
+            on_change=lambda: None,
         )
+        selected_doc_id = st.session_state.get("library_selected_doc")
 
-        selected_doc = options.get(selected_doc_id)
+        selected_doc = options.get(selected_doc_id) if selected_doc_id else None
         if selected_doc:
             st.markdown(f"#### {t('document_details', workspace_id)}")
+            if selected_doc.get("summary"):
+                st.caption(f"📝 {selected_doc['summary']}")
             st.write(
                 {
                     t("filename", workspace_id): selected_doc["filename"],
@@ -526,6 +602,18 @@ def render_library_page(
                 t("created", workspace_id): doc.get("created_at", "")[:19],
             }
         )
+        # Document summary
+        summary = doc.get("summary")
+        if summary:
+            st.info(f"**{t('summary_label', workspace_id)}**: {summary}")
+        else:
+            if st.button(t("generate_summary", workspace_id), key="generate_summary_btn"):
+                from service.summary_service import generate_summary, SummaryError
+                try:
+                    generated = generate_summary(doc["id"])
+                    st.success(f"{t('summary_label', workspace_id)}: {generated}")
+                except SummaryError as exc:
+                    st.error(str(exc))
         doc_type_value = doc.get("doc_type") or "other"
         new_doc_type = st.selectbox(
             t("doc_type_label", workspace_id),
@@ -550,27 +638,6 @@ def render_library_page(
                 st.success(t("doc_type_updated", workspace_id))
             else:
                 st.error(result.error or t("doc_type_update_failed", workspace_id))
-        existing_tags = list_document_tags(doc["id"])
-        st.caption(
-            t("tags_label", workspace_id).format(
-                tags=", ".join(existing_tags) or t("none", workspace_id)
-            )
-        )
-        new_tags = st.text_input(t("add_tags", workspace_id), key="library_new_tags")
-        if st.button(
-            t("update_tags", workspace_id),
-            disabled=locked or not new_tags.strip(),
-            help=lock_msg or None,
-        ):
-            result = facade.update_document_tags(
-                doc_id=doc["id"],
-                tags=[tag.strip() for tag in new_tags.split(",")],
-            )
-            if result.ok:
-                st.success(t("tags_updated", workspace_id))
-            else:
-                st.error(result.error or t("tags_update_failed", workspace_id))
-
         needs_rebuild = bool(
             status_payload
             and status_payload.get("vector_count", 0) != status_payload.get("chunk_count", 0)

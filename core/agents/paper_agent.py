@@ -74,21 +74,25 @@ class PaperAgent:
         if not valid:
             retry_prompt = (
                 prompt
-                + "\n\nReturn sections with headings: Summary, Contributions, Strengths, Weaknesses, Extensions."
+                + "\n\nIMPORTANT: Use EXACTLY these section headers (one per line):\n"
+                "Summary:\n(your summary paragraph)\n\n"
+                "Contributions:\n- point 1\n- point 2\n\n"
+                "Strengths:\n- point 1\n- point 2\n\n"
+                "Weaknesses:\n- point 1\n- point 2\n\n"
+                "Extensions:\n- point 1\n- point 2"
             )
             try:
-                content = chat(prompt=retry_prompt, temperature=0.1)
+                retry_content = chat(prompt=retry_prompt, temperature=0.1)
             except ChatConfigError as exc:
                 raise PaperAgentError(str(exc)) from exc
-            valid, error = validate_paper_card(content)
-            if not valid:
+            valid, error = validate_paper_card(retry_content)
+            if valid:
+                content = retry_content
+            else:
+                # Keep original LLM output but add warning
                 warnings = [
-                    "Structured validation failed. Consider rebuilding index or retrying generation."
+                    "Output format may not be perfectly structured. Content is still based on the paper."
                 ]
-                content = (
-                    "Summary:\n- Generation failed structured validation. Please retry after rebuilding index.\n"
-                    "Contributions:\n- TBD\nStrengths:\n- TBD\nWeaknesses:\n- TBD\nExtensions:\n- TBD\n"
-                )
         return PaperCardOutput(
             content=content,
             citations=bundle.citations,

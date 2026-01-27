@@ -39,7 +39,9 @@ def render_tools_page(
             "recent_activity",
             "settings",
         ]
-        selected_tab = st.radio(
+        if "tools_tab" not in st.session_state:
+            st.session_state["tools_tab"] = "coach"
+        st.radio(
             t("tools_tabs", workspace_id),
             options=tab_keys,
             index=tab_keys.index(st.session_state.get("tools_tab", "coach"))
@@ -48,8 +50,10 @@ def render_tools_page(
             format_func=lambda value: t(f"tabs_{value}", workspace_id),
             horizontal=True,
             label_visibility="collapsed",
+            key="tools_tab_radio",
+            on_change=lambda: st.session_state.update({"tools_tab": st.session_state["tools_tab_radio"]}),
         )
-        st.session_state["tools_tab"] = selected_tab
+        selected_tab = st.session_state.get("tools_tab", "coach")
         inspector_payload = {t("project", workspace_id): workspace_id}
         citations = None
 
@@ -72,6 +76,11 @@ def render_tools_page(
                 height=140,
                 key="tools_coach_problem",
             )
+            session_name = st.text_input(
+                t("session_name_label", workspace_id),
+                placeholder=t("session_name_placeholder", workspace_id),
+                key="tools_coach_session_name",
+            )
             if st.button(
                 t("start_coaching", workspace_id),
                 disabled=not problem.strip() or not ready,
@@ -82,6 +91,7 @@ def render_tools_page(
                         workspace_id=workspace_id,
                         problem=problem.strip(),
                         retrieval_mode=_resolve_mode(),
+                        session_name=session_name.strip() if session_name.strip() else None,
                     )
                     st.session_state["tools_coach_session_id"] = result.session.id
                     st.session_state["tools_coach_output"] = result.output
@@ -102,12 +112,41 @@ def render_tools_page(
             st.divider()
             section_title(t("coach_review", workspace_id))
             sessions = list_coach_sessions(workspace_id)
-            session_ids = [session.id for session in sessions]
+            session_map = {session.id: session for session in sessions}
+            session_options = ["(none)"] + [session.id for session in sessions]
+
+            def _format_session(sid: str) -> str:
+                if sid == "(none)":
+                    return t("select_session_placeholder", workspace_id)
+                session = session_map.get(sid)
+                if not session:
+                    return sid
+                name = session.name or f"\u4f1a\u8bdd {sid[:8]}"
+                return f"{name} - {session.problem[:30]}..."
+
             selected_session = st.selectbox(
                 t("session", workspace_id),
-                options=["(none)"] + session_ids,
+                options=session_options,
+                format_func=_format_session,
                 key="tools_coach_session_select",
             )
+
+            # Rename session
+            if selected_session and selected_session != "(none)":
+                with st.expander(t("rename_session", workspace_id)):
+                    current_name = session_map.get(selected_session, None)
+                    current_name = current_name.name if current_name else ""
+                    new_name = st.text_input(
+                        t("new_session_name", workspace_id),
+                        value=current_name or "",
+                        key="tools_coach_rename_input",
+                    )
+                    if st.button(t("save_name_btn", workspace_id), key="tools_coach_rename_btn"):
+                        from core.coach.store import rename_session
+                        rename_session(selected_session, new_name.strip())
+                        st.success(t("session_renamed", workspace_id))
+                        st.rerun()
+
             answer = st.text_area(
                 t("your_answer", workspace_id),
                 height=140,

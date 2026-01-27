@@ -16,7 +16,7 @@ def chat_completion(
     temperature: float | None = None,
     max_tokens: int | None = None,
     seed: int | None = None,
-    timeout: int = 60,
+    timeout: int = 180,
 ) -> str:
     url = base_url.rstrip("/") + "/chat/completions"
     headers = {

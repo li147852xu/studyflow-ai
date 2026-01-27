@@ -1,6 +1,43 @@
 # VERSION LOG
 
-## V2.9 (UI + persistence polish, no version bump)
+## V2.9 (2026-01-27)
+### New Features
+- **Document Summaries**: LLM-generated one-line descriptions for documents
+  - Auto-generate or manual generation via Library document details
+  - Display summaries in document list for quick reference
+- **Knowledge Q&A for Courses**: Ask questions about course content
+  - New "Knowledge Q&A" section in Course generation
+  - Answers based on linked course materials with citations
+- **Coach Session Management**: Named sessions with full history
+  - Sessions auto-named (会话 1, 会话 2) or custom naming
+  - Session rename functionality
+  - Display session names instead of UUIDs
+- **Enhanced Library Filtering**: Course-based document grouping
+  - Filter course docs by specific course
+  - "Uncategorized course docs" option for unlinked documents
+- **Per-Module Output Display**: Separated progress and outputs
+  - Each Create tab shows only its own generation tasks
+  - Independent latest output display per module
+
+### UI Improvements
+- Restructured Course generation Step 3 with expanders
+- Added help text for all generation options
+- Cleaner session selection in Study Coach
+
+### Code Changes
+- Added `summary` column to documents table
+- Added `name` column to coach_sessions table
+- New `service/summary_service.py` for summary generation
+- New `answer_course_question` function in course_service
+- Updated `_latest_generate_task` with type_prefix filtering
+
+### Documentation
+- Updated Help content (English and Chinese)
+- Professional README redesign for GitHub
+
+---
+
+## V2.8.x (UI + persistence polish)
 - Added required doc_type (course/paper/other) across ingest, storage, retrieval filtering
 - Start page setup checklist + quick-entry cards with settings-first flow
 - Background tasks with write locks, exit confirmation, and recent activity history (max 30)

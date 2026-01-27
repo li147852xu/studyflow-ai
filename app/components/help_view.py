@@ -2,13 +2,15 @@ from __future__ import annotations
 
 import streamlit as st
 
-from app.help_content import HELP_SECTIONS
+from app.help_content import get_help_sections
+from app.ui.i18n import t
 
 
-def render_help() -> None:
-    st.markdown("### Help / Docs")
-    st.caption("Use the sections below to learn the workflow and troubleshoot issues.")
-    for section in HELP_SECTIONS:
+def render_help(*, workspace_id: str | None = None) -> None:
+    language = st.session_state.get("ui_language", "en")
+    sections = get_help_sections(language)
+    st.caption(t("help_caption", workspace_id))
+    for section in sections:
         with st.expander(section["title"], expanded=section.get("expanded", False)):
             for paragraph in section.get("paragraphs", []):
                 st.write(paragraph)

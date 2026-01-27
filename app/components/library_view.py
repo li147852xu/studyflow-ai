@@ -197,20 +197,6 @@ def render_library_view(
                 st.write(chunk["text"][:600] + ("..." if len(chunk["text"]) > 600 else ""))
                 st.caption(f"Pages {chunk['page_start']}-{chunk['page_end']}")
 
-        st.markdown("### Tags")
-        tag_input = st.text_input(
-            "Add tags (comma-separated)",
-            key="library_tags_input",
-            placeholder="e.g. calculus, week1, summary",
-        )
-        if st.button(
-            "Save tags",
-            disabled=not tag_input.strip(),
-            help="Add tags for filtering and organization.",
-        ):
-            add_document_tags(selected_doc["id"], [tag.strip() for tag in tag_input.split(",")])
-            st.success("Tags saved. Refresh to see updates.")
-
         st.markdown("### Actions")
         if confirm_action(
             key="confirm_delete_doc",

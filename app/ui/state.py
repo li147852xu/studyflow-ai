@@ -11,11 +11,14 @@ def init_app_state() -> None:
     st.session_state.setdefault("workspace_id", get_setting(None, "last_workspace_id") or "")
     st.session_state.setdefault("llm_base_url", get_setting(None, "llm_base_url") or "")
     st.session_state.setdefault("llm_model", get_setting(None, "llm_model") or "")
-    st.session_state.setdefault("llm_api_key", "")
+    st.session_state.setdefault("llm_api_key", get_setting(None, "llm_api_key") or "")
     st.session_state.setdefault(
         "llm_temperature", float(get_setting(None, "llm_temperature") or 0.2)
     )
-    st.session_state.setdefault("api_mode", get_setting(None, "api_mode") or "direct")
+    stored_api_mode = get_setting(None, "api_mode") or "direct"
+    if stored_api_mode not in {"direct", "api"}:
+        stored_api_mode = "direct"
+    st.session_state.setdefault("api_mode", stored_api_mode)
     st.session_state.setdefault(
         "api_base_url", get_setting(None, "api_base_url") or "http://127.0.0.1:8000"
     )

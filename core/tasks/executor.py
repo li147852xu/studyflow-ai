@@ -27,11 +27,14 @@ def submit_task(task_id: str) -> bool:
     return True
 
 
-def shutdown_executor(wait: bool = True) -> None:
+def shutdown_executor(wait: bool = True, cancel_futures: bool = False) -> None:
     global _EXECUTOR
     with _LOCK:
         executor = _EXECUTOR
         _EXECUTOR = None
         _FUTURES.clear()
     if executor:
-        executor.shutdown(wait=wait, cancel_futures=not wait)
+        try:
+            executor.shutdown(wait=wait, cancel_futures=cancel_futures)
+        except Exception:
+            pass

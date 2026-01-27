@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from datetime import datetime
+
 import streamlit as st
 
 from service.tasks_service import (
@@ -9,6 +11,17 @@ from service.tasks_service import (
     retry_task_by_id,
     run_task_in_background,
 )
+
+
+def _format_time(iso_time: str | None) -> str:
+    if not iso_time:
+        return "-"
+    try:
+        dt = datetime.fromisoformat(iso_time.replace("Z", "+00:00"))
+        local_dt = dt.astimezone()
+        return local_dt.strftime("%Y-%m-%d %H:%M:%S")
+    except (ValueError, TypeError):
+        return iso_time[:19] if iso_time else "-"
 
 
 def render_tasks_center(*, workspace_id: str | None) -> None:
@@ -37,7 +50,7 @@ def render_tasks_center(*, workspace_id: str | None) -> None:
         task_error = task.get("error") if isinstance(task, dict) else task.error
         with st.container():
             st.markdown(f"**{task_type}** — `{task_id}`")
-            st.caption(f"Status: {task_status} • Updated: {task_updated}")
+            st.caption(f"Status: {task_status} • Updated: {_format_time(task_updated)}")
             if task_progress is not None:
                 try:
                     progress_value = float(task_progress)
@@ -53,17 +66,29 @@ def render_tasks_center(*, workspace_id: str | None) -> None:
             cols = st.columns(4)
             with cols[0]:
                 if st.button("Run", key=f"task_run_{task_id}"):
-                    run_task_in_background(task_id)
-                    st.success("Task scheduled.")
+                    try:
+                        run_task_in_background(task_id)
+                        st.success("Task scheduled.")
+                    except Exception as exc:
+                        st.error(str(exc))
             with cols[1]:
                 if st.button("Cancel", key=f"task_cancel_{task_id}"):
-                    cancel_task_by_id(task_id)
-                    st.success("Task cancelled.")
+                    try:
+                        cancel_task_by_id(task_id)
+                        st.success("Task cancelled.")
+                    except Exception as exc:
+                        st.error(str(exc))
             with cols[2]:
                 if st.button("Retry", key=f"task_retry_{task_id}"):
-                    result = retry_task_by_id(task_id)
-                    st.success("Task retried.")
+                    try:
+                        retry_task_by_id(task_id)
+                        st.success("Task retried.")
+                    except Exception as exc:
+                        st.error(str(exc))
             with cols[3]:
                 if st.button("Resume", key=f"task_resume_{task_id}"):
-                    result = resume_task_by_id(task_id)
-                    st.success("Task resumed.")
+                    try:
+                        resume_task_by_id(task_id)
+                        st.success("Task resumed.")
+                    except Exception as exc:
+                        st.error(str(exc))

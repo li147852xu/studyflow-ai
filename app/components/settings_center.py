@@ -22,17 +22,14 @@ def render_settings_center(
         st.caption(t("settings_caption", workspace_id))
         if lock_msg:
             st.info(lock_msg)
-        save_top = st.button(
-            t("save_settings_primary", workspace_id),
-            disabled=locked,
-            help=lock_msg or None,
-            type="primary",
-            key="save_settings_top",
-        )
+        stored_mode = get_setting(None, "api_mode") or "direct"
+        if stored_mode not in {"direct", "api"}:
+            stored_mode = "direct"
+        st.session_state["api_mode"] = stored_mode
         mode = st.radio(
             t("ui_mode", workspace_id),
             options=["direct", "api"],
-            index=0 if st.session_state.get("api_mode", "direct") == "direct" else 1,
+            index=0 if stored_mode == "direct" else 1,
             help=t("ui_mode_help", workspace_id),
             format_func=lambda value: t(f"ui_mode_{value}", workspace_id),
         )
@@ -146,6 +143,8 @@ def render_settings_center(
                 set_setting(None, "llm_base_url", base_url)
             if model:
                 set_setting(None, "llm_model", model)
+            if api_key:
+                set_setting(None, "llm_api_key", api_key)
             set_setting(None, "llm_temperature", str(temperature))
             set_setting(None, "api_mode", mode)
             set_setting(None, "api_base_url", api_base_url)
@@ -157,10 +156,6 @@ def render_settings_center(
             if workspace_id:
                 set_setting(workspace_id, "ui_language", ui_language)
                 set_setting(workspace_id, "output_language", output_language)
-            st.success(t("settings_saved", workspace_id))
-
-        if save_top:
-            _save_settings()
 
         st.divider()
 
@@ -292,3 +287,7 @@ def render_settings_center(
             type="primary",
         ):
             _save_settings()
+            st.success(t("settings_saved", workspace_id))
+        if st.button(t("back_to_start", workspace_id)):
+            st.session_state["active_nav"] = "Start"
+            st.rerun()

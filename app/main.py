@@ -9,7 +9,8 @@ from app.ui.pages_start import render_start_page
 from app.ui.pages_library import render_library_page
 from app.ui.pages_create import render_create_page
 from app.ui.pages_tools import render_tools_page
-from app.ui.auto_refresh import maybe_auto_refresh
+from app.ui.pages_help import render_help_page
+from app.ui.auto_refresh import maybe_auto_refresh, inject_auto_refresh
 from app.components.dialogs import confirm_action
 from app.components.inspector import (
     render_citations,
@@ -28,7 +29,6 @@ from app.components.plugins_center import render_plugins_center
 from app.components.settings_center import render_settings_center
 from app.components.exports_center import render_exports_center
 from app.components.diagnostics_center import render_diagnostics_center
-from app.components.help_center import render_help_center
 from app.components.workbench_view import render_workbench_list
 from core.config.loader import load_config, apply_profile, ConfigError
 from core.ui_state.guards import llm_ready
@@ -874,10 +874,6 @@ def render_diagnostics(center: st.delta_generator.DeltaGenerator, workspace_id: 
         render_diagnostics_center(workspace_id=workspace_id)
 
 
-def render_help_page(center: st.delta_generator.DeltaGenerator) -> None:
-    with center:
-        render_help_center()
-
 def render_history_page(center: st.delta_generator.DeltaGenerator, right: st.delta_generator.DeltaGenerator, workspace_id: str) -> None:
     with center:
         st.markdown("### History")
@@ -996,6 +992,14 @@ def main() -> None:
             inspector_col=inspector_col,
             workspace_id=workspace_id,
         )
+    elif nav == "Help":
+        render_help_page(
+            main_col=main_col,
+            inspector_col=inspector_col,
+            workspace_id=workspace_id,
+        )
+
+    inject_auto_refresh(workspace_id=workspace_id)
 
 
 if __name__ == "__main__":

@@ -393,6 +393,8 @@ def init_db() -> None:
     _ensure_column("asset_versions", "retrieval_mode", "TEXT")
     _ensure_column("asset_versions", "embed_model", "TEXT")
     _ensure_column("asset_versions", "seed", "INTEGER")
+    _ensure_column("documents", "summary", "TEXT")
+    _ensure_column("coach_sessions", "name", "TEXT")
 
     with get_connection() as connection:
         connection.execute(

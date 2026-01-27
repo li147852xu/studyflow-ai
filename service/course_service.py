@@ -265,3 +265,76 @@ def explain_selection(
     output.asset_version_id = version.id
     output.asset_version_index = version.version_index
     return output
+
+
+def answer_course_question(
+    *,
+    workspace_id: str,
+    course_id: str,
+    question: str,
+    retrieval_mode: str = "vector",
+) -> AgentOutput:
+    """Answer a question about the course content using RAG."""
+    from service.retrieval_service import answer_with_retrieval
+
+    doc_ids = list_course_doc_ids(course_id)
+    if not doc_ids:
+        raise RuntimeError("No lecture PDFs linked to this course.")
+
+    start = time.time()
+    answer, hits, used_mode = answer_with_retrieval(
+        workspace_id=workspace_id,
+        query=question,
+        mode=retrieval_mode,
+        doc_ids=doc_ids,
+    )
+    latency_ms = int((time.time() - start) * 1000)
+    meta = llm_metadata(temperature=0.2)
+    citation_ok, citation_error = check_citations(answer, hits)
+    run_id = log_run(
+        workspace_id=workspace_id,
+        action_type="course_qa",
+        input_payload={"course_id": course_id, "question": question},
+        retrieval_mode=used_mode,
+        hits=hits,
+        model=meta["model"],
+        provider=meta["provider"],
+        temperature=meta["temperature"],
+        max_tokens=meta["max_tokens"],
+        embed_model=meta["embed_model"],
+        seed=meta["seed"],
+        prompt_version="v1",
+        latency_ms=latency_ms,
+        citation_incomplete=not citation_ok,
+        errors=citation_error,
+    )
+    from core.formatting.citations import build_citation_bundle
+    bundle = build_citation_bundle(hits)
+    version = create_asset_version(
+        workspace_id=workspace_id,
+        kind="course_qa",
+        ref_id=f"course_qa:{course_id}:{question[:50]}",
+        content=answer,
+        content_type="text",
+        run_id=run_id,
+        model=meta["model"],
+        provider=meta["provider"],
+        temperature=meta["temperature"],
+        max_tokens=meta["max_tokens"],
+        retrieval_mode=used_mode,
+        embed_model=meta["embed_model"],
+        seed=meta["seed"],
+        prompt_version="v1",
+        hits=hits,
+    )
+    return AgentOutput(
+        content=answer,
+        citations=bundle.citations,
+        hits=hits,
+        retrieval_mode=used_mode,
+        run_id=run_id,
+        asset_id=version.asset_id,
+        asset_version_id=version.id,
+        asset_version_index=version.version_index,
+        prompt_version="v1",
+    )

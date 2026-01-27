@@ -1,16 +1,25 @@
 from __future__ import annotations
 
+import os
+import signal
+
 import streamlit as st
 
 from app.ui.i18n import t
 from core.ui_state.storage import get_setting, set_setting
 from app.ui.locks import running_task_summary
 from core.tasks.executor import shutdown_executor
-import os
 from service.workspace_service import create_workspace, list_workspaces
 
 
-NAV_ITEMS = ["Start", "Library", "Create", "Tools"]
+NAV_ITEMS = ["Start", "Library", "Create", "Tools", "Help"]
+
+
+def _clean_exit() -> None:
+    """Perform a clean exit by terminating the process."""
+    shutdown_executor(wait=False, cancel_futures=True)
+    # Send SIGTERM to the current process to terminate cleanly
+    os.kill(os.getpid(), signal.SIGTERM)
 
 
 def render_sidebar() -> tuple[str | None, str]:
@@ -53,14 +62,21 @@ def render_sidebar() -> tuple[str | None, str]:
             set_setting(None, "last_workspace_id", workspace_id)
 
         st.markdown(f"### {t('navigation', active_workspace)}")
+        if "active_nav" not in st.session_state:
+            st.session_state["active_nav"] = "Start"
         nav = st.radio(
             t("go_to", active_workspace),
             options=NAV_ITEMS,
             index=NAV_ITEMS.index(st.session_state.get("active_nav", "Start")),
             label_visibility="collapsed",
             format_func=lambda value: t(f"nav_{value.lower()}", active_workspace),
+            key="nav_radio",
+            on_change=lambda: st.session_state.update({"active_nav": st.session_state["nav_radio"]}),
         )
-        st.session_state["active_nav"] = nav
+        nav = st.session_state.get("active_nav", "Start")
+
+        if st.button(t("refresh_app", active_workspace)):
+            st.rerun()
 
         st.divider()
         if st.button(t("settings", active_workspace)):
@@ -70,24 +86,18 @@ def render_sidebar() -> tuple[str | None, str]:
 
         st.divider()
         if st.button(t("exit_app", active_workspace), type="primary"):
+            locked, lock_msg = running_task_summary(workspace_id)
+            if locked:
+                st.session_state["exit_has_tasks"] = True
+            else:
+                st.session_state["exit_has_tasks"] = False
             st.session_state["exit_requested"] = True
 
         if st.session_state.get("exit_requested"):
-            locked, lock_msg = running_task_summary(workspace_id)
-            if locked:
-                st.warning(lock_msg)
-                choice = st.radio(
-                    t("exit_choice", active_workspace),
-                    options=["wait", "force"],
-                    format_func=lambda value: t(f"exit_{value}", active_workspace),
-                )
-                if st.button(t("confirm_exit", active_workspace)):
-                    shutdown_executor(wait=choice == "wait")
-                    os._exit(0)
-            else:
-                if st.button(t("confirm_exit", active_workspace)):
-                    shutdown_executor(wait=True)
-                    os._exit(0)
+            if st.session_state.get("exit_has_tasks"):
+                st.warning(t("exit_tasks_running", active_workspace))
+            if st.button(t("confirm_exit", active_workspace)):
+                _clean_exit()
 
     return workspace_id, nav
 

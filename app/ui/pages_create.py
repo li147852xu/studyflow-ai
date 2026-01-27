@@ -15,10 +15,22 @@ from service.course_service import (
 from service.document_service import list_documents
 from service.retrieval_service import index_status
 from app.ui.locks import running_task_summary
-from service.tasks_service import enqueue_generate_task, run_task_in_background
+from service.tasks_service import enqueue_generate_task, run_task_in_background, list_tasks_for_workspace
 from service.recent_activity_service import list_recent_activity
 from service.asset_service import read_version_by_id
 import json
+from datetime import datetime
+
+
+def _format_time(iso_time: str | None) -> str:
+    if not iso_time:
+        return "-"
+    try:
+        dt = datetime.fromisoformat(iso_time.replace("Z", "+00:00"))
+        local_dt = dt.astimezone()
+        return local_dt.strftime("%Y-%m-%d %H:%M:%S")
+    except (ValueError, TypeError):
+        return iso_time[:19] if iso_time else "-"
 
 
 def _auto_retrieval_mode(workspace_id: str) -> str:
@@ -26,6 +38,49 @@ def _auto_retrieval_mode(workspace_id: str) -> str:
     if status.get("vector_count", 0) > 0:
         return "hybrid"
     return "bm25"
+
+
+def _latest_generate_task(*, workspace_id: str, type_prefix: str | None = None) -> dict | None:
+    """Return the most recent generate task (active or recently completed).
+    
+    Args:
+        workspace_id: The workspace ID
+        type_prefix: Optional prefix to filter tasks by type (e.g., "course", "paper", "slides")
+    """
+    tasks = list_tasks_for_workspace(workspace_id=workspace_id)
+    latest_completed = None
+    for task in tasks:
+        task_type = task.type if hasattr(task, "type") else task.get("type")
+        task_status = task.status if hasattr(task, "status") else task.get("status")
+        if not task_type or not task_type.startswith("generate_"):
+            continue
+        # Filter by type prefix if specified
+        if type_prefix:
+            action_type = task_type.replace("generate_", "")
+            if not action_type.startswith(type_prefix):
+                continue
+        payload_json = task.payload_json if hasattr(task, "payload_json") else task.get("payload_json")
+        title = None
+        if payload_json:
+            try:
+                payload = json.loads(payload_json)
+                title = (payload.get("payload") or {}).get("title")
+            except json.JSONDecodeError:
+                title = None
+        task_info = {
+            "id": task.id if hasattr(task, "id") else task.get("id"),
+            "type": task_type.replace("generate_", ""),
+            "status": task_status,
+            "progress": task.progress if hasattr(task, "progress") else task.get("progress"),
+            "error": task.error if hasattr(task, "error") else task.get("error"),
+            "title": title or task_type,
+            "updated_at": task.updated_at if hasattr(task, "updated_at") else task.get("updated_at"),
+        }
+        if task_status in {"queued", "running"}:
+            return task_info
+        if latest_completed is None:
+            latest_completed = task_info
+    return latest_completed
 
 
 def render_create_page(
@@ -66,7 +121,9 @@ def render_create_page(
             reason = ""
 
         tab_keys = ["course", "paper", "presentation"]
-        selected_tab = st.radio(
+        if "create_tab" not in st.session_state:
+            st.session_state["create_tab"] = "course"
+        st.radio(
             t("create_tabs", workspace_id),
             options=tab_keys,
             index=tab_keys.index(st.session_state.get("create_tab", "course"))
@@ -75,8 +132,10 @@ def render_create_page(
             format_func=lambda value: t(f"{value}_tab", workspace_id),
             horizontal=True,
             label_visibility="collapsed",
+            key="create_tab_radio",
+            on_change=lambda: st.session_state.update({"create_tab": st.session_state["create_tab_radio"]}),
         )
-        st.session_state["create_tab"] = selected_tab
+        selected_tab = st.session_state.get("create_tab", "course")
 
         if selected_tab == "course":
             section_title(t("step1_select_or_create_course", workspace_id))
@@ -133,12 +192,15 @@ def render_create_page(
 
             section_title(t("step3_generate", workspace_id))
             retrieval_mode = _auto_retrieval_mode(workspace_id)
-            col_a, col_b, col_c = st.columns(3)
-            with col_a:
+
+            # Course Overview
+            with st.expander(t("course_overview", workspace_id), expanded=False):
+                st.caption(t("course_overview_help", workspace_id))
                 if st.button(
-                    t("course_overview", workspace_id),
+                    t("generate_overview_btn", workspace_id),
                     disabled=locked or not ready or not selected_course_id or not linked_docs,
                     help=lock_msg or reason,
+                    key="btn_course_overview",
                 ):
                     task_id = enqueue_generate_task(
                         workspace_id=workspace_id,
@@ -156,11 +218,15 @@ def render_create_page(
                     )
                     run_task_in_background(task_id)
                     st.success(t("task_queued", workspace_id))
-            with col_b:
+
+            # Cheat Sheet
+            with st.expander(t("cheat_sheet", workspace_id), expanded=False):
+                st.caption(t("cheat_sheet_help", workspace_id))
                 if st.button(
-                    t("cheat_sheet", workspace_id),
+                    t("generate_cheatsheet_btn", workspace_id),
                     disabled=locked or not ready or not selected_course_id or not linked_docs,
                     help=lock_msg or reason,
+                    key="btn_course_cheatsheet",
                 ):
                     task_id = enqueue_generate_task(
                         workspace_id=workspace_id,
@@ -178,7 +244,47 @@ def render_create_page(
                     )
                     run_task_in_background(task_id)
                     st.success(t("task_queued", workspace_id))
-            with col_c:
+
+            # Knowledge Q&A (new feature)
+            with st.expander(t("course_qa", workspace_id), expanded=False):
+                st.caption(t("course_qa_help", workspace_id))
+                course_question = st.text_area(
+                    t("course_question_label", workspace_id),
+                    key="create_course_question",
+                    height=100,
+                    placeholder=t("course_question_placeholder", workspace_id),
+                )
+                if st.button(
+                    t("answer_question_btn", workspace_id),
+                    disabled=locked
+                    or not ready
+                    or not selected_course_id
+                    or not linked_docs
+                    or not course_question.strip(),
+                    help=lock_msg or reason,
+                    key="btn_course_qa",
+                ):
+                    task_id = enqueue_generate_task(
+                        workspace_id=workspace_id,
+                        action_type="course_qa",
+                        payload={
+                            "workspace_id": workspace_id,
+                            "course_id": selected_course_id,
+                            "question": course_question.strip(),
+                            "retrieval_mode": retrieval_mode,
+                            "title": selected_course_name,
+                        },
+                        api_mode=st.session_state.get("api_mode", "direct"),
+                        api_base_url=st.session_state.get(
+                            "api_base_url", "http://127.0.0.1:8000"
+                        ),
+                    )
+                    run_task_in_background(task_id)
+                    st.success(t("task_queued", workspace_id))
+
+            # Explain Selection
+            with st.expander(t("explain_selection", workspace_id), expanded=False):
+                st.caption(t("explain_selection_help", workspace_id))
                 explain_options = ["concept", "proof", "example", "summary"]
                 explain_mode = st.selectbox(
                     t("explain_mode", workspace_id),
@@ -192,13 +298,14 @@ def render_create_page(
                     height=120,
                 )
                 if st.button(
-                    t("explain_selection", workspace_id),
+                    t("explain_selection_btn", workspace_id),
                     disabled=locked
                     or not ready
                     or not selected_course_id
                     or not linked_docs
                     or not selection.strip(),
                     help=lock_msg or reason,
+                    key="btn_course_explain",
                 ):
                     task_id = enqueue_generate_task(
                         workspace_id=workspace_id,
@@ -220,21 +327,20 @@ def render_create_page(
                     st.success(t("task_queued", workspace_id))
 
         if selected_tab == "paper":
-            section_title(t("step1_pick_paper", workspace_id))
             if not paper_docs:
                 st.info(t("import_papers_to_continue", workspace_id))
             else:
-                selected_doc = st.selectbox(
-                    t("paper_source", workspace_id),
-                    options=[doc["id"] for doc in paper_docs],
-                    format_func=lambda doc_id: doc_map.get(doc_id, doc_id),
-                    key="create_paper_doc",
-                )
-                section_title(t("step2_generate", workspace_id))
-                col_a, col_b = st.columns(2)
-                with col_a:
+                # Single paper card generation
+                with st.expander(t("paper_card_section", workspace_id), expanded=True):
+                    st.caption(t("paper_card_help", workspace_id))
+                    selected_doc = st.selectbox(
+                        t("paper_source", workspace_id),
+                        options=[doc["id"] for doc in paper_docs],
+                        format_func=lambda doc_id: doc_map.get(doc_id, doc_id),
+                        key="create_paper_doc",
+                    )
                     if st.button(
-                        t("paper_card", workspace_id),
+                        t("generate_paper_card", workspace_id),
                         disabled=locked or not ready,
                         help=lock_msg or reason,
                     ):
@@ -254,18 +360,27 @@ def render_create_page(
                         )
                         run_task_in_background(task_id)
                         st.success(t("task_queued", workspace_id))
-                with col_b:
-                    question = st.text_input(t("comparison_question", workspace_id), key="create_paper_question")
+
+                # Multi-paper aggregation
+                with st.expander(t("paper_aggregate_section", workspace_id), expanded=False):
+                    st.caption(t("paper_aggregate_help", workspace_id))
                     multi_docs = st.multiselect(
-                        t("compare_papers", workspace_id),
+                        t("select_papers_to_compare", workspace_id),
                         options=[doc["id"] for doc in paper_docs],
                         format_func=lambda doc_id: doc_map.get(doc_id, doc_id),
                         key="create_paper_compare_docs",
+                        help=t("select_papers_help", workspace_id),
+                    )
+                    question = st.text_input(
+                        t("aggregation_question", workspace_id),
+                        key="create_paper_question",
+                        placeholder=t("aggregation_question_placeholder", workspace_id),
+                        help=t("aggregation_question_help", workspace_id),
                     )
                     if st.button(
                         t("aggregate_papers", workspace_id),
-                        disabled=locked or not ready or not multi_docs or not question.strip(),
-                        help=lock_msg or reason,
+                        disabled=locked or not ready or len(multi_docs) < 2 or not question.strip(),
+                        help=t("aggregate_button_help", workspace_id) if len(multi_docs) < 2 else (lock_msg or reason),
                     ):
                         task_id = enqueue_generate_task(
                             workspace_id=workspace_id,
@@ -290,18 +405,76 @@ def render_create_page(
             if not slides_docs:
                 st.info(t("import_docs_for_slides", workspace_id))
             else:
-                selected_doc = st.selectbox(
-                    t("slides_source", workspace_id),
-                    options=[doc["id"] for doc in slides_docs],
-                    format_func=lambda doc_id: doc_map.get(doc_id, doc_id),
-                    key="create_slides_doc",
+                doc_type_groups = {"course": [], "paper": [], "other": []}
+                for doc in slides_docs:
+                    dtype = doc.get("doc_type") or "other"
+                    doc_type_groups.get(dtype, doc_type_groups["other"]).append(doc)
+                if "slides_source_type" not in st.session_state:
+                    st.session_state["slides_source_type"] = "all"
+                st.radio(
+                    t("doc_type_filter", workspace_id),
+                    options=["all", "course", "paper", "other"],
+                    index=["all", "course", "paper", "other"].index(st.session_state.get("slides_source_type", "all")),
+                    horizontal=True,
+                    format_func=lambda v: t(f"doc_type_{v}", workspace_id) if v != "all" else t("all_docs", workspace_id),
+                    key="slides_source_type_radio",
+                    on_change=lambda: st.session_state.update({"slides_source_type": st.session_state["slides_source_type_radio"]}),
                 )
-                duration = st.selectbox(
+                source_type = st.session_state.get("slides_source_type", "all")
+                selected_doc = None
+                if source_type == "all":
+                    filtered_docs = slides_docs
+                    if filtered_docs:
+                        selected_doc = st.selectbox(
+                            t("slides_source", workspace_id),
+                            options=[doc["id"] for doc in filtered_docs],
+                            format_func=lambda doc_id: doc_map.get(doc_id, doc_id),
+                            key="create_slides_doc_all",
+                        )
+                elif source_type == "course":
+                    courses = list_courses(workspace_id)
+                    course_options = {course["name"]: course["id"] for course in courses}
+                    course_filter = st.selectbox(
+                        t("filter_by_course", workspace_id),
+                        options=["all_course_docs"] + list(course_options.keys()),
+                        format_func=lambda v: t("all_course_docs_label", workspace_id) if v == "all_course_docs" else v,
+                        key="create_slides_course_filter",
+                    )
+                    if course_filter == "all_course_docs":
+                        filtered_docs = doc_type_groups.get("course", [])
+                    else:
+                        course_id = course_options.get(course_filter)
+                        linked_docs = list_course_documents(course_id) if course_id else []
+                        linked_ids = {doc["id"] for doc in linked_docs}
+                        filtered_docs = [doc for doc in doc_type_groups.get("course", []) if doc["id"] in linked_ids]
+                    if filtered_docs:
+                        selected_doc = st.selectbox(
+                            t("slides_source", workspace_id),
+                            options=[doc["id"] for doc in filtered_docs],
+                            format_func=lambda doc_id: doc_map.get(doc_id, doc_id),
+                            key="create_slides_doc_course",
+                        )
+                    else:
+                        st.caption(t("no_docs_in_category", workspace_id))
+                else:
+                    filtered_docs = doc_type_groups.get(source_type, [])
+                    if filtered_docs:
+                        selected_doc = st.selectbox(
+                            t("slides_source", workspace_id),
+                            options=[doc["id"] for doc in filtered_docs],
+                            format_func=lambda doc_id: doc_map.get(doc_id, doc_id),
+                            key=f"create_slides_doc_{source_type}",
+                        )
+                    else:
+                        st.caption(t("no_docs_in_category", workspace_id))
+                duration = st.slider(
                     t("duration_minutes", workspace_id),
-                    options=["3", "5", "10", "20"],
-                    index=2,
+                    min_value=1,
+                    max_value=30,
+                    value=10,
+                    step=1,
                 )
-                if st.button(
+                if selected_doc and st.button(
                     t("generate_slides", workspace_id),
                     disabled=locked or not ready,
                     help=lock_msg or reason,
@@ -312,7 +485,7 @@ def render_create_page(
                         payload={
                             "workspace_id": workspace_id,
                             "doc_id": selected_doc,
-                            "duration": duration,
+                            "duration": str(duration),
                             "retrieval_mode": _auto_retrieval_mode(workspace_id),
                             "title": doc_map.get(selected_doc, ""),
                         },
@@ -324,6 +497,35 @@ def render_create_page(
                     run_task_in_background(task_id)
                     st.success(t("task_queued", workspace_id))
 
+        # Filter task and output by selected tab
+        task_type_prefix = {
+            "course": "course",
+            "paper": "paper",
+            "presentation": "slides",
+        }.get(selected_tab, None)
+        latest_task = _latest_generate_task(workspace_id=workspace_id, type_prefix=task_type_prefix)
+        if latest_task:
+            st.divider()
+            st.markdown(f"### {t('generation_status', workspace_id)}")
+            status_label = t(f"task_status_{latest_task['status']}", workspace_id)
+            st.caption(f"{latest_task['title']} · {latest_task['type']} · {status_label}")
+            if latest_task["status"] in {"queued", "running"}:
+                progress_value = latest_task.get("progress")
+                if progress_value is None:
+                    progress_value = 0.0
+                progress_value = float(progress_value)
+                if progress_value > 1:
+                    progress_value = progress_value / 100
+                st.progress(max(0.0, min(1.0, progress_value)))
+            elif latest_task["status"] == "succeeded":
+                st.success(t("task_completed", workspace_id))
+            elif latest_task["status"] == "failed":
+                st.error(t("task_failed", workspace_id))
+                if latest_task.get("error"):
+                    st.caption(latest_task["error"])
+            elif latest_task["status"] == "cancelled":
+                st.warning(t("task_cancelled", workspace_id))
+
         st.divider()
         st.markdown(f"### {t('latest_output', workspace_id)}")
         activity = list_recent_activity(workspace_id, limit=20)
@@ -332,6 +534,11 @@ def render_create_page(
             "paper": "generate_paper_",
             "presentation": "generate_slides",
         }.get(selected_tab, "")
+        source_label = {
+            "course": t("course_tab", workspace_id),
+            "paper": t("paper_tab", workspace_id),
+            "presentation": t("presentation_tab", workspace_id),
+        }.get(selected_tab, selected_tab or "-")
         match = next(
             (entry for entry in activity if entry["type"].startswith(desired_prefix)),
             None,
@@ -347,12 +554,14 @@ def render_create_page(
             version_id = ref.get("asset_version_id")
             if version_id:
                 view = read_version_by_id(version_id)
-                st.caption(f"{match['created_at']} · {match.get('title') or match['type']}")
-                st.text_area("Output", value=view.content, height=260)
+                st.caption(
+                    f"{_format_time(match['created_at'])} · {source_label} · {match.get('title') or match['type']}"
+                )
+                st.markdown(view.content)
                 st.download_button(
                     t("download_output", workspace_id),
                     data=view.content,
-                    file_name=f"{match['type']}.txt",
+                    file_name=f"{match['type']}.md",
                 )
                 if st.button(t("open_recent_activity", workspace_id)):
                     st.session_state["active_nav"] = "Tools"

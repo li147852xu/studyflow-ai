@@ -59,7 +59,7 @@ def list_documents(workspace_id: str) -> list[dict]:
         rows = connection.execute(
             """
             SELECT id, workspace_id, filename, path, doc_type, page_count,
-                   source_type, source_ref, created_at
+                   source_type, source_ref, summary, created_at
             FROM documents
             WHERE workspace_id = ?
             ORDER BY created_at DESC
@@ -74,13 +74,22 @@ def get_document(doc_id: str) -> dict | None:
         row = connection.execute(
             """
             SELECT id, workspace_id, filename, path, doc_type, sha256, page_count,
-                   source_type, source_ref, created_at
+                   source_type, source_ref, summary, created_at
             FROM documents
             WHERE id = ?
             """,
             (doc_id,),
         ).fetchone()
     return dict(row) if row else None
+
+
+def set_document_summary(*, doc_id: str, summary: str) -> None:
+    with get_connection() as connection:
+        connection.execute(
+            "UPDATE documents SET summary = ? WHERE id = ?",
+            (summary, doc_id),
+        )
+        connection.commit()
 
 
 def normalize_doc_type(doc_type: str | None) -> str:

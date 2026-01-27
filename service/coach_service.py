@@ -45,9 +45,9 @@ class CoachSessionOutput:
 
 
 def start_coach(
-    *, workspace_id: str, problem: str, retrieval_mode: str = "vector"
+    *, workspace_id: str, problem: str, retrieval_mode: str = "vector", session_name: str | None = None
 ) -> CoachSessionOutput:
-    session = create_session(workspace_id, problem)
+    session = create_session(workspace_id, problem, name=session_name)
     agent = CoachAgent(workspace_id, retrieval_mode=retrieval_mode)
     start = time.time()
     output = agent.phase_a(problem)
