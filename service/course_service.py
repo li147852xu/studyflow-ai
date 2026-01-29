@@ -279,35 +279,15 @@ def answer_course_question(
     if not doc_ids:
         raise RuntimeError("No lecture PDFs linked to this course.")
 
-    start = time.time()
-    answer, hits, used_mode = answer_with_retrieval(
+    answer, hits, citations, run_id = answer_with_retrieval(
         workspace_id=workspace_id,
         query=question,
         mode=retrieval_mode,
         doc_ids=doc_ids,
     )
-    latency_ms = int((time.time() - start) * 1000)
-    meta = llm_metadata(temperature=0.2)
-    citation_ok, citation_error = check_citations(answer, hits)
-    run_id = log_run(
-        workspace_id=workspace_id,
-        action_type="course_qa",
-        input_payload={"course_id": course_id, "question": question},
-        retrieval_mode=used_mode,
-        hits=hits,
-        model=meta["model"],
-        provider=meta["provider"],
-        temperature=meta["temperature"],
-        max_tokens=meta["max_tokens"],
-        embed_model=meta["embed_model"],
-        seed=meta["seed"],
-        prompt_version="v1",
-        latency_ms=latency_ms,
-        citation_incomplete=not citation_ok,
-        errors=citation_error,
-    )
     from core.formatting.citations import build_citation_bundle
     bundle = build_citation_bundle(hits)
+    meta = llm_metadata(temperature=0.2)
     version = create_asset_version(
         workspace_id=workspace_id,
         kind="course_qa",
@@ -319,7 +299,7 @@ def answer_course_question(
         provider=meta["provider"],
         temperature=meta["temperature"],
         max_tokens=meta["max_tokens"],
-        retrieval_mode=used_mode,
+        retrieval_mode=retrieval_mode,
         embed_model=meta["embed_model"],
         seed=meta["seed"],
         prompt_version="v1",
@@ -329,7 +309,7 @@ def answer_course_question(
         content=answer,
         citations=bundle.citations,
         hits=hits,
-        retrieval_mode=used_mode,
+        retrieval_mode=retrieval_mode,
         run_id=run_id,
         asset_id=version.asset_id,
         asset_version_id=version.id,

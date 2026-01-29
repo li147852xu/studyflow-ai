@@ -561,10 +561,11 @@ def answer_with_retrieval(
     query: str,
     mode: str = "vector",
     top_k: int = 8,
+    doc_ids: list[str] | None = None,
 ) -> tuple[str, list[Hit], list[str], str]:
     start = time.time()
     hits, used_mode = retrieve_hits_mode(
-        workspace_id=workspace_id, query=query, mode=mode, top_k=top_k
+        workspace_id=workspace_id, query=query, mode=mode, top_k=top_k, doc_ids=doc_ids
     )
     if not hits:
         raise RetrievalError("No retrieval hits found. Try another query.")
