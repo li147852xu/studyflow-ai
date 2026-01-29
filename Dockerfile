@@ -1,44 +1,37 @@
 # StudyFlow AI - Production Dockerfile
-# Multi-stage build for smaller final image
+# Single-stage build for simplicity and reliability
 
-FROM python:3.11-slim AS builder
-
-WORKDIR /app
-
-# Install build dependencies
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    build-essential \
-    && rm -rf /var/lib/apt/lists/*
-
-# Copy dependency files
-COPY pyproject.toml ./
-
-# Install dependencies
-RUN pip install --no-cache-dir --upgrade pip && \
-    pip install --no-cache-dir -e .
-
-# Final stage
 FROM python:3.11-slim
 
 WORKDIR /app
 
-# Install runtime dependencies (OCR is optional)
+# Install system dependencies
 # Note: libgl1 replaces deprecated libgl1-mesa-glx in newer Debian
 RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential \
     tesseract-ocr \
     libgl1 \
     libglib2.0-0 \
     curl \
     && rm -rf /var/lib/apt/lists/*
 
-# Copy installed packages from builder
-COPY --from=builder /usr/local/lib/python3.11/site-packages /usr/local/lib/python3.11/site-packages
-COPY --from=builder /usr/local/bin /usr/local/bin
+# Upgrade pip
+RUN pip install --no-cache-dir --upgrade pip
 
-# Copy application code
-COPY . .
+# Copy dependency file first (for better caching)
+COPY pyproject.toml README.md ./
 
-# Install the package in editable mode
+# Copy source code
+COPY app/ ./app/
+COPY cli/ ./cli/
+COPY core/ ./core/
+COPY backend/ ./backend/
+COPY service/ ./service/
+COPY infra/ ./infra/
+COPY scripts/ ./scripts/
+COPY examples/ ./examples/
+
+# Install the package
 RUN pip install --no-cache-dir -e .
 
 # Create data directory for persistent storage

@@ -1,0 +1,68 @@
+# Git
+.git
+.gitignore
+
+# Python
+__pycache__
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.egg-info
+*.egg
+dist
+build
+.venv
+venv
+env
+
+# IDE
+.idea
+.vscode
+*.swp
+*.swo
+
+# Testing and linting
+.pytest_cache
+.mypy_cache
+.ruff_cache
+.coverage
+htmlcov
+.tox
+.nox
+
+# Runtime data (never include in image)
+workspaces
+*.sqlite3
+*.db
+chroma*
+qdrant_data
+outputs
+runs
+exports
+cache
+history
+logs
+*.log
+*.pkl
+*.bin
+*.parquet
+
+# Environment files
+.env
+.env.*
+!.env.example
+config.toml
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Docker
+.docker-data
+
+# Temporary
+tmp
+temp
+*.tmp
+*.bak
