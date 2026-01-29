@@ -1,11 +1,16 @@
 from __future__ import annotations
 
+import json
+from datetime import datetime
+
 import streamlit as st
 
 from app.ui.components import render_inspector, section_title
 from app.ui.i18n import t
+from app.ui.locks import running_task_summary
 from core.ui_state.guards import llm_ready
 from service.api_mode_adapter import ApiModeAdapter
+from service.asset_service import read_version_by_id
 from service.course_service import (
     create_course,
     link_document,
@@ -13,13 +18,9 @@ from service.course_service import (
     list_courses,
 )
 from service.document_service import list_documents
-from service.retrieval_service import index_status
-from app.ui.locks import running_task_summary
-from service.tasks_service import enqueue_generate_task, run_task_in_background, list_tasks_for_workspace
 from service.recent_activity_service import list_recent_activity
-from service.asset_service import read_version_by_id
-import json
-from datetime import datetime
+from service.retrieval_service import index_status
+from service.tasks_service import enqueue_generate_task, list_tasks_for_workspace, run_task_in_background
 
 
 def _format_time(iso_time: str | None) -> str:
@@ -42,7 +43,7 @@ def _auto_retrieval_mode(workspace_id: str) -> str:
 
 def _latest_generate_task(*, workspace_id: str, type_prefix: str | None = None) -> dict | None:
     """Return the most recent generate task (active or recently completed).
-    
+
     Args:
         workspace_id: The workspace ID
         type_prefix: Optional prefix to filter tasks by type (e.g., "course", "paper", "slides")

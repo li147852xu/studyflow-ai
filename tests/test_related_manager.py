@@ -1,11 +1,11 @@
 import os
 from pathlib import Path
 
-from infra.models import init_db
-from infra.db import get_connection
-from service.workspace_service import create_workspace
-from service.related_service import create_related_project, update_related_project
 from core.retrieval.retriever import Hit
+from infra.db import get_connection
+from infra.models import init_db
+from service.related_service import create_related_project, update_related_project
+from service.workspace_service import create_workspace
 
 
 def _insert_document(ws_id: str, doc_id: str) -> None:

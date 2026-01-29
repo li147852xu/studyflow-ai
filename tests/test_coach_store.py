@@ -1,9 +1,9 @@
 import os
 from pathlib import Path
 
+from core.coach.store import create_session, get_session, list_sessions, update_phase_a, update_phase_b
 from infra.models import init_db
 from service.workspace_service import create_workspace
-from core.coach.store import create_session, get_session, list_sessions, update_phase_a, update_phase_b
 
 
 def test_coach_session_store(tmp_path: Path):

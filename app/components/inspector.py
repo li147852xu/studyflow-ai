@@ -2,8 +2,8 @@ from __future__ import annotations
 
 import streamlit as st
 
-from core.telemetry.run_logger import _run_dir
 from core.assets.store import get_asset
+from core.telemetry.run_logger import _run_dir
 from service.asset_service import (
     diff_versions,
     export_version_citations,

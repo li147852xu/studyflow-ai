@@ -1,12 +1,12 @@
 import os
 from pathlib import Path
 
-from infra.models import init_db
+from core.retrieval.retriever import Hit
 from infra.db import get_connection
-from service.workspace_service import create_workspace
+from infra.models import init_db
 from service.concepts_service import build_concept_cards
 from service.course_service import create_course, link_document
-from core.retrieval.retriever import Hit
+from service.workspace_service import create_workspace
 
 
 def _insert_document(ws_id: str, doc_id: str, sha256: str) -> None:

@@ -1,4 +1,4 @@
-from service.api_mode_adapter import ApiModeAdapter, TextGenerationResult, SlidesGenerationResult
+from service.api_mode_adapter import ApiModeAdapter, SlidesGenerationResult, TextGenerationResult
 
 
 def test_mode_adapter_api_response_shape(monkeypatch):

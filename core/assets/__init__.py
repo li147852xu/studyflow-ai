@@ -1,3 +1,5 @@
+from core.assets.citations import export_citations, format_citations_payload
+from core.assets.diff import diff_text
 from core.assets.store import (
     AssetRecord,
     AssetVersionRecord,
@@ -10,8 +12,6 @@ from core.assets.store import (
     save_asset_version,
     set_active_version,
 )
-from core.assets.diff import diff_text
-from core.assets.citations import export_citations, format_citations_payload
 
 __all__ = [
     "AssetRecord",

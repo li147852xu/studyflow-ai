@@ -7,10 +7,10 @@ import uuid
 import zipfile
 from pathlib import Path
 
-from infra.db import get_connection, get_workspaces_dir
-from service.workspace_service import create_workspace
-from service.retrieval_service import build_or_refresh_index
 from core.retrieval.bm25_index import build_bm25_index
+from infra.db import get_connection, get_workspaces_dir
+from service.retrieval_service import build_or_refresh_index
+from service.workspace_service import create_workspace
 
 
 def _insert_rows(table: str, rows: list[dict]) -> None:
@@ -75,7 +75,6 @@ def import_bundle(
                     mapping[old] = new_id
             return mapping
 
-        doc_map = {row["id"]: row["id"] for row in data.get("documents", [])}
         course_map = remap_ids(data.get("courses", []))
         paper_map = remap_ids(data.get("papers", []))
         asset_map = remap_ids(data.get("assets", []))

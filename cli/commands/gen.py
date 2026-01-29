@@ -3,8 +3,7 @@ from __future__ import annotations
 import typer
 
 from service.chat_service import ChatConfigError
-
-from service.course_service import generate_overview, generate_cheatsheet
+from service.course_service import generate_cheatsheet, generate_overview
 from service.paper_generate_service import generate_paper_card
 from service.presentation_service import generate_slides
 

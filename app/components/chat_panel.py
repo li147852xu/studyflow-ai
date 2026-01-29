@@ -1,18 +1,17 @@
 from __future__ import annotations
 
-import os
 import streamlit as st
 
-from core.ui_state.storage import add_history, list_history, set_setting
-from core.ui_state.guards import llm_ready
-from core.telemetry.run_logger import _run_dir, log_run
-from core.retrieval.retriever import Hit
-from service.chat_service import ChatConfigError, chat
-from service.retrieval_service import RetrievalError, answer_with_retrieval
-from service.api_mode_adapter import ApiModeAdapter, ApiModeError
-from service.metadata_service import llm_metadata
 from app.ui.locks import running_task_summary
-from service.asset_service import create_asset_version, ask_ref_id
+from core.retrieval.retriever import Hit
+from core.telemetry.run_logger import _run_dir, log_run
+from core.ui_state.guards import llm_ready
+from core.ui_state.storage import add_history, list_history, set_setting
+from service.api_mode_adapter import ApiModeAdapter, ApiModeError
+from service.asset_service import ask_ref_id, create_asset_version
+from service.chat_service import ChatConfigError, chat
+from service.metadata_service import llm_metadata
+from service.retrieval_service import RetrievalError, answer_with_retrieval
 
 
 def render_chat_panel(
@@ -124,7 +123,7 @@ def render_chat_panel(
                         else item
                         for item in hits
                     ]
-                    version = create_asset_version(
+                    create_asset_version(
                         workspace_id=workspace_id,
                         kind="ask",
                         ref_id=ask_ref_id(query.strip(), run_id),
@@ -185,7 +184,7 @@ def render_chat_panel(
                         citations_count=0,
                         run_id=run_id,
                     )
-                    version = create_asset_version(
+                    create_asset_version(
                         workspace_id=workspace_id,
                         kind="ask",
                         ref_id=ask_ref_id(query.strip(), run_id),

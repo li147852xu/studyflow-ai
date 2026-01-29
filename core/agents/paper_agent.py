@@ -4,10 +4,10 @@ from dataclasses import dataclass
 
 from core.formatting.citations import build_citation_bundle
 from core.prompts.registry import build_prompt
+from core.quality.validators import validate_paper_card
 from core.retrieval.retriever import Hit
 from service.chat_service import ChatConfigError, chat
 from service.retrieval_service import retrieve_hits_mode
-from core.quality.validators import validate_paper_card
 
 
 class PaperAgentError(RuntimeError):

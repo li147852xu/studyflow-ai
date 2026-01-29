@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from infra.db import get_connection
-from service.chat_service import chat, ChatConfigError
+from service.chat_service import ChatConfigError, chat
 from service.document_service import get_document, set_document_summary
 
 

@@ -211,5 +211,5 @@ def extract_paper_metadata(path: Path) -> PaperMetadata:
             authors=data.get("authors", "unknown"),
             year=data.get("year", "unknown"),
         )
-    except (ChatConfigError, json.JSONDecodeError) as exc:
+    except (ChatConfigError, json.JSONDecodeError):
         return PaperMetadata(title="unknown", authors="unknown", year="unknown")

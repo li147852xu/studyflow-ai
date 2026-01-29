@@ -4,14 +4,14 @@ import json
 from dataclasses import dataclass
 from pathlib import Path
 
-from infra.db import get_workspaces_dir
-from core.ui_state.storage import get_setting
-from core.prompts.course_prompts import cheatsheet_prompt, explain_prompt, overview_prompt
-from core.prompts.paper_prompts import aggregator_prompt, paper_card_prompt
-from core.prompts.slides_prompts import qa_prompt, slides_prompt
 from core.prompts.coach_prompts import coach_phase_a_prompt, coach_phase_b_prompt
 from core.prompts.concepts_prompts import concept_cards_prompt
+from core.prompts.course_prompts import cheatsheet_prompt, explain_prompt, overview_prompt
+from core.prompts.paper_prompts import aggregator_prompt, paper_card_prompt
 from core.prompts.related_prompts import related_create_prompt, related_update_prompt
+from core.prompts.slides_prompts import qa_prompt, slides_prompt
+from core.ui_state.storage import get_setting
+from infra.db import get_workspaces_dir
 
 
 @dataclass

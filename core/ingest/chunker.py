@@ -5,7 +5,6 @@ from dataclasses import dataclass
 
 from core.ingest.pdf_reader import PDFPage
 
-
 CHUNK_SIZE = 900
 CHUNK_OVERLAP = 150
 

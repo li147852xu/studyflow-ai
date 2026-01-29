@@ -1,16 +1,14 @@
 from __future__ import annotations
 
-from typing import List
-
 from pydantic import BaseModel, ValidationError, validator
 
 
 class PaperCardSchema(BaseModel):
     summary: str
-    contributions: List[str]
-    strengths: List[str]
-    weaknesses: List[str]
-    extensions: List[str]
+    contributions: list[str]
+    strengths: list[str]
+    weaknesses: list[str]
+    extensions: list[str]
 
     @validator("summary")
     def _summary_not_empty(cls, value: str) -> str:
@@ -21,8 +19,8 @@ class PaperCardSchema(BaseModel):
 
 class SlideSchema(BaseModel):
     title: str
-    bullets: List[str]
-    notes: List[str]
+    bullets: list[str]
+    notes: list[str]
 
     @validator("title")
     def _title_not_empty(cls, value: str) -> str:
@@ -32,7 +30,7 @@ class SlideSchema(BaseModel):
 
 
 class SlidesPlanSchema(BaseModel):
-    slides: List[SlideSchema]
+    slides: list[SlideSchema]
 
     @validator("slides")
     def _slides_not_empty(cls, value: list) -> list:
@@ -43,12 +41,12 @@ class SlidesPlanSchema(BaseModel):
 
 class RelatedSectionSchema(BaseModel):
     title: str
-    bullets: List[str]
+    bullets: list[str]
 
 
 class RelatedOutlineSchema(BaseModel):
-    comparison_axes: List[str]
-    sections: List[RelatedSectionSchema]
+    comparison_axes: list[str]
+    sections: list[RelatedSectionSchema]
     draft: str
 
 

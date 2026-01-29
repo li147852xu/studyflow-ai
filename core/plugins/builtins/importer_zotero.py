@@ -2,14 +2,14 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from core.external.sources import create_source, find_source, touch_source, upsert_mapping, get_mapping, list_mappings
+from core.external.sources import create_source, find_source, get_mapping, list_mappings, touch_source, upsert_mapping
 from core.external.zotero import list_pdf_attachments
 from core.plugins.base import PluginBase, PluginContext, PluginResult
 from infra.db import get_workspaces_dir
 from service.document_service import set_document_source
 from service.ingest_service import IngestError
+from service.paper_service import ensure_paper, extract_paper_metadata
 from service.tasks_service import enqueue_ingest_task, run_task_by_id
-from service.paper_service import extract_paper_metadata, ensure_paper
 
 
 class ImportZoteroPlugin(PluginBase):

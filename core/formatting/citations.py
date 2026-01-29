@@ -2,8 +2,8 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from core.retrieval.retriever import Hit
 from core.ingest.cite import build_citation
+from core.retrieval.retriever import Hit
 
 
 @dataclass

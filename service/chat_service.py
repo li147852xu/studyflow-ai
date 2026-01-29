@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import os
 
-from core.llm.client import LLMClient, LLMClientError, LLMSettings
+from core.llm.client import LLMClient, LLMSettings
 
 
 class ChatConfigError(ValueError):

@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
+from core.retrieval.bm25_index import build_bm25_index
 from core.tasks.store import (
     create_task,
     get_task,
@@ -10,10 +11,9 @@ from core.tasks.store import (
     update_progress,
     update_status,
 )
+from infra.db import get_workspaces_dir
 from service.ingest_service import ingest_pdf
 from service.retrieval_service import build_or_refresh_index
-from infra.db import get_workspaces_dir
-from core.retrieval.bm25_index import build_bm25_index
 
 
 class TaskError(RuntimeError):
@@ -122,11 +122,11 @@ def _run_ingest_index(task_id: str, payload: dict) -> dict:
 def _run_generate(task_id: str, payload: dict) -> dict:
     from service.api_mode_adapter import ApiModeAdapter
     from service.asset_service import (
-        create_asset_version,
-        course_ref_id,
         course_explain_ref_id,
-        paper_ref_id,
+        course_ref_id,
+        create_asset_version,
         paper_aggregate_ref_id,
+        paper_ref_id,
         slides_ref_id,
     )
     from service.recent_activity_service import add_activity
@@ -223,7 +223,6 @@ def _run_ask(task_id: str, payload: dict) -> dict:
     from core.retrieval.retriever import Hit
     from service.api_mode_adapter import ApiModeAdapter
     from service.asset_service import ask_ref_id, create_asset_version
-    from service.recent_activity_service import add_activity
 
     adapter = ApiModeAdapter(
         payload.get("api_mode", "direct"),

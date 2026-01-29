@@ -56,7 +56,7 @@ def main() -> int:
             data=data_a,
             save_dir=get_workspaces_dir() / workspace_id / "uploads",
         )
-        ingest_b = ingest_pdf(
+        ingest_pdf(
             workspace_id=workspace_id_b,
             filename="b.pdf",
             data=data_b,

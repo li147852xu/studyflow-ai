@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import typer
 
-from service.retrieval_service import answer_with_retrieval, retrieve_hits_mode, RetrievalError
+from service.retrieval_service import RetrievalError, answer_with_retrieval, retrieve_hits_mode
 
 
 def query(

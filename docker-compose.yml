@@ -1,0 +1,46 @@
+# StudyFlow AI - Docker Compose Configuration
+# Usage: docker compose up --build
+# UI: http://localhost:8501 | API: http://localhost:8000
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: studyflow-app
+    ports:
+      - "8501:8501"  # Streamlit UI
+      - "8000:8000"  # FastAPI (if running API mode)
+    volumes:
+      # Persistent data storage (workspaces, indexes, outputs)
+      - studyflow-data:/data/workspaces
+      # Optional: mount local examples for demo
+      - ./examples:/app/examples:ro
+    environment:
+      # LLM Configuration (set your own values)
+      - STUDYFLOW_LLM_BASE_URL=${STUDYFLOW_LLM_BASE_URL:-}
+      - STUDYFLOW_LLM_API_KEY=${STUDYFLOW_LLM_API_KEY:-}
+      - STUDYFLOW_LLM_MODEL=${STUDYFLOW_LLM_MODEL:-}
+      # Embedding model (uses local sentence-transformers by default)
+      - STUDYFLOW_EMBED_MODEL=${STUDYFLOW_EMBED_MODEL:-sentence-transformers/all-MiniLM-L6-v2}
+      # Workspace directory (inside container)
+      - STUDYFLOW_WORKSPACES_DIR=/data/workspaces
+      # OCR settings
+      - STUDYFLOW_OCR_MODE=${STUDYFLOW_OCR_MODE:-off}
+      - STUDYFLOW_OCR_THRESHOLD=${STUDYFLOW_OCR_THRESHOLD:-50}
+      # Disable tokenizers parallelism warning
+      - TOKENIZERS_PARALLELISM=false
+      # API settings (for API mode)
+      - API_TOKEN=${API_TOKEN:-}
+      - STUDYFLOW_API_BASE_URL=http://localhost:8000
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8501/_stcore/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+volumes:
+  studyflow-data:
+    driver: local

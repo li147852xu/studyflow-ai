@@ -2,11 +2,11 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from core.formatting.citations import CitationBundle, build_citation_bundle
+from core.formatting.citations import build_citation_bundle
 from core.prompts.registry import build_prompt
+from core.retrieval.retriever import Hit
 from service.chat_service import ChatConfigError, chat
 from service.retrieval_service import retrieve_hits_mode
-from core.retrieval.retriever import Hit
 
 
 class CourseAgentError(RuntimeError):

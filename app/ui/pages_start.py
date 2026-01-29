@@ -1,17 +1,62 @@
 from __future__ import annotations
 
+from pathlib import Path
+
 import streamlit as st
 
-from app.ui.components import card_header, card_footer, render_inspector
+from app.ui.components import card_footer, card_header, render_inspector
 from app.ui.i18n import t
-from core.ui_state.guards import llm_ready
+from app.ui.locks import running_task_summary
 from core.ingest.ocr import OCRSettings, ocr_available
+from core.ui_state.guards import llm_ready
 from core.ui_state.storage import get_setting
 from infra.db import get_workspaces_dir
-from service.recent_activity_service import list_recent_activity
-from service.document_service import normalize_doc_type
-from app.ui.locks import running_task_summary
 from service.api_mode_adapter import ApiModeAdapter
+from service.document_service import normalize_doc_type
+from service.recent_activity_service import list_recent_activity
+from service.tasks_service import enqueue_ingest_index_task, run_task_in_background
+
+
+def _get_demo_pdf_path() -> Path | None:
+    """Find the demo PDF in the examples directory."""
+    # Try multiple locations for the demo PDF
+    candidates = [
+        Path(__file__).parent.parent.parent / "examples" / "ml_fundamentals.pdf",
+        Path("examples") / "ml_fundamentals.pdf",
+        Path("/app/examples") / "ml_fundamentals.pdf",  # Docker path
+    ]
+    for path in candidates:
+        if path.exists():
+            return path
+    return None
+
+
+def _load_demo_data(workspace_id: str) -> str | None:
+    """Load demo PDF into the workspace and trigger processing."""
+    demo_path = _get_demo_pdf_path()
+    if not demo_path:
+        return None
+
+    # Copy demo PDF to workspace uploads
+    upload_dir = get_workspaces_dir() / workspace_id / "uploads"
+    upload_dir.mkdir(parents=True, exist_ok=True)
+    target_path = upload_dir / demo_path.name
+
+    if not target_path.exists():
+        target_path.write_bytes(demo_path.read_bytes())
+
+    # Enqueue ingest + index task
+    task_id = enqueue_ingest_index_task(
+        workspace_id=workspace_id,
+        path=str(target_path),
+        ocr_mode="off",
+        ocr_threshold=50,
+        doc_type="course",
+        save_dir=str(upload_dir),
+        write_file=False,  # Already written
+    )
+    run_task_in_background(task_id)
+    return task_id
 
 
 def _setup_checks(workspace_id: str | None) -> dict:
@@ -85,11 +130,42 @@ def render_start_page(
             st.caption(setup["ocr_reason"])
         if not setup_ok:
             st.warning(t("setup_incomplete", workspace_id))
-        if st.button(t("open_settings", workspace_id), type="primary"):
-            st.session_state["active_nav"] = "Tools"
-            st.session_state["tools_tab"] = "settings"
-            st.rerun()
 
+        # Setup action buttons
+        btn_col1, btn_col2, btn_col3 = st.columns(3)
+        with btn_col1:
+            if st.button(t("open_settings", workspace_id), type="primary", use_container_width=True):
+                st.session_state["active_nav"] = "Tools"
+                st.session_state["tools_tab"] = "settings"
+                st.rerun()
+        with btn_col2:
+            demo_available = _get_demo_pdf_path() is not None
+            if st.button(
+                t("load_demo_data", workspace_id),
+                type="secondary",
+                disabled=locked or not demo_available,
+                help=lock_msg if locked else (None if demo_available else t("demo_not_found", workspace_id)),
+                use_container_width=True,
+            ):
+                task_id = _load_demo_data(workspace_id)
+                if task_id:
+                    st.success(t("demo_loading", workspace_id))
+                    st.rerun()
+                else:
+                    st.error(t("demo_not_found", workspace_id))
+        with btn_col3:
+            if st.button(
+                t("run_doctor", workspace_id),
+                type="secondary",
+                disabled=locked,
+                help=lock_msg or None,
+                use_container_width=True,
+            ):
+                st.session_state["active_nav"] = "Tools"
+                st.session_state["tools_tab"] = "diagnostics"
+                st.rerun()
+
+        st.divider()
         col_a, col_b, col_c = st.columns(3, gap="large")
         with col_a:
             card_header(

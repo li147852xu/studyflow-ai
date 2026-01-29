@@ -4,7 +4,6 @@ import streamlit as st
 
 from core.ui_state.storage import get_setting
 
-
 _STRINGS = {
     "en": {
         "app_title": "StudyFlow-AI",
@@ -355,6 +354,12 @@ _STRINGS = {
         "task_completed": "Task completed successfully!",
         "task_failed": "Task failed.",
         "task_cancelled": "Task was cancelled.",
+        "load_demo_data": "Load Demo Data",
+        "demo_loading": "Demo data loading... Check Tasks for progress.",
+        "demo_not_found": "Demo PDF not found. Check examples/ directory.",
+        "run_doctor": "Run Doctor",
+        "retry_task": "Retry Task",
+        "error_recovery_hint": "Try: Run Doctor, Retry Task, or Rebuild Index",
     },
     "zh": {
         "app_title": "StudyFlow-AI",
@@ -705,6 +710,12 @@ _STRINGS = {
         "task_completed": "任务已成功完成！",
         "task_failed": "任务失败。",
         "task_cancelled": "任务已取消。",
+        "load_demo_data": "加载演示数据",
+        "demo_loading": "演示数据加载中...请在任务中查看进度。",
+        "demo_not_found": "未找到演示 PDF，请检查 examples/ 目录。",
+        "run_doctor": "运行诊断",
+        "retry_task": "重试任务",
+        "error_recovery_hint": "尝试：运行诊断、重试任务或重建索引",
     },
 }
 

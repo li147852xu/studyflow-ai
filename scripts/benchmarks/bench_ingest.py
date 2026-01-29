@@ -4,9 +4,9 @@ from pathlib import Path
 
 import fitz
 
-from service.workspace_service import create_workspace
-from service.tasks_service import enqueue_ingest_task, run_task_by_id
 from infra.db import get_workspaces_dir
+from service.tasks_service import enqueue_ingest_task, run_task_by_id
+from service.workspace_service import create_workspace
 
 
 def _create_pdf(path: Path, pages: int) -> None:

@@ -2,8 +2,8 @@ from __future__ import annotations
 
 import typer
 
-from service.tasks_service import enqueue_index_task, run_task_by_id
 from service.retrieval_service import index_status, vacuum_index
+from service.tasks_service import enqueue_index_task, run_task_by_id
 
 index_app = typer.Typer(help="Index management")
 

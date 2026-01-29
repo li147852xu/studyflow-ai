@@ -7,9 +7,9 @@ import typer
 from infra.db import get_workspaces_dir
 from service.workspace_service import (
     create_workspace,
+    delete_workspace,
     list_workspaces,
     rename_workspace,
-    delete_workspace,
 )
 
 workspace_app = typer.Typer(help="Workspace management")

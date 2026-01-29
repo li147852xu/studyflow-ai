@@ -4,7 +4,6 @@ import typer
 
 from service.bundle_service import bundle_export, bundle_import
 
-
 bundle_app = typer.Typer(help="Workspace bundle commands")
 
 

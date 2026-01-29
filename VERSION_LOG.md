@@ -1,5 +1,119 @@
 # VERSION LOG
 
+## V2.10.0 (2026-01-29) — Release-Grade Distribution & Usability
+
+**Goal**: Transform v2.9 into a polished, externally releasable version with one-click deployment, CI quality gates, comprehensive documentation, and 10-minute time-to-first-value.
+
+### A) Docker & One-Click Startup
+
+- **Dockerfile**: Multi-stage build with Python 3.11, Tesseract OCR, and all dependencies
+- **docker-compose.yml**: Single command deployment with persistent volumes
+- **Ports**: UI on 8501, API on 8000
+- **Environment**: All config via environment variables, no secrets in images
+- **Health checks**: Built-in container health monitoring
+
+```bash
+# Quick start
+docker compose up --build
+# Open http://localhost:8501
+```
+
+### B) GitHub Actions CI
+
+- **ci.yml**: Automated testing on push/PR to main
+- **Quality gates**:
+  - `python -m compileall .` — Syntax check
+  - `ruff check .` — Linting (pycodestyle, pyflakes, isort, bugbear, pyupgrade)
+  - `pytest -q` — Unit tests
+  - Import smoke tests for app.main, cli.main, backend.api
+- **Docker CI**: Automated Docker build verification
+- **Python versions**: 3.10 and 3.11 matrix
+
+### C) README & Documentation
+
+- **Complete rewrite** of README.md with:
+  - Clear value proposition and 5 key benefits
+  - Quick Start (Docker, 3 steps)
+  - 10-Minute Tutorial (5 steps to first output)
+  - Feature Map organized by user workflow
+  - Configuration guide (env vars, config.toml, retrieval modes, OCR)
+  - CLI Reference with all commands
+  - Troubleshooting table with common issues and solutions
+  - Architecture diagram and component overview
+  - Privacy & Local-First section
+  - Roadmap (5 items)
+  - Contributing guide
+
+- **UI Help content** (app/help_content.py):
+  - Aligned with README structure
+  - English and Chinese translations
+  - Searchable sections with code examples
+  - Troubleshooting guides
+
+### D) Usability & 10-Minute TTFV
+
+- **Start Page improvements**:
+  - Setup Checklist with LLM, Retrieval, OCR, Workspace status
+  - **Load Demo Data** button — one-click sample import
+  - **Run Doctor** button — quick diagnostics access
+  - Three-button layout: Settings, Demo, Doctor
+
+- **Demo Data**:
+  - `examples/ml_fundamentals.pdf` — 4-page ML introduction
+  - `scripts/create_demo_pdf.py` — Demo PDF generator
+  - Auto-triggers ingest + index on load
+
+- **Error Self-Recovery**:
+  - All error states show actionable buttons
+  - Run Doctor, Retry Task, Rebuild Index options
+  - User-readable error messages with next steps
+
+- **Background Tasks**:
+  - Page navigation allowed during tasks
+  - Write operations locked with clear indicator
+  - Task progress visible in Tasks center
+
+### E) Stability & Performance
+
+- **Ruff linting**: All code passes ruff check with sensible rules
+- **Code cleanup**: Fixed unused imports, variables, and type hints
+- **pyproject.toml**: Added ruff, pytest configuration
+- **.gitignore**: Comprehensive coverage of all runtime artifacts
+
+### Verification
+
+```bash
+# Full release verification
+python scripts/verify_release_v2_10.py
+
+# Individual checks
+python -m compileall .
+ruff check .
+pytest -q
+python -c "import app.main"
+docker compose build
+```
+
+### File Changes
+
+**New files**:
+- `Dockerfile`
+- `docker-compose.yml`
+- `.github/workflows/ci.yml`
+- `scripts/verify_release_v2_10.py`
+- `scripts/create_demo_pdf.py`
+- `examples/ml_fundamentals.pdf`
+
+**Modified files**:
+- `pyproject.toml` — Version 2.10.0, ruff config, pytest config
+- `README.md` — Complete rewrite
+- `.gitignore` — Expanded coverage
+- `app/help_content.py` — Aligned with README
+- `app/ui/pages_start.py` — Load Demo Data, Run Doctor buttons
+- `app/ui/i18n.py` — New translation keys
+
+---
+
 ## V2.9 (2026-01-27)
 ### New Features
 - **Document Summaries**: LLM-generated one-line descriptions for documents

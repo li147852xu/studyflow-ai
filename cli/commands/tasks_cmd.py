@@ -6,10 +6,9 @@ from service.tasks_service import (
     cancel_task_by_id,
     get_task_by_id,
     list_tasks_for_workspace,
-    retry_task_by_id,
     resume_task_by_id,
+    retry_task_by_id,
 )
-
 
 tasks_app = typer.Typer(help="Task queue commands")
 

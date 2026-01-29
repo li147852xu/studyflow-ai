@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from core.concepts.store import search_cards, list_evidence
+from core.concepts.store import list_evidence, search_cards
 from service.document_service import get_document
 
 

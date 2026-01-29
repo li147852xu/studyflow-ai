@@ -7,15 +7,14 @@ from app.components.inspector import render_citations, render_metadata, render_r
 from core.ingest.cite import build_citation
 from core.ui_state.storage import add_history, set_setting
 from infra.db import get_connection, get_workspaces_dir
+from service.api_mode_adapter import ApiModeAdapter, ApiModeError
 from service.document_service import (
-    add_document_tags,
     delete_document_by_id,
     list_document_tags,
     list_documents,
 )
 from service.ingest_service import IngestError, get_random_chunks
 from service.retrieval_service import build_or_refresh_index
-from service.api_mode_adapter import ApiModeAdapter, ApiModeError
 
 
 def _doc_preview(doc_id: str, limit: int = 2) -> list[dict]:

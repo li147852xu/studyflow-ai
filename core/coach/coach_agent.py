@@ -2,8 +2,8 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from core.formatting.citations import build_citation_bundle
 from core.coach.protocol import requires_guard
+from core.formatting.citations import build_citation_bundle
 from core.prompts.registry import build_prompt
 from core.retrieval.retriever import Hit
 from service.chat_service import ChatConfigError, chat

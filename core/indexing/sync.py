@@ -1,8 +1,7 @@
 from __future__ import annotations
 
-from infra.db import get_connection
 from core.retrieval.vector_store import VectorStore, VectorStoreSettings
-from infra.db import get_workspaces_dir
+from infra.db import get_connection, get_workspaces_dir
 
 
 def delete_document(workspace_id: str, doc_id: str) -> None:

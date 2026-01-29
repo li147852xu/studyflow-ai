@@ -1,4 +1,3 @@
-import os
 import sys
 import tempfile
 from pathlib import Path
@@ -6,12 +5,12 @@ from pathlib import Path
 import fitz
 from dotenv import load_dotenv
 
+from core.retrieval.bm25_index import build_bm25_index
 from infra.db import get_workspaces_dir
 from infra.models import init_db
 from service.ingest_service import ingest_pdf
 from service.retrieval_service import retrieve_hits_mode
 from service.workspace_service import create_workspace
-from core.retrieval.bm25_index import build_bm25_index
 
 
 def _create_temp_pdf(path: Path) -> None:
@@ -32,7 +31,7 @@ def main() -> int:
             _create_temp_pdf(pdf_path)
             data = pdf_path.read_bytes()
 
-        ingest = ingest_pdf(
+        ingest_pdf(
             workspace_id=workspace_id,
             filename="doc.pdf",
             data=data,

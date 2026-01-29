@@ -4,12 +4,12 @@ import json
 from pathlib import Path
 
 from core.external.folder_sync import scan_folder
-from core.external.sources import create_source, find_source, touch_source, upsert_mapping, get_mapping, list_mappings
+from core.external.sources import create_source, find_source, get_mapping, list_mappings, touch_source, upsert_mapping
 from core.plugins.base import PluginBase, PluginContext, PluginResult
 from infra.db import get_workspaces_dir
+from service.document_service import set_document_source
 from service.ingest_service import IngestError
 from service.tasks_service import enqueue_ingest_task, run_task_by_id
-from service.document_service import set_document_source
 
 
 class ImportFolderSyncPlugin(PluginBase):

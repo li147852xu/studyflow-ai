@@ -1,5 +1,4 @@
 import shutil
-from pathlib import Path
 
 from infra.db import get_workspaces_dir
 

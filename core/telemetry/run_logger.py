@@ -6,8 +6,8 @@ import uuid
 from dataclasses import dataclass
 from pathlib import Path
 
-from infra.db import get_workspaces_dir
 from core.retrieval.retriever import Hit
+from infra.db import get_workspaces_dir
 
 
 @dataclass

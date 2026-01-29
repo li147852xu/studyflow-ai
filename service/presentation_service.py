@@ -1,18 +1,15 @@
 from __future__ import annotations
 
-from pathlib import Path
-
-import os
 import time
 
 from core.agents.slides_agent import SlidesAgent, SlidesOutput
+from core.quality.citations_check import check_citations
 from core.telemetry.run_logger import log_run
 from infra.db import get_workspaces_dir
-from service.paper_service import list_papers
-from service.document_service import list_documents
 from service.asset_service import create_asset_version, slides_ref_id
-from core.quality.citations_check import check_citations
+from service.document_service import list_documents
 from service.metadata_service import llm_metadata
+from service.paper_service import list_papers
 
 
 def list_sources(workspace_id: str) -> list[dict]:

@@ -1,38 +1,36 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
-from pathlib import Path
 import hashlib
-
-from core.ingest.cite import build_citation
-from core.retrieval.embedder import (
-    EmbeddingError,
-    EmbeddingSettings,
-    build_embedding_settings,
-    embed_texts,
-)
-from core.retrieval.embedding_cache import CacheEntry, get_cached_embeddings, put_cached_embeddings
 import os
 import time
+from dataclasses import dataclass
+from pathlib import Path
 
-from core.retrieval.retriever import Hit, retrieve
-from core.retrieval.bm25_index import build_bm25_index, query_bm25, load_bm25_index
-from core.retrieval.hybrid import fuse_scores
+from core.ingest.cite import build_citation
 from core.prompts.instructions import (
     general_knowledge_label,
     grounded_label,
     language_instruction,
-    rag_balance_instruction,
     normalize_language,
+    rag_balance_instruction,
 )
-from core.telemetry.run_logger import log_run
+from core.quality.citations_check import check_citations
+from core.retrieval.bm25_index import build_bm25_index, load_bm25_index, query_bm25
+from core.retrieval.embedder import (
+    EmbeddingError,
+    build_embedding_settings,
+    embed_texts,
+)
+from core.retrieval.embedding_cache import CacheEntry, get_cached_embeddings, put_cached_embeddings
+from core.retrieval.hybrid import fuse_scores
+from core.retrieval.retriever import Hit, retrieve
 from core.retrieval.vector_store import VectorStore, VectorStoreSettings
+from core.telemetry.run_logger import log_run
+from core.ui_state.storage import get_setting
 from infra.db import get_connection, get_workspaces_dir
 from service.chat_service import ChatConfigError, chat
-from core.quality.citations_check import check_citations
-from service.metadata_service import llm_metadata
 from service.document_service import filter_doc_ids_by_types
-from core.ui_state.storage import get_setting
+from service.metadata_service import llm_metadata
 
 
 class RetrievalError(RuntimeError):
@@ -205,7 +203,7 @@ def build_or_refresh_index(
         if cache_path:
             keys = [
                 hashlib.sha256(
-                    f"{embed_settings.model}:{text}".encode("utf-8")
+                    f"{embed_settings.model}:{text}".encode()
                 ).hexdigest()
                 for text in texts
             ]

@@ -10,7 +10,6 @@ from service.coach_service import (
     submit_coach,
 )
 
-
 coach_app = typer.Typer(help="Study coach commands")
 
 

@@ -3,12 +3,11 @@ from __future__ import annotations
 import typer
 
 from service.related_service import (
-    create_related_project,
-    update_related_project,
-    export_related_project,
     RelatedServiceError,
+    create_related_project,
+    export_related_project,
+    update_related_project,
 )
-
 
 related_app = typer.Typer(help="Related work manager commands")
 

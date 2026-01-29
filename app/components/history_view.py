@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import streamlit as st
 
-from core.ui_state.storage import list_history, clear_history
+from core.ui_state.storage import clear_history, list_history
 
 
 def render_history(workspace_id: str) -> None:

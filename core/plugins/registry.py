@@ -1,19 +1,16 @@
 from __future__ import annotations
 
-from typing import Dict
-
 from core.plugins.base import PluginBase
 from core.plugins.builtins.exporter_citations import ExportCitationsPlugin
 from core.plugins.builtins.exporter_folder import ExportFolderPlugin
-from core.plugins.builtins.importer_folder import ImportFolderPlugin
-from core.plugins.builtins.importer_folder_sync import ImportFolderSyncPlugin
-from core.plugins.builtins.importer_zotero import ImportZoteroPlugin
 from core.plugins.builtins.importer_arxiv import ImportArxivPlugin
 from core.plugins.builtins.importer_doi import ImportDoiPlugin
+from core.plugins.builtins.importer_folder import ImportFolderPlugin
+from core.plugins.builtins.importer_folder_sync import ImportFolderSyncPlugin
 from core.plugins.builtins.importer_url import ImportUrlPlugin
+from core.plugins.builtins.importer_zotero import ImportZoteroPlugin
 
-
-_REGISTRY: Dict[str, PluginBase] = {}
+_REGISTRY: dict[str, PluginBase] = {}
 
 
 def register(plugin: PluginBase) -> None:

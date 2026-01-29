@@ -21,18 +21,18 @@ def test_api_endpoints(tmp_path: Path, monkeypatch):
     monkeypatch.setenv("STUDYFLOW_LLM_MODEL", "test")
     monkeypatch.setenv("STUDYFLOW_LLM_API_KEY", "test")
 
-    import service.chat_service as chat_service
-    import service.retrieval_service as retrieval_service
     import core.agents.paper_agent as paper_agent
     import core.coach.coach_agent as coach_agent
+    import service.chat_service as chat_service
+    import service.retrieval_service as retrieval_service
 
     monkeypatch.setattr(chat_service, "chat", lambda *args, **kwargs: "ok")
     monkeypatch.setattr(retrieval_service, "chat", lambda *args, **kwargs: "ok")
     monkeypatch.setattr(paper_agent, "chat", lambda *args, **kwargs: "ok")
     monkeypatch.setattr(coach_agent, "chat", lambda *args, **kwargs: "ok")
 
-    from infra.models import init_db
     from backend.api import app
+    from infra.models import init_db
 
     init_db()
     client = TestClient(app)

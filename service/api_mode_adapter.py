@@ -6,12 +6,12 @@ from dataclasses import dataclass
 
 import requests
 
+from service.course_service import explain_selection, generate_cheatsheet, generate_overview
 from service.ingest_service import ingest_pdf
+from service.paper_generate_service import aggregate_papers, generate_paper_card
 from service.paper_service import ingest_paper
-from service.retrieval_service import answer_with_retrieval
-from service.course_service import generate_cheatsheet, generate_overview, explain_selection
-from service.paper_generate_service import generate_paper_card, aggregate_papers
 from service.presentation_service import generate_slides
+from service.retrieval_service import answer_with_retrieval
 
 
 class ApiModeError(RuntimeError):

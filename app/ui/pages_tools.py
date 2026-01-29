@@ -2,17 +2,17 @@ from __future__ import annotations
 
 import streamlit as st
 
-from app.ui.components import render_inspector, section_title, run_with_progress
-from app.ui.i18n import t
-from core.ui_state.guards import llm_ready
-from service.coach_service import list_coach_sessions, start_coach, submit_coach, show_coach_session
-from service.retrieval_service import index_status
-from app.components.tasks_center import render_tasks_center
+from app.components.diagnostics_center import render_diagnostics_center
 from app.components.exports_center import render_exports_center
 from app.components.plugins_center import render_plugins_center
-from app.components.diagnostics_center import render_diagnostics_center
-from app.components.settings_center import render_settings_center
 from app.components.recent_activity_view import render_recent_activity
+from app.components.settings_center import render_settings_center
+from app.components.tasks_center import render_tasks_center
+from app.ui.components import render_inspector, run_with_progress, section_title
+from app.ui.i18n import t
+from core.ui_state.guards import llm_ready
+from service.coach_service import list_coach_sessions, show_coach_session, start_coach, submit_coach
+from service.retrieval_service import index_status
 
 
 def render_tools_page(

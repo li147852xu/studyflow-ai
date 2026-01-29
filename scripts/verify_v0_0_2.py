@@ -1,4 +1,3 @@
-import os
 import sys
 import tempfile
 from pathlib import Path
@@ -8,7 +7,7 @@ import fitz
 from core.ingest.cite import build_citation
 from infra.db import get_workspaces_dir
 from infra.models import init_db
-from service.ingest_service import IngestError, ingest_pdf, get_random_chunks
+from service.ingest_service import IngestError, get_random_chunks, ingest_pdf
 from service.workspace_service import create_workspace, list_workspaces
 
 

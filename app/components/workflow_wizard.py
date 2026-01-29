@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import streamlit as st
 
-
 WORKFLOW_LABELS = {
     "courses": "Course Sprint",
     "papers": "Paper Review",

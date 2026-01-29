@@ -1,21 +1,20 @@
 from __future__ import annotations
 
-import os
 import time
 
-from core.concepts.builder import build_concepts, ConceptsBuildError
+from core.concepts.builder import build_concepts
 from core.concepts.store import (
-    create_card,
     add_evidence,
+    create_card,
     get_processing_mark,
     upsert_processing_mark,
 )
-from core.telemetry.run_logger import log_run
 from core.ingest.cite import build_citation
+from core.telemetry.run_logger import log_run
 from service.course_service import list_course_doc_ids
 from service.document_service import get_document
-from service.paper_service import list_papers
 from service.metadata_service import llm_metadata
+from service.paper_service import list_papers
 
 
 class ConceptsServiceError(RuntimeError):

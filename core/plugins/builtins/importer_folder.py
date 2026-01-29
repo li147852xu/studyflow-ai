@@ -3,8 +3,8 @@ from __future__ import annotations
 from pathlib import Path
 
 from core.plugins.base import PluginBase, PluginContext, PluginResult
-from service.ingest_service import ingest_pdf, IngestError
 from infra.db import get_workspaces_dir
+from service.ingest_service import IngestError, ingest_pdf
 
 
 class ImportFolderPlugin(PluginBase):

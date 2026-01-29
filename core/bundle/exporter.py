@@ -6,9 +6,9 @@ import tempfile
 import zipfile
 from pathlib import Path
 
-from infra.db import get_connection, get_workspaces_dir
 from core.bundle.manifest import build_manifest, dump_manifest
 from core.bundle.sanitizer import sanitize_dict
+from infra.db import get_connection, get_workspaces_dir
 
 
 def _fetch_rows(query: str, params: tuple) -> list[dict]:

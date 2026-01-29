@@ -1,12 +1,12 @@
 import os
+import subprocess
 import sys
 import tempfile
-import subprocess
 from pathlib import Path
 
 import fitz
 
-from infra.db import get_connection, get_workspaces_dir
+from infra.db import get_workspaces_dir
 from service.tasks_service import enqueue_ingest_task
 
 

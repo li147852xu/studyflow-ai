@@ -6,11 +6,10 @@ import signal
 import streamlit as st
 
 from app.ui.i18n import t
-from core.ui_state.storage import get_setting, set_setting
 from app.ui.locks import running_task_summary
 from core.tasks.executor import shutdown_executor
+from core.ui_state.storage import get_setting, set_setting
 from service.workspace_service import create_workspace, list_workspaces
-
 
 NAV_ITEMS = ["Start", "Library", "Create", "Tools", "Help"]
 

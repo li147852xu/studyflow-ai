@@ -3,8 +3,7 @@ from __future__ import annotations
 import typer
 
 from core.concepts.search import search_with_evidence
-from service.concepts_service import build_concept_cards, ConceptsServiceError
-
+from service.concepts_service import ConceptsServiceError, build_concept_cards
 
 concepts_app = typer.Typer(help="Concept cards commands")
 

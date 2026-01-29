@@ -11,8 +11,8 @@ from app.components.library_view import render_library_view
 from app.components.sidebar import render_sidebar
 from app.components.workbench_view import render_workbench_list
 from core.ui_state.storage import add_history, get_setting, list_history, set_setting
-from infra.models import init_db
 from infra.db import get_workspaces_dir
+from infra.models import init_db
 from service.document_service import list_documents
 from service.ingest_service import ingest_pdf
 from service.workspace_service import create_workspace, list_workspaces

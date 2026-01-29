@@ -5,9 +5,10 @@ import tempfile
 import zipfile
 from pathlib import Path
 
+from core.assets import get_asset_by_ref
 from core.packs.manifest import build_manifest, dump_manifest
-from service.asset_service import export_version_citations, get_asset_by_ref, list_versions, read_version
 from infra.db import get_workspaces_dir
+from service.asset_service import export_version_citations, list_versions, read_version
 
 
 def build_exam_pack(

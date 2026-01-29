@@ -1,14 +1,14 @@
 import os
+import subprocess
 import sys
 import tempfile
-import subprocess
 from pathlib import Path
 
 import fitz
 
+from core.parsing.metadata import PaperMetadata
 from infra.db import get_connection
 from service.paper_service import ensure_paper
-from core.parsing.metadata import PaperMetadata
 
 
 def _run(cmd: list[str]) -> None:

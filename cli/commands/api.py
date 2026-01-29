@@ -3,9 +3,9 @@ from __future__ import annotations
 import os
 import socket
 
+import requests
 import typer
 import uvicorn
-import requests
 
 from backend.api import app
 

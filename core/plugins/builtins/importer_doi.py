@@ -1,11 +1,11 @@
 from __future__ import annotations
 
-from core.external.downloader import download_doi, DownloadError
+from core.external.downloader import DownloadError, download_doi
 from core.external.sources import create_source, find_source, touch_source, upsert_mapping
 from core.plugins.base import PluginBase, PluginContext, PluginResult
 from infra.db import get_workspaces_dir
 from service.document_service import set_document_source
-from service.ingest_service import ingest_pdf, IngestError
+from service.ingest_service import IngestError, ingest_pdf
 
 
 class ImportDoiPlugin(PluginBase):

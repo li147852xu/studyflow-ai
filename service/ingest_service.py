@@ -6,13 +6,13 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
 
-from core.ingest.chunker import Chunk, chunk_pages
-from core.ingest.pdf_reader import PDFReadError, read_pdf
-from core.ingest.ocr import OCRSettings
 from core.indexing.planner import plan_document
 from core.indexing.sync import delete_document, delete_document_vectors
+from core.ingest.chunker import Chunk, chunk_pages
+from core.ingest.ocr import OCRSettings
+from core.ingest.pdf_reader import PDFReadError, read_pdf
 from core.retrieval.bm25_index import build_bm25_index
-from infra.db import get_connection, get_workspaces_dir
+from infra.db import get_connection
 from service.document_service import normalize_doc_type
 
 

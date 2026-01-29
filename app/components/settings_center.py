@@ -5,10 +5,10 @@ import os
 import requests
 import streamlit as st
 
-from core.ui_state.storage import get_setting, set_setting
-from infra.db import get_workspaces_dir
 from app.ui.i18n import t
 from app.ui.locks import running_task_summary
+from core.ui_state.storage import get_setting, set_setting
+from infra.db import get_workspaces_dir
 
 
 def render_settings_center(
@@ -182,7 +182,7 @@ def render_settings_center(
             except requests.RequestException as exc:
                 st.error(t("api_ping_failed", workspace_id).format(error=exc))
         if st.button(t("test_llm", workspace_id), disabled=locked, help=lock_msg or None):
-            from service.chat_service import chat, ChatConfigError
+            from service.chat_service import ChatConfigError, chat
 
             try:
                 response = chat(
@@ -204,9 +204,9 @@ def render_settings_center(
 
         if st.button(t("test_embedding", workspace_id), disabled=locked, help=lock_msg or None):
             from core.retrieval.embedder import (
+                EmbeddingError,
                 build_embedding_settings,
                 embed_texts,
-                EmbeddingError,
             )
 
             try:
@@ -247,9 +247,10 @@ def render_settings_center(
                 disabled=locked,
                 help=lock_msg or None,
             ):
-                from service.workspace_service import list_workspaces, delete_workspace, create_workspace
-                from pathlib import Path
                 import shutil
+                from pathlib import Path
+
+                from service.workspace_service import create_workspace, delete_workspace, list_workspaces
 
                 keep_name = "test1"
                 workspaces = list_workspaces()

@@ -5,18 +5,17 @@ from pathlib import Path
 import streamlit as st
 
 from app.adapters import facade
-from app.ui.components import card_footer, card_header, render_inspector, section_title, run_with_progress
+from app.ui.components import card_footer, card_header, render_inspector, run_with_progress, section_title
 from app.ui.i18n import t
-from core.plugins.base import PluginContext
-from core.plugins.registry import get_plugin, load_builtin_plugins
+from app.ui.locks import running_task_summary
 from core.ingest.pdf_reader import read_pdf
 from core.parsing.metadata import PaperMetadata, extract_metadata
-from service.tasks_service import enqueue_index_task, run_task_in_background
-from service.tasks_service import list_tasks_for_workspace
-from service.document_service import list_documents
+from core.plugins.base import PluginContext
+from core.plugins.registry import get_plugin, load_builtin_plugins
 from service.course_service import link_document, list_courses
+from service.document_service import list_documents
 from service.paper_service import ensure_paper
-from app.ui.locks import running_task_summary
+from service.tasks_service import enqueue_index_task, list_tasks_for_workspace, run_task_in_background
 
 
 def _doc_status(chunk_count: int, vector_ready: bool, running: bool) -> str:
@@ -482,7 +481,7 @@ def render_library_page(
         # Course sub-filter: when filtering by course type, allow selecting specific course
         course_filter = None
         if doc_type_filter == "course":
-            from service.course_service import list_courses, list_course_documents
+            from service.course_service import list_course_documents, list_courses
             courses = list_courses(workspace_id)
             if courses:
                 course_options = {"all_courses": None}
@@ -511,7 +510,7 @@ def render_library_page(
             course_linked_ids = {doc["id"] for doc in linked_docs}
         elif course_filter == "uncategorized":
             # Get all documents linked to any course
-            from service.course_service import list_courses, list_course_documents
+            from service.course_service import list_course_documents, list_courses
             courses = list_courses(workspace_id)
             all_linked = set()
             for course in courses:
@@ -608,7 +607,7 @@ def render_library_page(
             st.info(f"**{t('summary_label', workspace_id)}**: {summary}")
         else:
             if st.button(t("generate_summary", workspace_id), key="generate_summary_btn"):
-                from service.summary_service import generate_summary, SummaryError
+                from service.summary_service import SummaryError, generate_summary
                 try:
                     generated = generate_summary(doc["id"])
                     st.success(f"{t('summary_label', workspace_id)}: {generated}")

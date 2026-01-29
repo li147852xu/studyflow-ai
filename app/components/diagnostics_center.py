@@ -5,12 +5,12 @@ from contextlib import redirect_stdout
 
 import streamlit as st
 
+from app.ui.locks import running_task_summary
 from cli.commands.clean_cmd import _targets
 from cli.commands.doctor import doctor
 from infra.db import get_workspaces_dir
 from service.retrieval_service import index_status, vacuum_index
 from service.tasks_service import enqueue_index_task, run_task_in_background
-from app.ui.locks import running_task_summary
 
 
 def render_diagnostics_center(*, workspace_id: str | None) -> None:

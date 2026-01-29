@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import json
-import os
 import time
 from dataclasses import dataclass
 
@@ -16,8 +15,8 @@ from core.coach.store import (
     update_phase_b,
     write_session_file,
 )
-from core.telemetry.run_logger import log_run
 from core.quality.citations_check import check_citations
+from core.telemetry.run_logger import log_run
 from service.metadata_service import llm_metadata
 
 

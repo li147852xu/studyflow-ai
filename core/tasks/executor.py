@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-from concurrent.futures import Future, ThreadPoolExecutor
 import threading
+from concurrent.futures import Future, ThreadPoolExecutor
 
 from core.tasks.runner import run_task
 

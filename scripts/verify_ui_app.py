@@ -2,24 +2,24 @@ from __future__ import annotations
 
 import uuid
 
-from core.ui_state.storage import add_history, clear_history, get_setting, set_setting, list_history
-from service.workspace_service import create_workspace, delete_workspace
+from core.ui_state.storage import add_history, clear_history, get_setting, list_history, set_setting
 from service.retrieval_service import index_status
+from service.workspace_service import create_workspace, delete_workspace
 
 
 def _smoke_imports() -> None:
-    import app.main  # noqa: F401
-    import app.components.nav  # noqa: F401
-    import app.components.shell  # noqa: F401
-    import app.components.library_panel  # noqa: F401
-    import app.components.workflow_wizard  # noqa: F401
-    import app.components.tasks_center  # noqa: F401
-    import app.components.exports_center  # noqa: F401
-    import app.components.plugins_center  # noqa: F401
-    import app.components.settings_center  # noqa: F401
     import app.components.diagnostics_center  # noqa: F401
+    import app.components.exports_center  # noqa: F401
     import app.components.help_center  # noqa: F401
+    import app.components.library_panel  # noqa: F401
+    import app.components.nav  # noqa: F401
+    import app.components.plugins_center  # noqa: F401
     import app.components.result_viewer  # noqa: F401
+    import app.components.settings_center  # noqa: F401
+    import app.components.shell  # noqa: F401
+    import app.components.tasks_center  # noqa: F401
+    import app.components.workflow_wizard  # noqa: F401
+    import app.main  # noqa: F401
 
 
 def main() -> None:

@@ -2,9 +2,9 @@ from __future__ import annotations
 
 import os
 import time
+from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
 from functools import lru_cache
-from concurrent.futures import ThreadPoolExecutor
 
 from sentence_transformers import SentenceTransformer
 

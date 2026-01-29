@@ -5,9 +5,9 @@ from pathlib import Path
 import fitz
 
 from infra.db import get_workspaces_dir
+from service.retrieval_service import RetrievalError, retrieve_hits_mode
+from service.tasks_service import enqueue_index_task, enqueue_ingest_task, run_task_by_id
 from service.workspace_service import create_workspace
-from service.tasks_service import enqueue_ingest_task, run_task_by_id, enqueue_index_task
-from service.retrieval_service import retrieve_hits_mode, RetrievalError
 
 
 def _create_pdf(path: Path, pages: int) -> None:

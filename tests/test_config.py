@@ -1,7 +1,7 @@
 import os
 from pathlib import Path
 
-from core.config.loader import load_config, apply_profile
+from core.config.loader import apply_profile, load_config
 
 
 def test_config_loader(tmp_path: Path, monkeypatch):

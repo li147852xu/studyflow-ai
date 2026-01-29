@@ -1,10 +1,10 @@
-import os
 import json
+import os
 from pathlib import Path
 
+from core.prompts.registry import build_prompt
 from infra.models import init_db
 from service.workspace_service import create_workspace
-from core.prompts.registry import build_prompt
 
 
 def test_prompts_registry_override(tmp_path: Path):

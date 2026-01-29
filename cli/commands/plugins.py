@@ -2,9 +2,8 @@ from __future__ import annotations
 
 import typer
 
-from core.plugins.registry import load_builtin_plugins, list_plugins, get_plugin
 from core.plugins.base import PluginContext
-
+from core.plugins.registry import get_plugin, list_plugins, load_builtin_plugins
 
 plugins_app = typer.Typer(help="Plugins management")
 

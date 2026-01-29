@@ -2,8 +2,8 @@ from __future__ import annotations
 
 import typer
 
-from service.document_service import list_documents, delete_document_by_id
 from infra.db import get_connection
+from service.document_service import delete_document_by_id, list_documents
 
 document_app = typer.Typer(help="Document management")
 

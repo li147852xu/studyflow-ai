@@ -2,8 +2,8 @@ from __future__ import annotations
 
 import streamlit as st
 
-from infra.models import init_db
 from core.ui_state.storage import get_setting
+from infra.models import init_db
 
 
 def init_app_state() -> None:

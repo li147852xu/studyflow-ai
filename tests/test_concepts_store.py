@@ -1,17 +1,17 @@
 import os
 from pathlib import Path
 
-from infra.models import init_db
-from service.workspace_service import create_workspace
 from core.concepts.store import (
-    create_card,
     add_evidence,
+    create_card,
+    get_processing_mark,
     list_cards,
     list_evidence,
     search_cards,
     upsert_processing_mark,
-    get_processing_mark,
 )
+from infra.models import init_db
+from service.workspace_service import create_workspace
 
 
 def test_concepts_store(tmp_path: Path) -> None:

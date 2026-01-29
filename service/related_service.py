@@ -1,25 +1,24 @@
 from __future__ import annotations
 
 import json
-import os
 import time
 from pathlib import Path
 
-from core.related.manager import build_related, update_related, RelatedManagerError
+from core.quality.citations_check import check_citations
+from core.related.manager import build_related, update_related
 from core.related.store import (
-    create_project,
-    update_project,
-    replace_sections,
     add_candidates,
-    list_sections,
+    create_project,
     get_project,
+    list_sections,
+    replace_sections,
+    update_project,
 )
 from core.telemetry.run_logger import log_run
-from service.asset_service import create_asset_version
-from service.paper_service import list_papers
 from infra.db import get_workspaces_dir
-from core.quality.citations_check import check_citations
+from service.asset_service import create_asset_version
 from service.metadata_service import llm_metadata
+from service.paper_service import list_papers
 
 
 class RelatedServiceError(RuntimeError):

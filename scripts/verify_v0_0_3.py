@@ -1,4 +1,3 @@
-import os
 import sys
 import tempfile
 from pathlib import Path
@@ -7,14 +6,14 @@ import fitz
 from dotenv import load_dotenv
 
 from core.ingest.cite import build_citation
-from core.retrieval.embedder import EmbeddingError, build_embedding_settings
+from core.retrieval.embedder import build_embedding_settings
 from core.retrieval.vector_store import VectorStore, VectorStoreSettings
 from infra.db import get_workspaces_dir
 from infra.models import init_db
+from service.chat_service import ChatConfigError, chat
 from service.ingest_service import IngestError, ingest_pdf
 from service.retrieval_service import build_or_refresh_index, retrieve_hits
 from service.workspace_service import create_workspace, list_workspaces
-from service.chat_service import ChatConfigError, chat
 
 
 def _create_temp_pdf(path: Path) -> None:

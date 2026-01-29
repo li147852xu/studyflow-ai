@@ -1,4 +1,3 @@
-import os
 import sys
 import tempfile
 from pathlib import Path
@@ -6,12 +5,12 @@ from pathlib import Path
 import fitz
 from dotenv import load_dotenv
 
-from infra.models import init_db
-from infra.db import get_connection, get_workspaces_dir
-from service.workspace_service import create_workspace
-from service.ingest_service import ingest_pdf
-from core.ui_state.storage import add_history, get_setting, list_history, set_setting
 from core.ui_state.guards import llm_ready
+from core.ui_state.storage import add_history, get_setting, list_history, set_setting
+from infra.db import get_connection, get_workspaces_dir
+from infra.models import init_db
+from service.ingest_service import ingest_pdf
+from service.workspace_service import create_workspace
 
 
 def _create_pdf(path: Path) -> None:

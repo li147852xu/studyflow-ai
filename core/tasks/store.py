@@ -5,8 +5,8 @@ import uuid
 from dataclasses import dataclass
 from datetime import datetime, timezone
 
-from infra.db import get_connection
 from core.tasks.schema import TaskRecord
+from infra.db import get_connection
 
 
 def _now_iso() -> str:

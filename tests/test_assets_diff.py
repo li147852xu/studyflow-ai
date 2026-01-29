@@ -1,10 +1,10 @@
 import os
 from pathlib import Path
 
-from infra.models import init_db
-from service.workspace_service import create_workspace
-from service.asset_service import create_asset_version, diff_versions
 from core.retrieval.retriever import Hit
+from infra.models import init_db
+from service.asset_service import create_asset_version, diff_versions
+from service.workspace_service import create_workspace
 
 
 def test_assets_diff(tmp_path: Path):

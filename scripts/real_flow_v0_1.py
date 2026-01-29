@@ -1,5 +1,4 @@
 import sys
-from pathlib import Path
 
 import requests
 from dotenv import load_dotenv
@@ -10,7 +9,6 @@ from service.course_service import create_course, generate_cheatsheet, generate_
 from service.ingest_service import ingest_pdf
 from service.retrieval_service import build_or_refresh_index
 from service.workspace_service import create_workspace
-
 
 PDF_URL = "https://arxiv.org/pdf/1706.03762.pdf"
 

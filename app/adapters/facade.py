@@ -14,7 +14,7 @@ from service.document_service import (
     set_document_type,
 )
 from service.retrieval_service import index_status
-from service.tasks_service import enqueue_ingest_index_task, run_task_in_background
+from service.tasks_service import enqueue_index_task, enqueue_ingest_index_task, run_task_in_background
 from service.ui_facade import UIResult, safe_call
 
 

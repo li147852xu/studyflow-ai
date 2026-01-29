@@ -7,7 +7,6 @@ from service.asset_service import (
     diff_versions,
     export_version_citations,
     list_assets_for_workspace,
-    list_versions,
     read_version,
     set_active,
 )

@@ -3,6 +3,7 @@ from __future__ import annotations
 import streamlit as st
 
 from app.components.dialogs import confirm_action
+from core.retrieval.vector_store import VectorStore, VectorStoreSettings
 from core.ui_state.storage import get_setting, set_setting
 from infra.db import get_connection, get_workspaces_dir
 from service.workspace_service import (
@@ -11,8 +12,6 @@ from service.workspace_service import (
     list_workspaces,
     rename_workspace,
 )
-from core.retrieval.vector_store import VectorStore, VectorStoreSettings
-
 
 NAV_ITEMS = [
     "Home",

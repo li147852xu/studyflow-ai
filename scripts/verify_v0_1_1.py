@@ -8,8 +8,8 @@ from dotenv import load_dotenv
 
 from infra.db import get_workspaces_dir
 from infra.models import init_db
-from service.paper_service import ingest_paper, list_papers, add_tags
-from service.paper_generate_service import generate_paper_card, aggregate_papers
+from service.paper_generate_service import aggregate_papers, generate_paper_card
+from service.paper_service import add_tags, ingest_paper, list_papers
 from service.retrieval_service import build_or_refresh_index
 from service.workspace_service import create_workspace
 

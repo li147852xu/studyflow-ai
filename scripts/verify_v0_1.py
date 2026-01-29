@@ -10,9 +10,9 @@ from infra.db import get_workspaces_dir
 from infra.models import init_db
 from service.course_service import (
     create_course,
+    explain_selection,
     generate_cheatsheet,
     generate_overview,
-    explain_selection,
     link_document,
 )
 from service.ingest_service import ingest_pdf

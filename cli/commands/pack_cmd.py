@@ -2,8 +2,7 @@ from __future__ import annotations
 
 import typer
 
-from service.pack_service import make_pack, PackServiceError
-
+from service.pack_service import PackServiceError, make_pack
 
 pack_app = typer.Typer(help="Submission pack commands")
 

@@ -1,10 +1,10 @@
 import os
 from pathlib import Path
 
-from infra.models import init_db
-from service.workspace_service import create_workspace
-from service.asset_service import create_asset_version, list_versions, set_active, read_version
 from core.retrieval.retriever import Hit
+from infra.models import init_db
+from service.asset_service import create_asset_version, list_versions, read_version, set_active
+from service.workspace_service import create_workspace
 
 
 def test_asset_versioning(tmp_path: Path):

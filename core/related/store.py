@@ -4,8 +4,8 @@ import json
 import uuid
 from datetime import datetime, timezone
 
-from infra.db import get_connection
 from core.related.schema import RelatedProject, RelatedSection
+from infra.db import get_connection
 
 
 def _now_iso() -> str:

@@ -5,7 +5,6 @@ import typer
 from core.plugins.base import PluginContext
 from core.plugins.registry import get_plugin, load_builtin_plugins
 
-
 import_app = typer.Typer(help="External import commands")
 
 

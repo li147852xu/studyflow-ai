@@ -1,22 +1,20 @@
 from __future__ import annotations
 
+import time
 import uuid
 from datetime import datetime, timezone
 
-import os
-import time
-
-from infra.db import get_connection
-from service.document_service import get_document
-from core.agents.course_agent import CourseAgent, AgentOutput
+from core.agents.course_agent import AgentOutput, CourseAgent
+from core.quality.citations_check import check_citations
 from core.telemetry.run_logger import log_run
+from infra.db import get_connection
 from service.asset_service import (
     course_explain_ref_id,
     course_ref_id,
     create_asset_version,
 )
+from service.document_service import get_document
 from service.metadata_service import llm_metadata
-from core.quality.citations_check import check_citations
 
 
 def _now_iso() -> str:

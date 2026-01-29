@@ -6,7 +6,7 @@ from datetime import datetime
 import streamlit as st
 
 from service.asset_service import read_version_by_id
-from service.pack_service import make_pack, PackServiceError
+from service.pack_service import PackServiceError, make_pack
 from service.recent_activity_service import list_recent_activity
 from service.tasks_service import list_tasks_for_workspace
 

@@ -1,15 +1,14 @@
 from __future__ import annotations
 
-import os
 import time
 
 from core.agents.paper_agent import PaperAgent, PaperCardOutput
 from core.agents.paper_aggregator import AggregationOutput, PaperAggregator
+from core.quality.citations_check import check_citations
 from core.telemetry.run_logger import log_run
 from service.asset_service import create_asset_version, paper_aggregate_ref_id, paper_ref_id
-from core.quality.citations_check import check_citations
-from service.metadata_service import llm_metadata
 from service.document_service import filter_doc_ids_by_type, get_document
+from service.metadata_service import llm_metadata
 
 
 def generate_paper_card(

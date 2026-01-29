@@ -1,7 +1,5 @@
 import os
 import sys
-import tempfile
-from pathlib import Path
 
 import requests
 from dotenv import load_dotenv
@@ -10,7 +8,6 @@ from infra.models import init_db
 from service.chat_service import ChatConfigError, chat
 from service.document_service import save_document_bytes
 from service.workspace_service import create_workspace
-
 
 PDF_URL = "https://arxiv.org/pdf/1706.03762.pdf"
 

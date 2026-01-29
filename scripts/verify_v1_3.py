@@ -8,9 +8,9 @@ import fitz
 from fastapi.testclient import TestClient
 
 from backend.api import app
+from core.retrieval.retriever import Hit
 from infra.models import init_db
 from service.asset_service import create_asset_version, list_versions
-from core.retrieval.retriever import Hit
 
 
 def _run(cmd: list[str]) -> None:

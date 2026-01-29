@@ -8,6 +8,10 @@ from fastapi import Depends, FastAPI, Header, HTTPException
 from backend.schemas import (
     AssetVersionResponse,
     AssetVersionsResponse,
+    BundleExportRequest,
+    BundleExportResponse,
+    BundleImportRequest,
+    BundleImportResponse,
     CoachResponse,
     CoachStartRequest,
     CoachSubmitRequest,
@@ -18,13 +22,9 @@ from backend.schemas import (
     ImportResponse,
     IngestRequest,
     IngestResponse,
-    BundleExportRequest,
-    BundleExportResponse,
-    BundleImportRequest,
-    BundleImportResponse,
+    OcrStatusResponse,
     PackRequest,
     PackResponse,
-    OcrStatusResponse,
     PluginsResponse,
     PromptsResponse,
     QueryRequest,
@@ -35,20 +35,20 @@ from backend.schemas import (
 from core.assets.citations import format_citations_payload
 from core.assets.store import get_asset
 from core.ingest.ocr import OCRSettings, ocr_available
-from core.plugins.registry import load_builtin_plugins, list_plugins, get_plugin
 from core.plugins.base import PluginContext
+from core.plugins.registry import get_plugin, list_plugins, load_builtin_plugins
 from core.prompts.registry import list_prompts
 from infra.db import get_connection, get_workspaces_dir
 from infra.models import init_db
 from service.asset_service import list_versions, read_version
-from service.coach_service import start_coach, submit_coach
 from service.bundle_service import bundle_export, bundle_import
-from service.pack_service import make_pack
-from service.course_service import generate_cheatsheet, generate_overview, explain_selection
-from service.ingest_service import ingest_pdf
-from service.paper_generate_service import aggregate_papers, generate_paper_card
-from service.paper_service import ingest_paper, get_paper
+from service.coach_service import start_coach, submit_coach
+from service.course_service import explain_selection, generate_cheatsheet, generate_overview
 from service.document_service import get_document
+from service.ingest_service import ingest_pdf
+from service.pack_service import make_pack
+from service.paper_generate_service import aggregate_papers, generate_paper_card
+from service.paper_service import get_paper, ingest_paper
 from service.presentation_service import generate_slides
 from service.retrieval_service import answer_with_retrieval
 from service.workspace_service import create_workspace, list_workspaces

@@ -1,11 +1,10 @@
 from __future__ import annotations
 
 import uuid
-from dataclasses import dataclass
 from datetime import datetime, timezone
 
-from infra.db import get_connection
 from core.concepts.schema import ConceptCard, ConceptEvidence
+from infra.db import get_connection
 
 
 def _now_iso() -> str:

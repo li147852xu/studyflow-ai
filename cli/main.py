@@ -2,26 +2,26 @@ from __future__ import annotations
 
 import typer
 
-from core.config.loader import load_config, apply_profile, ConfigError
-from infra.models import init_db
+from cli.commands.api import api_app
+from cli.commands.asset import asset_app
+from cli.commands.bundle_cmd import bundle_app
+from cli.commands.clean_cmd import clean
+from cli.commands.coach import coach_app
+from cli.commands.concepts_cmd import concepts_app
 from cli.commands.doctor import doctor
-from cli.commands.workspace import workspace_app
 from cli.commands.document import document_app
+from cli.commands.gen import gen
+from cli.commands.import_cmd import import_app
 from cli.commands.index import index_app
 from cli.commands.ingest import ingest
-from cli.commands.query import query
-from cli.commands.gen import gen
-from cli.commands.asset import asset_app
-from cli.commands.api import api_app
-from cli.commands.coach import coach_app
-from cli.commands.plugins import plugins_app
-from cli.commands.import_cmd import import_app
-from cli.commands.concepts_cmd import concepts_app
-from cli.commands.related_cmd import related_app
-from cli.commands.bundle_cmd import bundle_app
 from cli.commands.pack_cmd import pack_app
+from cli.commands.plugins import plugins_app
+from cli.commands.query import query
+from cli.commands.related_cmd import related_app
 from cli.commands.tasks_cmd import tasks_app
-from cli.commands.clean_cmd import clean
+from cli.commands.workspace import workspace_app
+from core.config.loader import ConfigError, apply_profile, load_config
+from infra.models import init_db
 
 app = typer.Typer(help="StudyFlow CLI")
 

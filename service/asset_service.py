@@ -4,20 +4,19 @@ import hashlib
 import json
 from dataclasses import dataclass
 
+from core.assets.citations import export_citations, format_citations_payload
+from core.assets.diff import diff_text
 from core.assets.store import (
     AssetRecord,
     AssetVersionRecord,
     create_or_get_asset,
     get_asset,
-    get_asset_by_ref,
     list_asset_versions,
     list_assets,
     read_asset_content,
     save_asset_version,
     set_active_version,
 )
-from core.assets.diff import diff_text
-from core.assets.citations import export_citations, format_citations_payload
 from core.retrieval.retriever import Hit
 
 

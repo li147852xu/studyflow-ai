@@ -1,14 +1,14 @@
 from __future__ import annotations
 
 import os
-import sys
-import socket
 import shutil
+import socket
+import sys
 from urllib.parse import urlparse
 
 import typer
 
-from core.config.loader import load_config, apply_profile, ConfigError
+from core.config.loader import ConfigError, apply_profile, load_config
 from infra.db import get_connection, get_workspaces_dir
 from service.retrieval_service import index_status
 from service.workspace_service import list_workspaces

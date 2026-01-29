@@ -4,8 +4,8 @@ from core.prompts.instructions import (
     general_knowledge_label,
     grounded_label,
     language_instruction,
-    rag_balance_instruction,
     normalize_language,
+    rag_balance_instruction,
 )
 
 

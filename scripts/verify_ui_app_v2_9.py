@@ -6,9 +6,8 @@ from pathlib import Path
 
 import fitz
 
-from infra.db import get_workspaces_dir
+from infra.db import get_connection, get_workspaces_dir
 from infra.models import init_db
-from infra.db import get_connection
 from service.document_service import get_document, list_documents_by_type, set_document_type
 from service.ingest_service import ingest_pdf
 from service.workspace_service import create_workspace, delete_workspace, list_workspaces
@@ -69,7 +68,7 @@ def main() -> int:
     _run(["python", "-c", "import app.main"])
 
     test_ws = create_workspace("verify-temp-1")
-    test_ws2 = create_workspace("verify-temp-2")
+    _test_ws2 = create_workspace("verify-temp-2")  # noqa: F841
 
     workspaces_dir = get_workspaces_dir()
     pdf_path = workspaces_dir / test_ws / "uploads" / "verify_sample.pdf"

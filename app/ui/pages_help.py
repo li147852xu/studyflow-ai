@@ -2,9 +2,9 @@ from __future__ import annotations
 
 import streamlit as st
 
+from app.help_content import get_help_sections
 from app.ui.components import render_inspector
 from app.ui.i18n import t
-from app.help_content import get_help_sections
 
 
 def render_help_page(

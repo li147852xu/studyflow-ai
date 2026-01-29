@@ -3,34 +3,33 @@ from __future__ import annotations
 import streamlit as st
 from dotenv import load_dotenv
 
-from app.ui import apply_theme, init_app_state
-from app.ui.layout import render_main_columns, render_sidebar
-from app.ui.pages_start import render_start_page
-from app.ui.pages_library import render_library_page
-from app.ui.pages_create import render_create_page
-from app.ui.pages_tools import render_tools_page
-from app.ui.pages_help import render_help_page
-from app.ui.auto_refresh import maybe_auto_refresh, inject_auto_refresh
+from app.components.chat_panel import render_chat_panel
+from app.components.diagnostics_center import render_diagnostics_center
 from app.components.dialogs import confirm_action
+from app.components.exports_center import render_exports_center
 from app.components.inspector import (
+    render_asset_versions,
     render_citations,
     render_download,
     render_metadata,
-    render_asset_versions,
     render_run_info,
     render_section_title,
 )
-from app.components.shell import app_shell
-from app.components.nav import render_nav
 from app.components.library_panel import render_library_panel
-from app.components.workflow_wizard import render_workflow_selector, render_workflow_steps
-from app.components.tasks_center import render_tasks_center
 from app.components.plugins_center import render_plugins_center
 from app.components.settings_center import render_settings_center
-from app.components.exports_center import render_exports_center
-from app.components.diagnostics_center import render_diagnostics_center
+from app.components.tasks_center import render_tasks_center
 from app.components.workbench_view import render_workbench_list
-from core.config.loader import load_config, apply_profile, ConfigError
+from app.components.workflow_wizard import render_workflow_selector, render_workflow_steps
+from app.ui import apply_theme, init_app_state
+from app.ui.auto_refresh import inject_auto_refresh, maybe_auto_refresh
+from app.ui.layout import render_main_columns, render_sidebar
+from app.ui.pages_create import render_create_page
+from app.ui.pages_help import render_help_page
+from app.ui.pages_library import render_library_page
+from app.ui.pages_start import render_start_page
+from app.ui.pages_tools import render_tools_page
+from core.config.loader import ConfigError, apply_profile, load_config
 from core.ui_state.guards import llm_ready
 from core.ui_state.storage import (
     add_history,
@@ -40,6 +39,14 @@ from core.ui_state.storage import (
     set_setting,
 )
 from infra.db import get_workspaces_dir
+from service.api_mode_adapter import ApiModeAdapter, ApiModeError
+from service.coach_service import (
+    clear_coach_sessions,
+    list_coach_sessions,
+    show_coach_session,
+    start_coach,
+    submit_coach,
+)
 from service.course_service import (
     create_course,
     link_document,
@@ -50,14 +57,6 @@ from service.document_service import list_documents
 from service.ingest_service import IngestError
 from service.paper_service import add_tags, list_papers, list_tags
 from service.presentation_service import list_sources
-from service.api_mode_adapter import ApiModeAdapter, ApiModeError
-from service.coach_service import (
-    clear_coach_sessions,
-    list_coach_sessions,
-    show_coach_session,
-    start_coach,
-    submit_coach,
-)
 
 
 def _ensure_retrieval_mode(workspace_id: str | None) -> str:

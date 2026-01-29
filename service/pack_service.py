@@ -1,8 +1,8 @@
 from __future__ import annotations
 
-from core.packs.slides_pack import build_slides_pack
 from core.packs.exam_pack import build_exam_pack
 from core.packs.related_pack import build_related_pack
+from core.packs.slides_pack import build_slides_pack
 
 
 class PackServiceError(RuntimeError):
