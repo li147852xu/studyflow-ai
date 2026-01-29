@@ -1,9 +1,20 @@
 from __future__ import annotations
 
 import os
+import sys
 from pathlib import Path
 
-import tomllib
+# tomllib is only available in Python 3.11+
+# Use tomli as fallback for Python 3.10
+if sys.version_info >= (3, 11):
+    import tomllib
+else:
+    try:
+        import tomli as tomllib
+    except ImportError:
+        raise ImportError(
+            "tomli is required for Python < 3.11. Install with: pip install tomli"
+        )
 
 from core.config.schema import AppConfig, ProfileConfig
 
