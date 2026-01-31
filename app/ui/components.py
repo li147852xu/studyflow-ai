@@ -203,7 +203,7 @@ def citations_from_hits_json(hits_json: str | None) -> list[str]:
     return citations
 
 
-def bind_cmd_enter(*, button_label: str, key: str) -> None:
+def bind_cmd_enter(*, button_label: str, key: str | None = None) -> None:
     label = html.escape(button_label)
     components.html(
         f"""
@@ -234,7 +234,6 @@ def bind_cmd_enter(*, button_label: str, key: str) -> None:
         </script>
         """,
         height=0,
-        key=key,
     )
 
 
@@ -246,15 +245,47 @@ def render_global_notifications(workspace_id: str | None) -> None:
     if not notifications:
         return
 
-    visible = notifications[:3]
-    for notice in visible:
-        _render_notification_card(notice)
+    # All notifications are contained within the expander
+    # Show latest notification count in the header
+    latest = notifications[0] if notifications else None
+    header_text = t("notification_center", workspace_id)
+    if latest:
+        status_label = t(f"task_status_{latest.get('status', 'queued')}", workspace_id)
+        header_text = f"{header_text} · {latest.get('title', '')} ({status_label})"
 
-    overflow = notifications[3:]
-    if overflow:
-        with st.expander(t("notification_center", workspace_id), expanded=False):
-            for notice in overflow:
-                _render_notification_card(notice, compact=True)
+    # Pagination state
+    page_key = "notification_page"
+    page_size = 5
+    total_pages = max(1, (len(notifications) + page_size - 1) // page_size)
+    current_page = st.session_state.get(page_key, 1)
+    if current_page > total_pages:
+        current_page = 1
+        st.session_state[page_key] = current_page
+
+    # Default expanded to show at least the latest notification
+    with st.expander(header_text, expanded=len(notifications) > 0):
+        if not notifications:
+            st.caption(t("no_notifications", workspace_id))
+            return
+
+        # Show paginated notifications
+        start_idx = (current_page - 1) * page_size
+        end_idx = min(start_idx + page_size, len(notifications))
+        visible = notifications[start_idx:end_idx]
+
+        for notice in visible:
+            _render_notification_card(notice, compact=True)
+
+        # Pagination controls
+        if total_pages > 1:
+            cols = st.columns([1, 2, 1])
+            if cols[0].button("◀", key="notif_prev", disabled=current_page <= 1):
+                st.session_state[page_key] = current_page - 1
+                st.rerun()
+            cols[1].caption(f"{current_page} / {total_pages}")
+            if cols[2].button("▶", key="notif_next", disabled=current_page >= total_pages):
+                st.session_state[page_key] = current_page + 1
+                st.rerun()
 
 
 def _render_notification_card(notice: dict, compact: bool = False) -> None:
