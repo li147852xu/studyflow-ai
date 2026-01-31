@@ -1,6 +1,6 @@
 # StudyFlow AI
 
-**Your AI-powered, local-first study workspace for PDFs.**
+**Your AI-powered, local-first study workspace for PDFs and mainstream documents.**
 
 Transform how you study and research: import PDFs, get intelligent summaries, generate structured study materials, and receive personalized coaching—all while keeping your data private on your own machine.
 
@@ -9,7 +9,9 @@ Transform how you study and research: import PDFs, get intelligent summaries, ge
 ## Why StudyFlow AI?
 
 - **Privacy-First**: All data stays local. Your API keys are never stored on disk.
-- **Cited Outputs**: Every generated answer includes traceable references to source pages.
+- **Cited Outputs**: Every generated answer includes traceable references, with hoverable citations.
+- **Global Notifications**: Task completion toasts help you jump to results.
+- **Theme & Language**: Light/Dark switch with bilingual UI (EN/中文).
 - **Structured Assets**: Course overviews, paper cards, slides—all versioned and exportable.
 - **10-Minute Value**: Load demo data → generate your first output → export with citations.
 - **Extensible**: Plugin system for custom importers/exporters; CLI + API for automation.
@@ -83,13 +85,13 @@ docker compose up --build
 
 ### Step 3: Load Demo Data
 
-1. Go to **Start** page
+1. Go to **Home** page
 2. Click **Load Demo Data** (loads sample ML fundamentals PDF)
 3. Wait for automatic processing (ingest + index)
 
 ### Step 4: Generate Your First Output
 
-1. Go to **Create → Course**
+1. Go to **Create Studio → Course Sprint**
 2. Select or create a course (e.g., "ML Intro")
 3. Link the demo document to the course
 4. Click **Generate Course Overview**
@@ -111,8 +113,9 @@ docker compose up --build
 - **Recent Activity**: View last 10 operations with quick access
 
 ### Library
-- **Import Sources**: Upload PDFs, Zotero, arXiv, DOI, URL, or folder sync
+- **Import Sources**: Upload PDF/TXT/MD/DOCX/PPTX/HTML/images (OCR optional) or import from Zotero/arXiv/DOI/URL/folder sync
 - **Document Types**: Organize as Course, Paper, or Other
+- **Pagination & Sorting**: Search, sort, and page through larger libraries
 - **Auto-Processing**: Imports trigger automatic chunking and indexing
 - **Document Summaries**: LLM-generated one-line descriptions
 
@@ -128,14 +131,14 @@ docker compose up --build
 |-----|---------|
 | **Coach** | Two-phase study guidance (Framework → Review) |
 | **Tasks** | Background task queue with progress tracking |
-| **Settings** | LLM config, OCR, retrieval mode, language |
+| **Settings** | LLM config, OCR, retrieval mode, language, theme |
 | **Diagnostics** | Doctor checks, index rebuild, cleanup |
 | **Recent Activity** | History with output viewing and export |
 
 ### Help
 - In-app documentation with searchable sections
 - Troubleshooting guides
-- Keyboard shortcuts reference
+- Keyboard shortcuts reference (Cmd/Ctrl+Enter for Ask/Coach)
 
 ---
 

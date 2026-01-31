@@ -5,6 +5,7 @@ from datetime import datetime
 
 import streamlit as st
 
+from app.ui.i18n import t
 from service.asset_service import read_version_by_id
 from service.pack_service import PackServiceError, make_pack
 from service.recent_activity_service import list_recent_activity
@@ -35,7 +36,7 @@ def _parse_output_ref(output_ref: str | None) -> dict:
 
 
 def render_recent_activity(*, workspace_id: str) -> None:
-    st.markdown("### Recent Activity")
+    st.markdown(f"### {t('recent_activity', workspace_id)}")
     tasks = list_tasks_for_workspace(workspace_id=workspace_id)
     active_tasks = []
     for task in tasks:
@@ -62,9 +63,10 @@ def render_recent_activity(*, workspace_id: str) -> None:
             }
         )
     if active_tasks:
-        st.markdown("#### In progress")
+        st.markdown(f"#### {t('tasks_in_progress', workspace_id)}")
         for task in active_tasks:
-            st.caption(f"{task['title']} · {task['type']} · {task['status']}")
+            status_label = t(f"task_status_{task['status']}", workspace_id)
+            st.caption(f"{task['title']} · {task['type']} · {status_label}")
             if task.get("progress") is not None:
                 progress_value = float(task["progress"])
                 if progress_value > 1:
@@ -73,7 +75,7 @@ def render_recent_activity(*, workspace_id: str) -> None:
 
     entries = list_recent_activity(workspace_id, limit=30)
     if not entries:
-        st.caption("No recent activity yet.")
+        st.caption(t("no_recent_activity", workspace_id))
         return
     preferred_id = st.session_state.get("recent_activity_selected_id")
     if preferred_id and preferred_id in [entry["id"] for entry in entries]:
@@ -81,7 +83,7 @@ def render_recent_activity(*, workspace_id: str) -> None:
     else:
         default_index = 0
     selected_id = st.selectbox(
-        "Select activity",
+        t("select_activity", workspace_id),
         options=[entry["id"] for entry in entries],
         index=default_index,
         format_func=lambda entry_id: next(
@@ -98,10 +100,10 @@ def render_recent_activity(*, workspace_id: str) -> None:
     selected = next(entry for entry in entries if entry["id"] == selected_id)
     st.write(
         {
-            "Type": selected["type"],
-            "Title": selected.get("title") or "-",
-            "Status": selected.get("status") or "-",
-            "Created": _format_time(selected.get("created_at")),
+            t("activity_type", workspace_id): selected["type"],
+            t("activity_title", workspace_id): selected.get("title") or "-",
+            t("activity_status", workspace_id): selected.get("status") or "-",
+            t("created", workspace_id): _format_time(selected.get("created_at")),
         }
     )
     if selected.get("citations_summary"):
@@ -112,11 +114,11 @@ def render_recent_activity(*, workspace_id: str) -> None:
     if kind.startswith("generate_"):
         kind = kind.replace("generate_", "")
     if kind.startswith("course_"):
-        st.caption("Scope: course-only")
+        st.caption(t("scope_course_only", workspace_id))
     elif kind.startswith("paper_"):
-        st.caption("Scope: paper-only")
+        st.caption(t("scope_paper_only", workspace_id))
     elif kind == "slides":
-        st.caption("Scope: all-docs")
+        st.caption(t("scope_all_docs", workspace_id))
     if output_ref.get("path"):
         st.caption(f"Output path: {output_ref['path']}")
         return

@@ -10,7 +10,6 @@ from infra.db import get_connection, get_workspaces_dir
 from service.api_mode_adapter import ApiModeAdapter, ApiModeError
 from service.document_service import (
     delete_document_by_id,
-    list_document_tags,
     list_documents,
 )
 from service.ingest_service import IngestError, get_random_chunks
@@ -41,18 +40,10 @@ def render_library_view(
     api_adapter: ApiModeAdapter,
 ) -> None:
     docs = list_documents(workspace_id)
-    tags_map = {doc["id"]: list_document_tags(doc["id"]) for doc in docs}
-    all_tags = sorted({tag for tags in tags_map.values() for tag in tags})
 
     with left:
         st.markdown("### Library")
         search = st.text_input("Search", key="library_search", placeholder="Search documents")
-        tag_filter = st.selectbox(
-            "Tag filter",
-            options=["(all)"] + all_tags,
-            index=0,
-            help="Filter documents by tag.",
-        )
         sort_mode = st.selectbox(
             "Sort",
             options=["Newest", "Name A-Z"],
@@ -62,8 +53,6 @@ def render_library_view(
         for doc in docs:
             if search and search.lower() not in doc["filename"].lower():
                 continue
-            if tag_filter != "(all)" and tag_filter not in tags_map.get(doc["id"], []):
-                continue
             filtered.append(doc)
         if sort_mode == "Name A-Z":
             filtered = sorted(filtered, key=lambda item: item["filename"].lower())
@@ -71,15 +60,13 @@ def render_library_view(
             filtered = sorted(filtered, key=lambda item: item["created_at"], reverse=True)
 
         if not filtered:
-            st.info("No documents yet. Upload a PDF to get started.")
+            st.info("No documents yet. Upload a file to get started.")
         selected_doc_id = st.session_state.get("selected_doc_id")
         for doc in filtered:
             is_selected = doc["id"] == selected_doc_id
             with st.container():
                 st.markdown(f"**{doc['filename']}**")
                 meta = f"{doc.get('page_count') or 0} pages · {doc['created_at'][:10]}"
-                if tags_map.get(doc["id"]):
-                    meta = f"{meta} · {', '.join(tags_map[doc['id']])}"
                 st.caption(meta)
                 if st.button(
                     "Select",
@@ -96,7 +83,7 @@ def render_library_view(
             break
 
     with center:
-        st.markdown("### Upload PDFs")
+        st.markdown("### Upload documents")
         ocr_mode = st.selectbox(
             "OCR mode",
             options=["off", "auto", "on"],
@@ -113,8 +100,8 @@ def render_library_view(
             step=10,
         )
         uploads = st.file_uploader(
-            "Drop PDFs here",
-            type=["pdf"],
+            "Drop documents here",
+            type=["pdf", "txt", "md", "docx", "pptx", "html", "htm", "png", "jpg", "jpeg"],
             accept_multiple_files=True,
         )
         if st.button(
@@ -238,6 +225,7 @@ def render_library_view(
                 page_start=chunk["page_start"],
                 page_end=chunk["page_end"],
                 text=chunk["text"],
+                file_type=selected_doc.get("file_type"),
             )
             citations.append(citation.render())
         render_citations(citations)

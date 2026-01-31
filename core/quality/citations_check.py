@@ -31,6 +31,7 @@ def check_citations(content: str, hits: list[Hit]) -> tuple[bool, str | None]:
             page_start=hit.page_start,
             page_end=hit.page_end,
             text=hit.text,
+            file_type=hit.file_type,
         )
         if not citation.snippet:
             return False, f"Citation {idx} snippet could not be built."

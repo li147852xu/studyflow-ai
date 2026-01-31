@@ -4,13 +4,13 @@ from pathlib import Path
 
 from core.plugins.base import PluginBase, PluginContext, PluginResult
 from infra.db import get_workspaces_dir
-from service.ingest_service import IngestError, ingest_pdf
+from service.ingest_service import IngestError, ingest_document
 
 
 class ImportFolderPlugin(PluginBase):
     name = "importer_folder"
     version = "1.0.0"
-    description = "Import all PDFs from a folder into the workspace."
+    description = "Import supported files from a folder into the workspace."
 
     def run(self, context: PluginContext) -> PluginResult:
         folder = context.args.get("path")
@@ -22,16 +22,30 @@ class ImportFolderPlugin(PluginBase):
         path = Path(folder)
         if not path.exists():
             return PluginResult(ok=False, message="Folder not found.")
-        pdfs = list(path.glob("*.pdf"))
-        if not pdfs:
-            return PluginResult(ok=True, message="No PDF files found.", data={"count": 0})
+        supported_exts = {
+            ".pdf",
+            ".txt",
+            ".md",
+            ".docx",
+            ".pptx",
+            ".html",
+            ".htm",
+            ".png",
+            ".jpg",
+            ".jpeg",
+        }
+        files = [entry for entry in path.iterdir() if entry.suffix.lower() in supported_exts]
+        if not files:
+            return PluginResult(
+                ok=True, message="No supported files found.", data={"count": 0}
+            )
         count = 0
-        for pdf in pdfs:
+        for doc_path in files:
             try:
-                ingest_pdf(
+                ingest_document(
                     workspace_id=context.workspace_id,
-                    filename=pdf.name,
-                    data=pdf.read_bytes(),
+                    filename=doc_path.name,
+                    data=doc_path.read_bytes(),
                     save_dir=get_workspaces_dir() / context.workspace_id / "uploads",
                     ocr_mode=ocr_mode,
                     ocr_threshold=ocr_threshold,
@@ -40,4 +54,6 @@ class ImportFolderPlugin(PluginBase):
                 count += 1
             except IngestError:
                 continue
-        return PluginResult(ok=True, message=f"Imported {count} PDFs.", data={"count": count})
+        return PluginResult(
+            ok=True, message=f"Imported {count} files.", data={"count": count}
+        )

@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import json
+
 import streamlit as st
 
 from app.components.diagnostics_center import render_diagnostics_center
@@ -8,7 +10,13 @@ from app.components.plugins_center import render_plugins_center
 from app.components.recent_activity_view import render_recent_activity
 from app.components.settings_center import render_settings_center
 from app.components.tasks_center import render_tasks_center
-from app.ui.components import render_inspector, run_with_progress, section_title
+from app.ui.components import (
+    bind_cmd_enter,
+    render_answer_with_citations,
+    render_inspector,
+    run_with_progress,
+    section_title,
+)
 from app.ui.i18n import t
 from core.ui_state.guards import llm_ready
 from service.coach_service import list_coach_sessions, show_coach_session, start_coach, submit_coach
@@ -75,11 +83,13 @@ def render_tools_page(
                 t("problem_statement", workspace_id),
                 height=140,
                 key="tools_coach_problem",
+                help=t("problem_help", workspace_id),
             )
             session_name = st.text_input(
                 t("session_name_label", workspace_id),
                 placeholder=t("session_name_placeholder", workspace_id),
                 key="tools_coach_session_name",
+                help=t("session_name_help", workspace_id),
             )
             if st.button(
                 t("start_coaching", workspace_id),
@@ -96,7 +106,11 @@ def render_tools_page(
                     st.session_state["tools_coach_session_id"] = result.session.id
                     st.session_state["tools_coach_output"] = result.output
                     st.success(t("phase_a_complete", workspace_id))
-                    st.write(result.output.content)
+                    render_answer_with_citations(
+                        text=result.output.content,
+                        citations=result.output.citations,
+                        workspace_id=workspace_id,
+                    )
 
                 ok, _ = run_with_progress(
                     label=t("llm_generating", workspace_id).format(model=model_name),
@@ -131,6 +145,38 @@ def render_tools_page(
                 key="tools_coach_session_select",
             )
 
+            if selected_session and selected_session != "(none)":
+                session = session_map.get(selected_session)
+                if session:
+                    with st.expander(t("session_details", workspace_id), expanded=True):
+                        st.caption(f"{t('problem_statement', workspace_id)}: {session.problem}")
+                        citations = []
+                        if session.citations_json:
+                            try:
+                                citations = json.loads(session.citations_json)
+                            except json.JSONDecodeError:
+                                citations = []
+                        with st.container(height=260):
+                            st.markdown(f"**{t('phase_a_output', workspace_id)}**")
+                            if session.phase_a_output:
+                                render_answer_with_citations(
+                                    text=session.phase_a_output,
+                                    citations=None,
+                                    workspace_id=workspace_id,
+                                )
+                            else:
+                                st.caption(t("no_output", workspace_id))
+                            st.divider()
+                            st.markdown(f"**{t('phase_b_output', workspace_id)}**")
+                            if session.phase_b_output:
+                                render_answer_with_citations(
+                                    text=session.phase_b_output,
+                                    citations=citations,
+                                    workspace_id=workspace_id,
+                                )
+                            else:
+                                st.caption(t("phase_b_pending", workspace_id))
+
             # Rename session
             if selected_session and selected_session != "(none)":
                 with st.expander(t("rename_session", workspace_id)):
@@ -151,6 +197,7 @@ def render_tools_page(
                 t("your_answer", workspace_id),
                 height=140,
                 key="tools_coach_answer",
+                help=t("answer_help", workspace_id),
             )
             if st.button(
                 t("submit_answer", workspace_id),
@@ -167,7 +214,11 @@ def render_tools_page(
                     st.session_state["tools_coach_session_id"] = result.session.id
                     st.session_state["tools_coach_output"] = result.output
                     st.success(t("phase_b_complete", workspace_id))
-                    st.write(result.output.content)
+                    render_answer_with_citations(
+                        text=result.output.content,
+                        citations=result.output.citations,
+                        workspace_id=workspace_id,
+                    )
 
                 ok, _ = run_with_progress(
                     label=t("llm_generating", workspace_id).format(model=model_name),
@@ -179,6 +230,10 @@ def render_tools_page(
                     output = st.session_state.get("tools_coach_output")
                     if output:
                         citations = output.citations
+            bind_cmd_enter(
+                button_label=t("submit_answer", workspace_id),
+                key="coach_submit_shortcut",
+            )
 
         if selected_tab == "tasks":
             render_tasks_center(workspace_id=workspace_id)

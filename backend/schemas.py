@@ -35,6 +35,9 @@ class IngestResponse(BaseModel):
     filename: str
     path: str
     doc_type: str | None = None
+    file_type: str | None = None
+    size_bytes: int | None = None
+    source: str | None = None
     sha256: str
     page_count: int
     chunk_count: int

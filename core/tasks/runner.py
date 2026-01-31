@@ -12,7 +12,7 @@ from core.tasks.store import (
     update_status,
 )
 from infra.db import get_workspaces_dir
-from service.ingest_service import ingest_pdf
+from service.ingest_service import ingest_document
 from service.retrieval_service import build_or_refresh_index
 
 
@@ -51,10 +51,10 @@ def _stop_check(task_id: str) -> callable:
 
 
 def _run_ingest(task_id: str, payload: dict) -> dict:
-    pdf_path = Path(payload["path"])
-    if not pdf_path.exists():
-        raise TaskError("PDF path does not exist.")
-    data = pdf_path.read_bytes()
+    file_path = Path(payload["path"])
+    if not file_path.exists():
+        raise TaskError("File path does not exist.")
+    data = file_path.read_bytes()
     save_dir = (
         Path(payload["save_dir"])
         if payload.get("save_dir")
@@ -63,9 +63,9 @@ def _run_ingest(task_id: str, payload: dict) -> dict:
     existing_path = (
         Path(payload["existing_path"]) if payload.get("existing_path") else None
     )
-    result = ingest_pdf(
+    result = ingest_document(
         workspace_id=payload["workspace_id"],
-        filename=pdf_path.name,
+        filename=file_path.name,
         data=data,
         save_dir=save_dir,
         write_file=payload.get("write_file", True),

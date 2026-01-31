@@ -5,10 +5,9 @@ from pathlib import Path
 from core.ui_state.storage import list_history
 from infra.db import get_connection, get_workspaces_dir
 from service.document_service import (
-    add_document_tags,
+    count_documents,
     delete_document_by_id,
     get_document,
-    list_document_tags,
     list_documents,
     list_documents_by_type,
     set_document_type,
@@ -64,24 +63,49 @@ def workspace_status(workspace_id: str) -> UIResult:
     return safe_call(index_status, hint="Index status unavailable.", workspace_id=workspace_id)
 
 
-def list_documents_with_tags(workspace_id: str) -> UIResult:
+def list_documents_with_tags(
+    workspace_id: str,
+    *,
+    limit: int | None = None,
+    offset: int = 0,
+    sort_by: str = "created_at",
+    sort_order: str = "desc",
+    doc_type: str | None = None,
+    search: str | None = None,
+) -> UIResult:
     def _run() -> list[dict]:
-        docs = list_documents(workspace_id)
-        for doc in docs:
-            doc["tags"] = list_document_tags(doc["id"])
-        return docs
+        return list_documents(
+            workspace_id,
+            limit=limit,
+            offset=offset,
+            sort_by=sort_by,
+            sort_order=sort_order,
+            doc_type=doc_type,
+            search=search,
+        )
 
     return safe_call(_run, hint="Unable to load documents.")
+
+
+def count_documents_for_filter(
+    *,
+    workspace_id: str,
+    doc_type: str | None = None,
+    search: str | None = None,
+) -> UIResult:
+    return safe_call(
+        count_documents,
+        hint="Unable to count documents.",
+        workspace_id=workspace_id,
+        doc_type=doc_type,
+        search=search,
+    )
 
 
 def list_documents_for_type(*, workspace_id: str, doc_type: str) -> UIResult:
     return safe_call(
         list_documents_by_type, hint="Unable to load documents.", workspace_id=workspace_id, doc_type=doc_type
     )
-
-
-def update_document_tags(*, doc_id: str, tags: list[str]) -> UIResult:
-    return safe_call(add_document_tags, hint="Unable to update tags.", doc_id=doc_id, tags=tags)
 
 
 def update_document_type(*, doc_id: str, doc_type: str) -> UIResult:

@@ -23,6 +23,7 @@ from app.components.workbench_view import render_workbench_list
 from app.components.workflow_wizard import render_workflow_selector, render_workflow_steps
 from app.ui import apply_theme, init_app_state
 from app.ui.auto_refresh import inject_auto_refresh, maybe_auto_refresh
+from app.ui.components import render_global_notifications
 from app.ui.layout import render_main_columns, render_sidebar
 from app.ui.pages_create import render_create_page
 from app.ui.pages_help import render_help_page
@@ -956,13 +957,15 @@ def main() -> None:
         pass
 
     st.set_page_config(page_title="StudyFlow-AI", layout="wide")
-    apply_theme()
     init_app_state()
+    apply_theme()
 
     workspace_id, nav = render_sidebar()
     maybe_auto_refresh(workspace_id=workspace_id)
 
     main_col, inspector_col = render_main_columns()
+    with main_col:
+        render_global_notifications(workspace_id)
     api_adapter = _api_adapter()
 
     if nav == "Start":

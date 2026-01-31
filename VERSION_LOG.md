@@ -1,5 +1,30 @@
 # VERSION LOG
 
+## UI + Library Enhancement (2026-01-31)
+
+- **Multi-format Library ingest**: PDF, TXT/MD, DOCX, PPTX, HTML, PNG/JPG (OCR optional)
+- **Document metadata**: file_type, size_bytes, source, created_at tracked and sortable
+- **Library UX**: pagination, search, sorting, material type filter, cleaned tag UI
+- **Global notifications**: toast-style task completion with View/Dismiss
+- **Citations UX**: hover tooltip for [n] + collapsible citations list
+- **Help Center**: detailed, searchable in-app guidance (EN/中文)
+- **Coach polish**: session viewing + objective first-sentence evaluation
+- **Theme & language**: Light/Dark toggle, bilingual UI, exit confirm dialog
+- **Navigation**: renamed modules with button-based routing
+- **Verification**: new `scripts/verify_ui_quality.py`
+
+### Verification
+
+```bash
+python scripts/verify_ui_quality.py
+python -m compileall .
+ruff check .
+pytest -q
+python -c "import app.main"
+```
+
+---
+
 ## V2.10.0 (2026-01-29) — Release-Grade Distribution & Usability
 
 **Goal**: Transform v2.9 into a polished, externally releasable version with one-click deployment, CI quality gates, comprehensive documentation, and 10-minute time-to-first-value.

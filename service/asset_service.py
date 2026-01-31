@@ -31,6 +31,7 @@ def _hits_to_json(hits: list[Hit]) -> str:
         {
             "chunk_id": hit.chunk_id,
             "filename": hit.filename,
+            "file_type": hit.file_type,
             "page_start": hit.page_start,
             "page_end": hit.page_end,
             "text": hit.text,

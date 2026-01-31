@@ -15,7 +15,7 @@ from service.tasks_service import enqueue_ingest_task, run_task_by_id
 class ImportFolderSyncPlugin(PluginBase):
     name = "importer_folder_sync"
     version = "1.0.0"
-    description = "Sync PDFs from a local folder into the workspace."
+    description = "Sync supported files from a local folder into the workspace."
 
     def run(self, context: PluginContext) -> PluginResult:
         folder = context.args.get("path")
@@ -44,7 +44,9 @@ class ImportFolderSyncPlugin(PluginBase):
 
         files = scan_folder(root, ignore_globs=ignore_globs)
         if not files:
-            return PluginResult(ok=True, message="No PDF files found.", data={"count": 0})
+            return PluginResult(
+                ok=True, message="No supported files found.", data={"count": 0}
+            )
 
         seen_paths = {str(file.path) for file in files}
         for mapping in list_mappings(source_id):
@@ -116,6 +118,6 @@ class ImportFolderSyncPlugin(PluginBase):
         touch_source(source_id)
         return PluginResult(
             ok=True,
-            message=f"Imported {imported} PDFs. Skipped {skipped}.",
+            message=f"Imported {imported} files. Skipped {skipped}.",
             data={"imported": imported, "skipped": skipped},
         )

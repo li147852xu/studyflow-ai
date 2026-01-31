@@ -36,22 +36,26 @@ def render_settings_center(
         api_base_url = st.text_input(
             t("api_base_url", workspace_id),
             value=st.session_state.get("api_base_url", "http://127.0.0.1:8000"),
+            help=t("api_base_url_help", workspace_id),
         )
         base_url = st.text_input(
             t("llm_base_url", workspace_id),
             value=st.session_state.get("llm_base_url", ""),
             key="settings_llm_base_url",
+            help=t("llm_base_url_help", workspace_id),
         )
         model = st.text_input(
             t("llm_model", workspace_id),
             value=st.session_state.get("llm_model", ""),
             key="settings_llm_model",
+            help=t("llm_model_help", workspace_id),
         )
         api_key = st.text_input(
             t("llm_api_key", workspace_id),
             value=st.session_state.get("llm_api_key", ""),
             type="password",
             key="settings_llm_api_key",
+            help=t("llm_api_key_help", workspace_id),
         )
         temperature = st.slider(
             t("temperature", workspace_id),
@@ -59,11 +63,13 @@ def render_settings_center(
             max_value=1.0,
             value=float(st.session_state.get("llm_temperature", 0.2)),
             step=0.05,
+            help=t("temperature_help", workspace_id),
         )
         embed_model = st.text_input(
             t("embedding_model_optional", workspace_id),
             value=os.getenv("STUDYFLOW_EMBED_MODEL", ""),
             key="settings_embed_model",
+            help=t("embedding_model_help", workspace_id),
         )
         st.markdown(f"#### {t('ocr_settings', workspace_id)}")
         ocr_mode = st.selectbox(
@@ -81,6 +87,7 @@ def render_settings_center(
             max_value=200,
             value=int(st.session_state.get("ocr_threshold", 50)),
             step=10,
+            help=t("ocr_threshold_help", workspace_id),
         )
         st.markdown(f"#### {t('prompt_version', workspace_id)}")
         prompt_version = st.selectbox(
@@ -106,6 +113,7 @@ def render_settings_center(
             format_func=lambda value: t(
                 "chinese" if value == "zh" else "english", workspace_id
             ),
+            help=t("ui_language_help", workspace_id),
         )
         output_language_options = ["en", "zh"]
         output_language_default = (
@@ -123,6 +131,17 @@ def render_settings_center(
             format_func=lambda value: t(
                 "chinese" if value == "zh" else "english", workspace_id
             ),
+            help=t("output_language_help", workspace_id),
+        )
+        st.markdown(f"#### {t('theme_label', workspace_id)}")
+        theme = st.selectbox(
+            t("theme_label", workspace_id),
+            options=["light", "dark"],
+            index=["light", "dark"].index(
+                st.session_state.get("ui_theme", "light") or "light"
+            ),
+            format_func=lambda value: t(f"theme_{value}", workspace_id),
+            help=t("theme_help", workspace_id),
         )
 
         def _save_settings() -> None:
@@ -137,6 +156,7 @@ def render_settings_center(
             st.session_state["prompt_version"] = prompt_version
             st.session_state["ui_language"] = ui_language
             st.session_state["output_language"] = output_language
+            st.session_state["ui_theme"] = theme
             if embed_model:
                 os.environ["STUDYFLOW_EMBED_MODEL"] = embed_model
             if base_url:
@@ -153,6 +173,7 @@ def render_settings_center(
             set_setting(None, "prompt_version", prompt_version)
             set_setting(None, "ui_language", ui_language)
             set_setting(None, "output_language", output_language)
+            set_setting(None, "ui_theme", theme)
             if workspace_id:
                 set_setting(workspace_id, "ui_language", ui_language)
                 set_setting(workspace_id, "output_language", output_language)

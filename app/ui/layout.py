@@ -63,15 +63,19 @@ def render_sidebar() -> tuple[str | None, str]:
         st.markdown(f"### {t('navigation', active_workspace)}")
         if "active_nav" not in st.session_state:
             st.session_state["active_nav"] = "Start"
-        nav = st.radio(
-            t("go_to", active_workspace),
-            options=NAV_ITEMS,
-            index=NAV_ITEMS.index(st.session_state.get("active_nav", "Start")),
-            label_visibility="collapsed",
-            format_func=lambda value: t(f"nav_{value.lower()}", active_workspace),
-            key="nav_radio",
-            on_change=lambda: st.session_state.update({"active_nav": st.session_state["nav_radio"]}),
-        )
+        st.caption(t("go_to", active_workspace))
+        for item in NAV_ITEMS:
+            label = t(f"nav_{item.lower()}", active_workspace)
+            if st.button(
+                label,
+                key=f"nav_btn_{item}",
+                type="primary"
+                if st.session_state.get("active_nav") == item
+                else "secondary",
+                use_container_width=True,
+            ):
+                st.session_state["active_nav"] = item
+                st.rerun()
         nav = st.session_state.get("active_nav", "Start")
 
         if st.button(t("refresh_app", active_workspace)):
@@ -93,10 +97,15 @@ def render_sidebar() -> tuple[str | None, str]:
             st.session_state["exit_requested"] = True
 
         if st.session_state.get("exit_requested"):
-            if st.session_state.get("exit_has_tasks"):
-                st.warning(t("exit_tasks_running", active_workspace))
-            if st.button(t("confirm_exit", active_workspace)):
-                _clean_exit()
+            with st.dialog(t("confirm_exit", active_workspace)):
+                if st.session_state.get("exit_has_tasks"):
+                    st.warning(t("exit_tasks_running", active_workspace))
+                st.caption(t("exit_confirm_prompt", active_workspace))
+                cols = st.columns(2)
+                if cols[0].button(t("confirm_exit", active_workspace), type="primary"):
+                    _clean_exit()
+                if cols[1].button(t("cancel_exit", active_workspace)):
+                    st.session_state["exit_requested"] = False
 
     return workspace_id, nav
 

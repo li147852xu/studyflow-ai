@@ -45,7 +45,8 @@ def _classify_document(doc: dict) -> tuple[str, PaperMetadata | None]:
         return "course", None
 
     path = doc.get("path")
-    if path:
+    file_type = (doc.get("file_type") or "").lower()
+    if path and file_type == "pdf":
         try:
             parsed = read_pdf(Path(path))
             text = "\n".join(page.text for page in parsed.pages[:2])
@@ -115,6 +116,7 @@ def render_library_page(
                     default_type if default_type in ["course", "paper", "other"] else "course"
                 ),
                 format_func=lambda value: t(f"doc_type_{value}", workspace_id),
+                help=t("doc_type_help", workspace_id),
             )
             st.session_state["library_doc_type"] = doc_type
             if "library_import_source" not in st.session_state:
@@ -127,14 +129,16 @@ def render_library_page(
                 horizontal=True,
                 key="library_import_source_radio",
                 on_change=lambda: st.session_state.update({"library_import_source": st.session_state["library_import_source_radio"]}),
+                help=t("import_source_help", workspace_id),
             )
             source = st.session_state.get("library_import_source", "upload")
             before_ids = {doc["id"] for doc in list_documents(workspace_id)}
             if source == "upload":
                 uploads = st.file_uploader(
-                    t("upload_pdfs", workspace_id),
-                    type=["pdf"],
+                    t("upload_documents", workspace_id),
+                    type=["pdf", "txt", "md", "docx", "pptx", "html", "htm", "png", "jpg", "jpeg"],
                     accept_multiple_files=True,
+                    help=t("upload_documents_help", workspace_id),
                 )
                 if uploads:
                     suggestion = _infer_doc_type_from_name(uploads[0].name)
@@ -458,108 +462,152 @@ def render_library_page(
                 else:
                     st.caption(t("doc_type_other_note", workspace_id))
 
-        docs_result = facade.list_documents_with_tags(workspace_id)
+        toolbar = st.columns([2.6, 2, 1.4, 1.2])
+        search = toolbar[0].text_input(
+            t("search_documents", workspace_id),
+            key="library_search",
+            placeholder=t("search_documents_placeholder", workspace_id),
+        )
+        sort_choice = toolbar[1].selectbox(
+            t("sort_by", workspace_id),
+            options=[
+                "created_desc",
+                "created_asc",
+                "filename_asc",
+                "filename_desc",
+                "size_asc",
+                "size_desc",
+            ],
+            format_func=lambda value: t(f"sort_{value}", workspace_id),
+            key="library_sort",
+        )
+        doc_type_filter = toolbar[2].selectbox(
+            t("material_type", workspace_id),
+            options=["all", "course", "paper", "other"],
+            format_func=lambda value: t(f"doc_type_{value}", workspace_id)
+            if value != "all"
+            else t("all_types", workspace_id),
+            key="library_doc_type_filter",
+            help=t("material_type_help", workspace_id),
+        )
+        page_size = toolbar[3].selectbox(
+            t("page_size", workspace_id),
+            options=[10, 20, 50],
+            key="library_page_size",
+        )
+
+        sort_map = {
+            "created_desc": ("created_at", "desc"),
+            "created_asc": ("created_at", "asc"),
+            "filename_asc": ("filename", "asc"),
+            "filename_desc": ("filename", "desc"),
+            "size_asc": ("size_bytes", "asc"),
+            "size_desc": ("size_bytes", "desc"),
+        }
+        sort_by, sort_order = sort_map.get(sort_choice, ("created_at", "desc"))
+        filter_signature = (search or "", doc_type_filter, sort_choice, page_size)
+        if st.session_state.get("library_filter_signature") != filter_signature:
+            st.session_state["library_filter_signature"] = filter_signature
+            st.session_state["library_page"] = 1
+
+        count_result = facade.count_documents_for_filter(
+            workspace_id=workspace_id,
+            doc_type=None if doc_type_filter == "all" else doc_type_filter,
+            search=search,
+        )
+        total_docs = int(count_result.data or 0) if count_result.ok else 0
+        if total_docs == 0:
+            if search or doc_type_filter != "all":
+                st.caption(t("no_docs_match", workspace_id))
+            else:
+                st.info(t("no_documents_yet", workspace_id))
+            return
+
+        total_pages = max(1, (total_docs + page_size - 1) // page_size)
+        page = st.number_input(
+            t("page_number", workspace_id),
+            min_value=1,
+            max_value=total_pages,
+            value=min(st.session_state.get("library_page", 1), total_pages),
+            step=1,
+            key="library_page",
+        )
+        st.caption(
+            t("page_summary", workspace_id).format(
+                current=page, total=total_pages, count=total_docs
+            )
+        )
+        offset = (page - 1) * page_size
+
+        docs_result = facade.list_documents_with_tags(
+            workspace_id,
+            limit=page_size,
+            offset=offset,
+            sort_by=sort_by,
+            sort_order=sort_order,
+            doc_type=None if doc_type_filter == "all" else doc_type_filter,
+            search=search,
+        )
         if not docs_result.ok:
             st.error(docs_result.error or t("failed_load_documents", workspace_id))
             return
         docs = docs_result.data or []
         if not docs:
-            st.info(t("no_documents_yet", workspace_id))
-            return
-
-        search = st.text_input(t("search_documents", workspace_id))
-        all_tags = sorted({tag for doc in docs for tag in doc.get("tags", [])})
-        selected_tags = st.multiselect(t("filter_by_tags", workspace_id), options=all_tags)
-        doc_type_filter = st.selectbox(
-            t("filter_by_type", workspace_id),
-            options=["all", "course", "paper", "other"],
-            format_func=lambda value: t(f"doc_type_{value}", workspace_id)
-            if value != "all"
-            else t("all_types", workspace_id),
-        )
-
-        # Course sub-filter: when filtering by course type, allow selecting specific course
-        course_filter = None
-        if doc_type_filter == "course":
-            from service.course_service import list_course_documents, list_courses
-            courses = list_courses(workspace_id)
-            if courses:
-                course_options = {"all_courses": None}
-                course_options.update({course["name"]: course["id"] for course in courses})
-                course_options["uncategorized"] = "uncategorized"
-                selected_course = st.selectbox(
-                    t("filter_by_course", workspace_id),
-                    options=list(course_options.keys()),
-                    format_func=lambda v: (
-                        t("all_course_docs_label", workspace_id) if v == "all_courses"
-                        else t("uncategorized_course_docs", workspace_id) if v == "uncategorized"
-                        else v
-                    ),
-                )
-                course_filter = course_options.get(selected_course)
-
-        chunk_counts = facade.doc_chunk_counts(workspace_id)
-        running = _collect_running_tasks(workspace_id)
-        vector_ready = bool(status_payload and status_payload.get("vector_count", 0) >= status_payload.get("chunk_count", 0))
-
-        # Get course-linked document IDs if filtering by specific course
-        course_linked_ids: set[str] = set()
-        if course_filter and course_filter != "uncategorized":
-            from service.course_service import list_course_documents
-            linked_docs = list_course_documents(course_filter)
-            course_linked_ids = {doc["id"] for doc in linked_docs}
-        elif course_filter == "uncategorized":
-            # Get all documents linked to any course
-            from service.course_service import list_course_documents, list_courses
-            courses = list_courses(workspace_id)
-            all_linked = set()
-            for course in courses:
-                linked = list_course_documents(course["id"])
-                all_linked.update(doc["id"] for doc in linked)
-            course_linked_ids = all_linked
-
-        def _matches(doc: dict) -> bool:
-            if search and search.lower() not in doc["filename"].lower():
-                return False
-            if doc_type_filter != "all" and doc.get("doc_type") != doc_type_filter:
-                return False
-            if selected_tags:
-                if not any(tag in doc.get("tags", []) for tag in selected_tags):
-                    return False
-            # Course sub-filter
-            if course_filter:
-                if course_filter == "uncategorized":
-                    # Show only docs NOT linked to any course
-                    return doc["id"] not in course_linked_ids
-                else:
-                    # Show only docs linked to selected course
-                    return doc["id"] in course_linked_ids
-            return True
-
-        filtered_docs = [doc for doc in docs if _matches(doc)]
-        if not filtered_docs:
             st.caption(t("no_docs_match", workspace_id))
             return
 
-        section_title(t("documents", workspace_id))
-        options = {doc["id"]: doc for doc in filtered_docs}
+        chunk_counts = facade.doc_chunk_counts(workspace_id)
+        running = _collect_running_tasks(workspace_id)
+        vector_ready = bool(
+            status_payload
+            and status_payload.get("vector_count", 0) >= status_payload.get("chunk_count", 0)
+        )
 
-        def _format_doc(doc_id: str) -> str:
-            doc = options[doc_id]
+        section_title(t("documents", workspace_id))
+        options = {doc["id"]: doc for doc in docs}
+
+        def _file_type_label(doc: dict) -> str:
+            file_type = (doc.get("file_type") or "").lower()
+            icons = {
+                "pdf": "📄 PDF",
+                "docx": "📝 DOCX",
+                "pptx": "📊 PPTX",
+                "txt": "🗒️ TXT",
+                "md": "🧾 MD",
+                "html": "🌐 HTML",
+                "htm": "🌐 HTML",
+                "png": "🖼️ IMG",
+                "jpg": "🖼️ IMG",
+                "jpeg": "🖼️ IMG",
+            }
+            return icons.get(file_type, file_type.upper() if file_type else "-")
+
+        def _short_time(value: str | None) -> str:
+            if not value:
+                return "-"
+            return value.replace("T", " ")[:16]
+
+        for doc_id, doc in options.items():
             chunk_count = chunk_counts.get(doc_id, 0)
             status = _doc_status(chunk_count, vector_ready, running)
             pages = doc.get("page_count") or "-"
-            return f"{doc['filename']} · {status} · {pages} {t('pages_label', workspace_id)}"
+            row = st.columns([5.2, 1.5, 1.3], vertical_alignment="center")
+            label = f"{doc['filename']}"
+            if row[0].button(
+                label,
+                key=f"select_doc_{doc_id}",
+                type="primary"
+                if st.session_state.get("library_selected_doc") == doc_id
+                else "secondary",
+                use_container_width=True,
+            ):
+                st.session_state["library_selected_doc"] = doc_id
+            row[0].caption(f"{status} · {pages} {t('pages_label', workspace_id)}")
+            row[1].caption(_short_time(doc.get("created_at")))
+            row[2].caption(_file_type_label(doc))
+            st.divider()
 
-        st.radio(
-            t("select_document", workspace_id),
-            options=list(options.keys()),
-            format_func=_format_doc,
-            key="library_selected_doc",
-            on_change=lambda: None,
-        )
         selected_doc_id = st.session_state.get("library_selected_doc")
-
         selected_doc = options.get(selected_doc_id) if selected_doc_id else None
         if selected_doc:
             st.markdown(f"#### {t('document_details', workspace_id)}")
@@ -570,7 +618,7 @@ def render_library_page(
                     t("filename", workspace_id): selected_doc["filename"],
                     t("doc_id", workspace_id): selected_doc["id"],
                     t("doc_type_label", workspace_id): selected_doc.get("doc_type") or "other",
-                    t("source", workspace_id): selected_doc.get("source_type") or "-",
+                    t("source", workspace_id): selected_doc.get("source") or "-",
                     t("created", workspace_id): selected_doc.get("created_at", "")[:19],
                 }
             )
