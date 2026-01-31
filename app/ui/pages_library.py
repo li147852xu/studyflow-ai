@@ -123,8 +123,8 @@ def render_library_page(
                 st.session_state["library_import_source"] = "upload"
             st.radio(
                 t("import_source_label", workspace_id),
-                options=["upload", "zotero", "folder", "arxiv"],
-                index=["upload", "zotero", "folder", "arxiv"].index(st.session_state.get("library_import_source", "upload")),
+                options=["upload", "folder", "arxiv", "zotero"],
+                index=["upload", "folder", "arxiv", "zotero"].index(st.session_state.get("library_import_source", "upload")),
                 format_func=lambda value: t(f"import_source_{value}", workspace_id),
                 horizontal=True,
                 key="library_import_source_radio",
@@ -462,6 +462,15 @@ def render_library_page(
                 else:
                     st.caption(t("doc_type_other_note", workspace_id))
 
+            # Jump to Create button
+            st.divider()
+            if st.button(
+                t("jump_to_create", workspace_id),
+                help=t("jump_to_create_help", workspace_id),
+            ):
+                st.session_state["active_nav"] = "Create"
+                st.rerun()
+
         toolbar = st.columns([2.6, 2, 1.4, 1.2])
         search = toolbar[0].text_input(
             t("search_documents", workspace_id),
@@ -492,7 +501,7 @@ def render_library_page(
         )
         page_size = toolbar[3].selectbox(
             t("page_size", workspace_id),
-            options=[10, 20, 50],
+            options=[5, 10, 20, 50],
             key="library_page_size",
         )
 
