@@ -517,7 +517,8 @@ def render_library_page(
         filter_signature = (search or "", doc_type_filter, sort_choice, page_size)
         if st.session_state.get("library_filter_signature") != filter_signature:
             st.session_state["library_filter_signature"] = filter_signature
-            st.session_state["library_page"] = 1
+            if "library_page" in st.session_state:
+                del st.session_state["library_page"]
 
         count_result = facade.count_documents_for_filter(
             workspace_id=workspace_id,
@@ -537,7 +538,6 @@ def render_library_page(
             t("page_number", workspace_id),
             min_value=1,
             max_value=total_pages,
-            value=min(st.session_state.get("library_page", 1), total_pages),
             step=1,
             key="library_page",
         )
