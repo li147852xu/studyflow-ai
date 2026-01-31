@@ -97,7 +97,10 @@ def render_sidebar() -> tuple[str | None, str]:
             st.session_state["exit_requested"] = True
 
         if st.session_state.get("exit_requested"):
-            with st.dialog(t("confirm_exit", active_workspace)):
+            _exit_title = t("confirm_exit", active_workspace)
+
+            @st.dialog(_exit_title)
+            def _exit_confirm_dialog():
                 if st.session_state.get("exit_has_tasks"):
                     st.warning(t("exit_tasks_running", active_workspace))
                 st.caption(t("exit_confirm_prompt", active_workspace))
@@ -106,6 +109,8 @@ def render_sidebar() -> tuple[str | None, str]:
                     _clean_exit()
                 if cols[1].button(t("cancel_exit", active_workspace)):
                     st.session_state["exit_requested"] = False
+
+            _exit_confirm_dialog()
 
     return workspace_id, nav
 
