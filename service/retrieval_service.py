@@ -68,7 +68,8 @@ def _chunk_query(doc_ids: list[str] | None = None) -> tuple[str, tuple]:
                    chunks.page_end as page_end,
                    chunks.text as text,
                    documents.filename as filename,
-                   documents.doc_type as doc_type
+                   documents.doc_type as doc_type,
+                   documents.file_type as file_type
             FROM chunks
             JOIN documents ON documents.id = chunks.doc_id
             WHERE chunks.workspace_id = ? AND chunks.doc_id IN ({placeholders})
@@ -85,7 +86,8 @@ def _chunk_query(doc_ids: list[str] | None = None) -> tuple[str, tuple]:
                chunks.page_end as page_end,
                chunks.text as text,
                documents.filename as filename,
-               documents.doc_type as doc_type
+               documents.doc_type as doc_type,
+               documents.file_type as file_type
         FROM chunks
         JOIN documents ON documents.id = chunks.doc_id
         WHERE chunks.workspace_id = ?
@@ -132,7 +134,8 @@ def get_chunks_for_documents(doc_ids: list[str]) -> list[dict]:
                    chunks.page_start as page_start,
                    chunks.page_end as page_end,
                    chunks.text as text,
-                   documents.filename as filename
+                   documents.filename as filename,
+                   documents.file_type as file_type
             FROM chunks
             JOIN documents ON documents.id = chunks.doc_id
             WHERE chunks.doc_id IN ({placeholders})
@@ -253,7 +256,8 @@ def build_or_refresh_index(
                     "doc_id": item["doc_id"],
                     "workspace_id": item["workspace_id"],
                     "filename": item["filename"],
-                "doc_type": item.get("doc_type") or "other",
+                    "doc_type": item.get("doc_type") or "other",
+                    "file_type": item.get("file_type"),
                     "page_start": item["page_start"],
                     "page_end": item["page_end"],
                 }
@@ -599,6 +603,7 @@ def answer_with_retrieval(
             page_start=hit.page_start,
             page_end=hit.page_end,
             text=hit.text,
+            file_type=hit.file_type,
         )
         citations.append(f"[{idx}] {citation.render()}")
 

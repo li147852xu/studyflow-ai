@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import streamlit as st
 
+from app.ui.components import bind_cmd_enter, render_answer_with_citations
 from app.ui.locks import running_task_summary
 from core.retrieval.retriever import Hit
 from core.telemetry.run_logger import _run_dir, log_run
@@ -77,7 +78,11 @@ def render_chat_panel(
                             mode=retrieval_mode,
                         )
                     st.success("Answer ready.")
-                    st.write(response)
+                    render_answer_with_citations(
+                        text=response,
+                        citations=citations,
+                        workspace_id=workspace_id,
+                    )
                     st.subheader("Retrieval hits")
                     for idx, hit in enumerate(hits, start=1):
                         if isinstance(hit, dict):
@@ -93,9 +98,6 @@ def render_chat_panel(
                                 f"(score={hit.score:.4f})"
                             )
                             st.caption(hit.text[:240] + ("..." if len(hit.text) > 240 else ""))
-                    st.subheader("Citations")
-                    for citation in citations:
-                        st.write(citation)
                     st.caption(
                         f"run_id: {run_id} | log: {_run_dir(workspace_id)}/run_{run_id}.json"
                     )
@@ -114,6 +116,7 @@ def render_chat_panel(
                             doc_id=item.get("doc_id", ""),
                             workspace_id=item.get("workspace_id", ""),
                             filename=item.get("filename", ""),
+                            file_type=item.get("file_type"),
                             page_start=int(item.get("page_start") or 0),
                             page_end=int(item.get("page_end") or 0),
                             text=item.get("text", ""),
@@ -151,7 +154,11 @@ def render_chat_panel(
                         temperature=st.session_state.get("llm_temperature"),
                     )
                     st.success("Answer ready.")
-                    st.write(response)
+                    render_answer_with_citations(
+                        text=response,
+                        citations=None,
+                        workspace_id=workspace_id,
+                    )
                     llm_meta = llm_metadata(
                         temperature=st.session_state.get("llm_temperature")
                     )
@@ -213,6 +220,7 @@ def render_chat_panel(
                     set_setting(None, "api_mode", "direct")
             except Exception:
                 st.error("LLM request failed. Please check your network or key.")
+        bind_cmd_enter(button_label="Send", key=f"chat_send_shortcut_{workspace_id}")
 
         st.subheader("Recent chats")
         recent = [item for item in list_history(workspace_id, "chat")[:5]]

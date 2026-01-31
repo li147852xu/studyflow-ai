@@ -5,7 +5,12 @@ from datetime import datetime
 
 import streamlit as st
 
-from app.ui.components import render_inspector, section_title
+from app.ui.components import (
+    citations_from_hits_json,
+    render_answer_with_citations,
+    render_inspector,
+    section_title,
+)
 from app.ui.i18n import t
 from app.ui.locks import running_task_summary
 from core.ui_state.guards import llm_ready
@@ -149,9 +154,14 @@ def render_create_page(
                     t("course_label", workspace_id),
                     options=list(course_options.keys()),
                     key="create_course_select",
+                    help=t("course_label_help", workspace_id),
                 )
                 selected_course_id = course_options[selected_course_name]
-            new_course_name = st.text_input(t("new_course_name", workspace_id), key="create_course_name")
+            new_course_name = st.text_input(
+                t("new_course_name", workspace_id),
+                key="create_course_name",
+                help=t("new_course_name_help", workspace_id),
+            )
             if st.button(t("create_course", workspace_id), disabled=not new_course_name.strip()):
                 selected_course_id = create_course(
                     workspace_id=workspace_id,
@@ -178,6 +188,7 @@ def render_create_page(
                     options=[doc["id"] for doc in course_docs],
                     format_func=lambda doc_id: doc_map.get(doc_id, doc_id),
                     key="create_course_docs",
+                    help=t("select_lecture_help", workspace_id),
                 )
                 if st.button(
                     t("link_documents_to_course", workspace_id),
@@ -254,6 +265,7 @@ def render_create_page(
                     key="create_course_question",
                     height=100,
                     placeholder=t("course_question_placeholder", workspace_id),
+                    help=t("course_question_help", workspace_id),
                 )
                 if st.button(
                     t("answer_question_btn", workspace_id),
@@ -292,11 +304,13 @@ def render_create_page(
                     options=explain_options,
                     key="create_course_explain_mode",
                     format_func=lambda value: t(f"explain_mode_{value}", workspace_id),
+                    help=t("explain_mode_help", workspace_id),
                 )
                 selection = st.text_area(
                     t("selection_to_explain", workspace_id),
                     key="create_course_selection",
                     height=120,
+                    help=t("selection_help", workspace_id),
                 )
                 if st.button(
                     t("explain_selection_btn", workspace_id),
@@ -339,6 +353,7 @@ def render_create_page(
                         options=[doc["id"] for doc in paper_docs],
                         format_func=lambda doc_id: doc_map.get(doc_id, doc_id),
                         key="create_paper_doc",
+                        help=t("paper_source_help", workspace_id),
                     )
                     if st.button(
                         t("generate_paper_card", workspace_id),
@@ -420,6 +435,7 @@ def render_create_page(
                     format_func=lambda v: t(f"doc_type_{v}", workspace_id) if v != "all" else t("all_docs", workspace_id),
                     key="slides_source_type_radio",
                     on_change=lambda: st.session_state.update({"slides_source_type": st.session_state["slides_source_type_radio"]}),
+                    help=t("slides_source_filter_help", workspace_id),
                 )
                 source_type = st.session_state.get("slides_source_type", "all")
                 selected_doc = None
@@ -431,6 +447,7 @@ def render_create_page(
                             options=[doc["id"] for doc in filtered_docs],
                             format_func=lambda doc_id: doc_map.get(doc_id, doc_id),
                             key="create_slides_doc_all",
+                            help=t("slides_source_help", workspace_id),
                         )
                 elif source_type == "course":
                     courses = list_courses(workspace_id)
@@ -440,6 +457,7 @@ def render_create_page(
                         options=["all_course_docs"] + list(course_options.keys()),
                         format_func=lambda v: t("all_course_docs_label", workspace_id) if v == "all_course_docs" else v,
                         key="create_slides_course_filter",
+                        help=t("course_filter_help", workspace_id),
                     )
                     if course_filter == "all_course_docs":
                         filtered_docs = doc_type_groups.get("course", [])
@@ -454,6 +472,7 @@ def render_create_page(
                             options=[doc["id"] for doc in filtered_docs],
                             format_func=lambda doc_id: doc_map.get(doc_id, doc_id),
                             key="create_slides_doc_course",
+                            help=t("slides_source_help", workspace_id),
                         )
                     else:
                         st.caption(t("no_docs_in_category", workspace_id))
@@ -465,6 +484,7 @@ def render_create_page(
                             options=[doc["id"] for doc in filtered_docs],
                             format_func=lambda doc_id: doc_map.get(doc_id, doc_id),
                             key=f"create_slides_doc_{source_type}",
+                            help=t("slides_source_help", workspace_id),
                         )
                     else:
                         st.caption(t("no_docs_in_category", workspace_id))
@@ -474,6 +494,7 @@ def render_create_page(
                     max_value=30,
                     value=10,
                     step=1,
+                    help=t("duration_help", workspace_id),
                 )
                 if selected_doc and st.button(
                     t("generate_slides", workspace_id),
@@ -558,7 +579,12 @@ def render_create_page(
                 st.caption(
                     f"{_format_time(match['created_at'])} · {source_label} · {match.get('title') or match['type']}"
                 )
-                st.markdown(view.content)
+                citations = citations_from_hits_json(view.version.hits_json)
+                render_answer_with_citations(
+                    text=view.content,
+                    citations=citations,
+                    workspace_id=workspace_id,
+                )
                 st.download_button(
                     t("download_output", workspace_id),
                     data=view.content,

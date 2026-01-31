@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import streamlit as st
 
+from app.ui.components import render_citations_list
 from core.assets.store import get_asset
 from core.telemetry.run_logger import _run_dir
 from service.asset_service import (
@@ -23,11 +24,7 @@ def render_metadata(metadata: dict[str, str]) -> None:
 
 
 def render_citations(citations: list[str]) -> None:
-    if not citations:
-        st.caption("No citations yet.")
-        return
-    for citation in citations:
-        st.write(citation)
+    render_citations_list(citations, st.session_state.get("workspace_id"))
 
 
 def render_run_info(workspace_id: str, run_id: str | None) -> None:

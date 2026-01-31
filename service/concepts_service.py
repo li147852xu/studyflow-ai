@@ -91,6 +91,7 @@ def build_concept_cards(
                 page_start=hit.page_start,
                 page_end=hit.page_end,
                 text=hit.text,
+                file_type=hit.file_type,
             )
             add_evidence(
                 card_id=card_id,

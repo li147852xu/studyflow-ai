@@ -30,6 +30,7 @@ def init_app_state() -> None:
         "prompt_version", get_setting(None, "prompt_version") or "v1"
     )
     st.session_state.setdefault("ui_language", get_setting(None, "ui_language") or "en")
+    st.session_state.setdefault("ui_theme", get_setting(None, "ui_theme") or "light")
     st.session_state.setdefault(
         "output_language", get_setting(None, "output_language") or "en"
     )

@@ -19,6 +19,30 @@ def render_help_page(
 
         language = st.session_state.get("ui_language", "en")
         sections = get_help_sections(language)
+        query = st.text_input(
+            t("help_search", workspace_id),
+            placeholder=t("help_search_placeholder", workspace_id),
+            key="help_search",
+        )
+
+        if sections:
+            st.markdown(f"**{t('help_contents', workspace_id)}**")
+            for section in sections:
+                st.write(f"- {section['title']}")
+            st.divider()
+
+        if query:
+            needle = query.strip().lower()
+            sections = [
+                section
+                for section in sections
+                if needle in section.get("title", "").lower()
+                or any(
+                    needle in paragraph.lower()
+                    for paragraph in section.get("paragraphs", [])
+                )
+                or any(needle in bullet.lower() for bullet in section.get("bullets", []))
+            ]
 
         for section in sections:
             with st.expander(section["title"], expanded=section.get("expanded", False)):

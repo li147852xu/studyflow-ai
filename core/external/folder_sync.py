@@ -26,10 +26,23 @@ def scan_folder(
     ignore_globs: list[str] | None = None,
 ) -> list[FolderFile]:
     ignore_globs = ignore_globs or []
+    supported_exts = [
+        ".pdf",
+        ".txt",
+        ".md",
+        ".docx",
+        ".pptx",
+        ".html",
+        ".htm",
+        ".png",
+        ".jpg",
+        ".jpeg",
+    ]
     files: list[FolderFile] = []
-    for path in root.rglob("*.pdf"):
-        rel = str(path.relative_to(root))
-        if any(fnmatch.fnmatch(rel, pattern) for pattern in ignore_globs):
-            continue
-        files.append(FolderFile(path=path, sha256=_sha256_path(path)))
+    for ext in supported_exts:
+        for path in root.rglob(f"*{ext}"):
+            rel = str(path.relative_to(root))
+            if any(fnmatch.fnmatch(rel, pattern) for pattern in ignore_globs):
+                continue
+            files.append(FolderFile(path=path, sha256=_sha256_path(path)))
     return files

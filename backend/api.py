@@ -45,7 +45,7 @@ from service.bundle_service import bundle_export, bundle_import
 from service.coach_service import start_coach, submit_coach
 from service.course_service import explain_selection, generate_cheatsheet, generate_overview
 from service.document_service import get_document
-from service.ingest_service import ingest_pdf
+from service.ingest_service import ingest_document
 from service.pack_service import make_pack
 from service.paper_generate_service import aggregate_papers, generate_paper_card
 from service.paper_service import get_paper, ingest_paper
@@ -128,6 +128,9 @@ def ingest(payload: IngestRequest) -> IngestResponse:
             filename=doc["filename"] if doc else payload.filename,
             path=doc["path"] if doc else "",
             doc_type="paper",
+            file_type=doc.get("file_type") if doc else None,
+            size_bytes=int(doc.get("size_bytes") or 0) if doc else None,
+            source=doc.get("source") if doc else None,
             sha256=doc.get("sha256") if doc else "",
             page_count=int(doc.get("page_count") or 0) if doc else 0,
             chunk_count=chunk_count,
@@ -137,7 +140,7 @@ def ingest(payload: IngestRequest) -> IngestResponse:
             authors=metadata.authors,
             year=metadata.year,
         )
-    result = ingest_pdf(
+    result = ingest_document(
         workspace_id=payload.workspace_id,
         filename=payload.filename,
         data=data,

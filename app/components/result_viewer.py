@@ -2,7 +2,8 @@ from __future__ import annotations
 
 import streamlit as st
 
-from app.components.inspector import render_citations, render_download, render_metadata
+from app.components.inspector import render_download, render_metadata
+from app.ui.components import render_answer_with_citations
 
 
 def render_result_viewer(
@@ -15,13 +16,15 @@ def render_result_viewer(
 ) -> None:
     st.markdown(f"### {title}")
     if content:
-        st.write(content)
+        render_answer_with_citations(
+            text=content,
+            citations=citations,
+            workspace_id=st.session_state.get("workspace_id"),
+        )
     else:
         st.caption("No content to preview.")
 
     if run_id:
         render_metadata({"Run ID": run_id})
-    if citations:
-        render_citations(citations)
     if download_path:
         render_download(download_path)

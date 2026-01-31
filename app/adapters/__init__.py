@@ -1,4 +1,5 @@
 from app.adapters.facade import (
+    count_documents_for_filter,
     delete_document,
     doc_chunk_counts,
     doc_pages,
@@ -7,12 +8,12 @@ from app.adapters.facade import (
     list_documents_with_tags,
     rebuild_index,
     recent_history,
-    update_document_tags,
     upload_dir,
     workspace_status,
 )
 
 __all__ = [
+    "count_documents_for_filter",
     "delete_document",
     "doc_chunk_counts",
     "doc_pages",
@@ -21,7 +22,6 @@ __all__ = [
     "list_documents_with_tags",
     "recent_history",
     "rebuild_index",
-    "update_document_tags",
     "upload_dir",
     "workspace_status",
 ]

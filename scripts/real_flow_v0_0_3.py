@@ -56,7 +56,7 @@ def main() -> int:
                 page_end=hit.page_end,
                 text=hit.text,
             )
-            print(f"[{idx}] score={hit.score:.4f} {citation.page_label}")
+            print(f"[{idx}] score={hit.score:.4f} {citation.location_label}")
             print(citation.snippet)
         print("\nCitations:")
         for citation in citations:

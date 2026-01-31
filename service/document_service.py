@@ -28,12 +28,18 @@ def save_document_bytes(
     document_id = str(uuid.uuid4())
     target_path = upload_dir / filename
     target_path.write_bytes(data)
+    extension = target_path.suffix.lower()
+    file_type = extension.lstrip(".") or "unknown"
+    size_bytes = len(data)
 
     with get_connection() as connection:
         connection.execute(
             """
-            INSERT INTO documents (id, workspace_id, filename, path, doc_type, created_at)
-            VALUES (?, ?, ?, ?, ?, ?)
+            INSERT INTO documents (
+                id, workspace_id, filename, path, doc_type, file_type,
+                size_bytes, source, created_at, updated_at
+            )
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (
                 document_id,
@@ -41,6 +47,10 @@ def save_document_bytes(
                 filename,
                 str(target_path),
                 doc_type,
+                file_type,
+                size_bytes,
+                "upload",
+                _now_iso(),
                 _now_iso(),
             ),
         )
@@ -54,19 +64,70 @@ def save_document_bytes(
     }
 
 
-def list_documents(workspace_id: str) -> list[dict]:
+def list_documents(
+    workspace_id: str,
+    *,
+    limit: int | None = None,
+    offset: int = 0,
+    sort_by: str = "created_at",
+    sort_order: str = "desc",
+    doc_type: str | None = None,
+    search: str | None = None,
+) -> list[dict]:
+    sort_map = {
+        "created_at": "created_at",
+        "filename": "lower(filename)",
+        "size_bytes": "COALESCE(size_bytes, 0)",
+    }
+    sort_column = sort_map.get(sort_by, "created_at")
+    order = "DESC" if sort_order.lower() == "desc" else "ASC"
+    filters = ["workspace_id = ?"]
+    params: list = [workspace_id]
+    if doc_type:
+        filters.append("doc_type = ?")
+        params.append(normalize_doc_type(doc_type))
+    if search:
+        filters.append("lower(filename) LIKE ?")
+        params.append(f"%{search.strip().lower()}%")
+    where_clause = " AND ".join(filters)
+    limit_clause = ""
+    if limit is not None:
+        limit_clause = " LIMIT ? OFFSET ?"
+        params.extend([int(limit), int(offset)])
     with get_connection() as connection:
         rows = connection.execute(
-            """
+            f"""
             SELECT id, workspace_id, filename, path, doc_type, page_count,
-                   source_type, source_ref, summary, created_at
+                   source_type, source_ref, summary, created_at, file_type,
+                   size_bytes, source
             FROM documents
-            WHERE workspace_id = ?
-            ORDER BY created_at DESC
+            WHERE {where_clause}
+            ORDER BY {sort_column} {order}
+            {limit_clause}
             """,
-            (workspace_id,),
+            tuple(params),
         ).fetchall()
     return [dict(row) for row in rows]
+
+
+def count_documents(
+    workspace_id: str, doc_type: str | None = None, search: str | None = None
+) -> int:
+    filters = ["workspace_id = ?"]
+    params: list = [workspace_id]
+    if doc_type:
+        filters.append("doc_type = ?")
+        params.append(normalize_doc_type(doc_type))
+    if search:
+        filters.append("lower(filename) LIKE ?")
+        params.append(f"%{search.strip().lower()}%")
+    where_clause = " AND ".join(filters)
+    with get_connection() as connection:
+        row = connection.execute(
+            f"SELECT COUNT(*) as count FROM documents WHERE {where_clause}",
+            tuple(params),
+        ).fetchone()
+    return int(row["count"]) if row else 0
 
 
 def get_document(doc_id: str) -> dict | None:
@@ -74,7 +135,8 @@ def get_document(doc_id: str) -> dict | None:
         row = connection.execute(
             """
             SELECT id, workspace_id, filename, path, doc_type, sha256, page_count,
-                   source_type, source_ref, summary, created_at
+                   source_type, source_ref, summary, created_at, file_type,
+                   size_bytes, source
             FROM documents
             WHERE id = ?
             """,
@@ -114,19 +176,7 @@ def set_document_type(*, doc_id: str, doc_type: str) -> None:
 
 
 def list_documents_by_type(workspace_id: str, doc_type: str) -> list[dict]:
-    doc_type = normalize_doc_type(doc_type)
-    with get_connection() as connection:
-        rows = connection.execute(
-            """
-            SELECT id, workspace_id, filename, path, doc_type, page_count,
-                   source_type, source_ref, created_at
-            FROM documents
-            WHERE workspace_id = ? AND doc_type = ?
-            ORDER BY created_at DESC
-            """,
-            (workspace_id, doc_type),
-        ).fetchall()
-    return [dict(row) for row in rows]
+    return list_documents(workspace_id, doc_type=doc_type)
 
 
 def filter_doc_ids_by_type(doc_ids: list[str], doc_type: str) -> list[str]:
@@ -169,10 +219,10 @@ def set_document_source(
         connection.execute(
             """
             UPDATE documents
-            SET source_type = ?, source_ref = ?
+            SET source_type = ?, source_ref = ?, source = ?
             WHERE id = ?
             """,
-            (source_type, source_ref, doc_id),
+            (source_type, source_ref, source_type, doc_id),
         )
         connection.commit()
 

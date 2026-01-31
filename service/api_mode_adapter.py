@@ -7,7 +7,7 @@ from dataclasses import dataclass
 import requests
 
 from service.course_service import explain_selection, generate_cheatsheet, generate_overview
-from service.ingest_service import ingest_pdf
+from service.ingest_service import ingest_document
 from service.paper_generate_service import aggregate_papers, generate_paper_card
 from service.paper_service import ingest_paper
 from service.presentation_service import generate_slides
@@ -97,7 +97,7 @@ class ApiModeAdapter:
                     "authors": metadata.authors,
                     "year": metadata.year,
                 }
-            result = ingest_pdf(
+            result = ingest_document(
                 workspace_id=workspace_id,
                 filename=filename,
                 data=data,

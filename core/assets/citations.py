@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 
+from core.ingest.cite import build_citation
 from infra.db import get_workspaces_dir
 
 
@@ -16,12 +17,21 @@ def format_citations_payload(hits_json: str | None) -> list[dict]:
     for hit in hits:
         text = (hit.get("text") or "").strip().replace("\n", " ")
         snippet = text[:240] + ("..." if len(text) > 240 else "")
+        citation = build_citation(
+            filename=hit.get("filename") or "-",
+            page_start=int(hit.get("page_start") or 0),
+            page_end=int(hit.get("page_end") or 0),
+            text=hit.get("text") or "",
+            file_type=hit.get("file_type"),
+        )
         payload.append(
             {
                 "chunk_id": hit.get("chunk_id"),
                 "filename": hit.get("filename"),
+                "file_type": hit.get("file_type"),
                 "page_start": hit.get("page_start"),
                 "page_end": hit.get("page_end"),
+                "location": citation.location_label,
                 "snippet": snippet,
             }
         )
@@ -47,10 +57,8 @@ def export_citations(
         path = output_dir / f"{asset_id}_{version_id}.txt"
         lines = []
         for item in payload:
-            line = (
-                f"{item.get('filename')} p.{item.get('page_start')}-{item.get('page_end')} "
-                f"[{item.get('chunk_id')}] {item.get('snippet')}"
-            )
+            location = item.get("location") or f"p.{item.get('page_start')}-{item.get('page_end')}"
+            line = f"{item.get('filename')} {location} [{item.get('chunk_id')}] {item.get('snippet')}"
             lines.append(line)
         path.write_text("\n".join(lines), encoding="utf-8")
         paths["txt"] = str(path)

@@ -4,6 +4,7 @@ from datetime import datetime
 
 import streamlit as st
 
+from app.ui.i18n import t
 from service.tasks_service import (
     cancel_task_by_id,
     list_tasks_for_workspace,
@@ -25,20 +26,23 @@ def _format_time(iso_time: str | None) -> str:
 
 
 def render_tasks_center(*, workspace_id: str | None) -> None:
-    st.markdown("### Tasks Center")
+    st.markdown(f"### {t('tasks_center_title', workspace_id)}")
     if not workspace_id:
-        st.info("Select a project to view tasks.")
+        st.info(t("tasks_select_project", workspace_id))
         return
 
     status_filter = st.selectbox(
-        "Status filter",
+        t("tasks_status_filter", workspace_id),
         options=["all", "queued", "running", "succeeded", "failed", "cancelled"],
         index=0,
+        format_func=lambda value: t(f"task_status_{value}", workspace_id)
+        if value != "all"
+        else t("all_status", workspace_id),
     )
     status = None if status_filter == "all" else status_filter
     tasks = list_tasks_for_workspace(workspace_id=workspace_id, status=status)
     if not tasks:
-        st.caption("No tasks yet. Ingest or index to create tasks.")
+        st.caption(t("tasks_empty", workspace_id))
         return
 
     for task in tasks:
@@ -50,7 +54,12 @@ def render_tasks_center(*, workspace_id: str | None) -> None:
         task_error = task.get("error") if isinstance(task, dict) else task.error
         with st.container():
             st.markdown(f"**{task_type}** — `{task_id}`")
-            st.caption(f"Status: {task_status} • Updated: {_format_time(task_updated)}")
+            st.caption(
+                t("tasks_status_line", workspace_id).format(
+                    status=t(f"task_status_{task_status}", workspace_id),
+                    updated=_format_time(task_updated),
+                )
+            )
             if task_progress is not None:
                 try:
                     progress_value = float(task_progress)
@@ -65,30 +74,30 @@ def render_tasks_center(*, workspace_id: str | None) -> None:
                 st.error(task_error)
             cols = st.columns(4)
             with cols[0]:
-                if st.button("Run", key=f"task_run_{task_id}"):
+                if st.button(t("task_action_run", workspace_id), key=f"task_run_{task_id}"):
                     try:
                         run_task_in_background(task_id)
-                        st.success("Task scheduled.")
+                        st.success(t("task_scheduled", workspace_id))
                     except Exception as exc:
                         st.error(str(exc))
             with cols[1]:
-                if st.button("Cancel", key=f"task_cancel_{task_id}"):
+                if st.button(t("task_action_cancel", workspace_id), key=f"task_cancel_{task_id}"):
                     try:
                         cancel_task_by_id(task_id)
-                        st.success("Task cancelled.")
+                        st.success(t("task_cancelled_msg", workspace_id))
                     except Exception as exc:
                         st.error(str(exc))
             with cols[2]:
-                if st.button("Retry", key=f"task_retry_{task_id}"):
+                if st.button(t("task_action_retry", workspace_id), key=f"task_retry_{task_id}"):
                     try:
                         retry_task_by_id(task_id)
-                        st.success("Task retried.")
+                        st.success(t("task_retried", workspace_id))
                     except Exception as exc:
                         st.error(str(exc))
             with cols[3]:
-                if st.button("Resume", key=f"task_resume_{task_id}"):
+                if st.button(t("task_action_resume", workspace_id), key=f"task_resume_{task_id}"):
                     try:
                         resume_task_by_id(task_id)
-                        st.success("Task resumed.")
+                        st.success(t("task_resumed", workspace_id))
                     except Exception as exc:
                         st.error(str(exc))

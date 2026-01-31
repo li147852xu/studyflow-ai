@@ -34,6 +34,9 @@ def init_db() -> None:
                 ocr_mode TEXT,
                 ocr_pages_count INTEGER,
                 image_pages_count INTEGER,
+                file_type TEXT,
+                size_bytes INTEGER,
+                source TEXT,
                 source_type TEXT,
                 source_ref TEXT,
                 doc_type TEXT NOT NULL DEFAULT 'other',
@@ -380,6 +383,9 @@ def init_db() -> None:
     _ensure_column("documents", "ocr_mode", "TEXT")
     _ensure_column("documents", "ocr_pages_count", "INTEGER")
     _ensure_column("documents", "image_pages_count", "INTEGER")
+    _ensure_column("documents", "file_type", "TEXT")
+    _ensure_column("documents", "size_bytes", "INTEGER")
+    _ensure_column("documents", "source", "TEXT")
     _ensure_column("documents", "source_type", "TEXT")
     _ensure_column("documents", "source_ref", "TEXT")
     _ensure_column("documents", "doc_type", "TEXT NOT NULL DEFAULT 'other'")
@@ -399,5 +405,20 @@ def init_db() -> None:
     with get_connection() as connection:
         connection.execute(
             "UPDATE documents SET doc_type = 'other' WHERE doc_type IS NULL OR doc_type = ''"
+        )
+        connection.execute(
+            """
+            UPDATE documents
+            SET file_type = 'pdf'
+            WHERE (file_type IS NULL OR file_type = '')
+              AND lower(filename) LIKE '%.pdf'
+            """
+        )
+        connection.execute(
+            """
+            UPDATE documents
+            SET source = 'upload'
+            WHERE source IS NULL OR source = ''
+            """
         )
         connection.commit()

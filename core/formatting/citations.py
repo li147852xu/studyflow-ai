@@ -31,6 +31,7 @@ def build_citation_bundle(hits: list[Hit], max_chars: int = 3500) -> CitationBun
             page_start=hit.page_start,
             page_end=hit.page_end,
             text=hit.text,
+            file_type=hit.file_type,
         )
         citations.append(f"[{idx}] {citation.render()}")
 

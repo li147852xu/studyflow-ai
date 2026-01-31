@@ -16,6 +16,7 @@ class Hit:
     page_end: int
     text: str
     score: float
+    file_type: str | None = None
 
 
 def retrieve(
@@ -49,6 +50,7 @@ def retrieve(
                 doc_id=metadata["doc_id"],
                 workspace_id=metadata["workspace_id"],
                 filename=metadata["filename"],
+                file_type=metadata.get("file_type"),
                 page_start=int(metadata["page_start"]),
                 page_end=int(metadata["page_end"]),
                 text=doc_text,
