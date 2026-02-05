@@ -23,13 +23,15 @@ from app.components.workbench_view import render_workbench_list
 from app.components.workflow_wizard import render_workflow_selector, render_workflow_steps
 from app.ui import apply_theme, init_app_state
 from app.ui.auto_refresh import inject_auto_refresh, maybe_auto_refresh
-from app.ui.components import render_global_notifications
+from app.ui.components import render_back_button, render_global_notifications
 from app.ui.layout import render_main_columns, render_sidebar
-from app.ui.pages_create import render_create_page
-from app.ui.pages_help import render_help_page
-from app.ui.pages_library import render_library_page
-from app.ui.pages_start import render_start_page
-from app.ui.pages_tools import render_tools_page
+from app.screens.assistant import render_assistant as render_assistant_page
+from app.screens.courses import render_courses as render_courses_page
+from app.screens.dashboard import render_dashboard as render_dashboard_page
+from app.screens.library import render_library as render_library_page
+from app.screens.research import render_research as render_research_page
+from app.screens.settings import render_settings as render_settings_page
+from app.screens.tools import render_tools as render_tools_page
 from core.config.loader import ConfigError, apply_profile, load_config
 from core.ui_state.guards import llm_ready
 from core.ui_state.storage import (
@@ -941,14 +943,6 @@ def render_history_page(center: st.delta_generator.DeltaGenerator, right: st.del
             st.write(selected_entry["preview"])
 
 
-def render_settings(
-    center: st.delta_generator.DeltaGenerator,
-    right: st.delta_generator.DeltaGenerator,
-    workspace_id: str | None,
-) -> None:
-    render_settings_center(center=center, right=right, workspace_id=workspace_id)
-
-
 def main() -> None:
     load_dotenv()
     try:
@@ -965,15 +959,26 @@ def main() -> None:
 
     main_col, inspector_col = render_main_columns()
     with main_col:
+        # Back button at the top of the page (only if there's history to go back to)
+        render_back_button()
         render_global_notifications(workspace_id)
-    api_adapter = _api_adapter()
-
-    if nav == "Start":
-        render_start_page(
+    if nav == "Dashboard":
+        render_dashboard_page(
             main_col=main_col,
             inspector_col=inspector_col,
             workspace_id=workspace_id,
-            api_adapter=api_adapter,
+        )
+    elif nav == "Courses":
+        render_courses_page(
+            main_col=main_col,
+            inspector_col=inspector_col,
+            workspace_id=workspace_id,
+        )
+    elif nav == "Research":
+        render_research_page(
+            main_col=main_col,
+            inspector_col=inspector_col,
+            workspace_id=workspace_id,
         )
     elif nav == "Library":
         render_library_page(
@@ -981,12 +986,11 @@ def main() -> None:
             inspector_col=inspector_col,
             workspace_id=workspace_id,
         )
-    elif nav == "Create":
-        render_create_page(
+    elif nav == "Assistant":
+        render_assistant_page(
             main_col=main_col,
             inspector_col=inspector_col,
             workspace_id=workspace_id,
-            api_adapter=api_adapter,
         )
     elif nav == "Tools":
         render_tools_page(
@@ -994,8 +998,8 @@ def main() -> None:
             inspector_col=inspector_col,
             workspace_id=workspace_id,
         )
-    elif nav == "Help":
-        render_help_page(
+    elif nav == "Settings":
+        render_settings_page(
             main_col=main_col,
             inspector_col=inspector_col,
             workspace_id=workspace_id,

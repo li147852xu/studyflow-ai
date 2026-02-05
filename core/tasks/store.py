@@ -73,15 +73,37 @@ def list_tasks(*, workspace_id: str | None = None, status: str | None = None) ->
 
 
 def update_status(task_id: str, status: str, error: str | None = None) -> None:
+    now = _now_iso()
+    started_at = now if status == "running" else None
+    finished_at = now if status in {"succeeded", "failed", "cancelled"} else None
     with get_connection() as connection:
-        connection.execute(
-            """
-            UPDATE tasks
-            SET status = ?, error = ?, updated_at = ?
-            WHERE id = ?
-            """,
-            (status, error, _now_iso(), task_id),
-        )
+        if started_at:
+            connection.execute(
+                """
+                UPDATE tasks
+                SET status = ?, error = ?, started_at = COALESCE(started_at, ?), updated_at = ?
+                WHERE id = ?
+                """,
+                (status, error, started_at, now, task_id),
+            )
+        elif finished_at:
+            connection.execute(
+                """
+                UPDATE tasks
+                SET status = ?, error = ?, finished_at = ?, updated_at = ?
+                WHERE id = ?
+                """,
+                (status, error, finished_at, now, task_id),
+            )
+        else:
+            connection.execute(
+                """
+                UPDATE tasks
+                SET status = ?, error = ?, updated_at = ?
+                WHERE id = ?
+                """,
+                (status, error, now, task_id),
+            )
         connection.commit()
 
 

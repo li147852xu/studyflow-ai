@@ -1,6 +1,6 @@
 [project]
 name = "studyflow-ai"
-version = "2.10.0"
+version = "3.0.0"
 description = "AI-powered local-first study workspace for PDFs"
 readme = "README.md"
 requires-python = ">=3.10"
@@ -41,18 +41,23 @@ packages = [
   "app.components",
   "app.ui",
   "app.adapters",
+  "app.screens",
   "cli",
   "cli.commands",
   "backend",
   "core",
   "core.assets",
+  "core.domains",
   "core.coach",
   "core.config",
+  "core.index_assets",
   "core.external",
   "core.concepts",
   "core.related",
   "core.bundle",
   "core.packs",
+  "core.rag",
+  "core.storage",
   "core.tasks",
   "core.quality",
   "core.agents",

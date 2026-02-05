@@ -14,6 +14,7 @@ from cli.commands.gen import gen
 from cli.commands.import_cmd import import_app
 from cli.commands.index import index_app
 from cli.commands.ingest import ingest
+from cli.commands.migrate_cmd import migrate
 from cli.commands.pack_cmd import pack_app
 from cli.commands.plugins import plugins_app
 from cli.commands.query import query
@@ -21,14 +22,23 @@ from cli.commands.related_cmd import related_app
 from cli.commands.tasks_cmd import tasks_app
 from cli.commands.workspace import workspace_app
 from core.config.loader import ConfigError, apply_profile, load_config
-from infra.models import init_db
+from core.version import VERSION
+from core.storage.migrations import run_migrations
 
 app = typer.Typer(help="StudyFlow CLI")
 
 
+def _version_callback(value: bool) -> None:
+    if value:
+        typer.echo(f"StudyFlow v{VERSION}")
+        raise typer.Exit()
+
+
 @app.callback()
-def _init_config() -> None:
-    init_db()
+def _init_config(
+    version: bool = typer.Option(False, "--version", callback=_version_callback, is_eager=True)
+) -> None:
+    run_migrations()
     try:
         config = load_config()
         apply_profile(config)
@@ -54,6 +64,7 @@ app.command()(ingest)
 app.command()(query)
 app.command()(gen)
 app.command()(clean)
+app.command(name="migrate")(migrate)
 
 if __name__ == "__main__":
     app()

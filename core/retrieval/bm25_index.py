@@ -36,6 +36,7 @@ def build_bm25_index(workspace_id: str) -> Path:
                    chunks.page_end as page_end,
                    chunks.text as text,
                    documents.filename as filename,
+                   documents.file_type as file_type,
                    documents.doc_type as doc_type
             FROM chunks
             JOIN documents ON documents.id = chunks.doc_id
@@ -61,6 +62,7 @@ def build_bm25_index(workspace_id: str) -> Path:
                 "doc_id": chunk["doc_id"],
                 "workspace_id": chunk["workspace_id"],
                 "filename": chunk["filename"],
+                "file_type": chunk.get("file_type"),
                 "doc_type": chunk.get("doc_type") or "other",
                 "page_start": chunk["page_start"],
                 "page_end": chunk["page_end"],

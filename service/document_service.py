@@ -37,9 +37,10 @@ def save_document_bytes(
             """
             INSERT INTO documents (
                 id, workspace_id, filename, path, doc_type, file_type,
-                size_bytes, source, created_at, updated_at
+                size_bytes, file_name, file_ext, file_size, imported_at,
+                source, created_at, updated_at
             )
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (
                 document_id,
@@ -49,6 +50,10 @@ def save_document_bytes(
                 doc_type,
                 file_type,
                 size_bytes,
+                filename,
+                extension.lstrip("."),
+                size_bytes,
+                _now_iso(),
                 "upload",
                 _now_iso(),
                 _now_iso(),
@@ -99,7 +104,7 @@ def list_documents(
             f"""
             SELECT id, workspace_id, filename, path, doc_type, page_count,
                    source_type, source_ref, summary, created_at, file_type,
-                   size_bytes, source
+                   size_bytes, source, file_name, file_ext, file_size, imported_at
             FROM documents
             WHERE {where_clause}
             ORDER BY {sort_column} {order}
@@ -136,7 +141,7 @@ def get_document(doc_id: str) -> dict | None:
             """
             SELECT id, workspace_id, filename, path, doc_type, sha256, page_count,
                    source_type, source_ref, summary, created_at, file_type,
-                   size_bytes, source
+                   size_bytes, source, file_name, file_ext, file_size, imported_at
             FROM documents
             WHERE id = ?
             """,

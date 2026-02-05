@@ -60,16 +60,23 @@ def render_tasks_center(*, workspace_id: str | None) -> None:
                     updated=_format_time(task_updated),
                 )
             )
-            if task_progress is not None:
-                try:
-                    progress_value = float(task_progress)
-                except (TypeError, ValueError):
-                    progress_value = None
-                if progress_value is not None:
-                    if progress_value > 1:
-                        progress_value = progress_value / 100
-                    progress_value = max(0.0, min(1.0, progress_value))
-                    st.progress(progress_value)
+            # Show progress bar based on status
+            if task_status == "succeeded":
+                st.progress(1.0)  # Full progress for completed tasks
+            elif task_status == "running" or task_status == "queued":
+                # Show actual progress for running/queued tasks
+                if task_progress is not None:
+                    try:
+                        progress_value = float(task_progress)
+                        if progress_value > 1:
+                            progress_value = progress_value / 100
+                        progress_value = max(0.0, min(1.0, progress_value))
+                        st.progress(progress_value)
+                    except (TypeError, ValueError):
+                        st.progress(0.0)
+                else:
+                    st.progress(0.0)
+            # For failed/cancelled, don't show progress bar (error message is shown instead)
             if task_error:
                 st.error(task_error)
             cols = st.columns(4)

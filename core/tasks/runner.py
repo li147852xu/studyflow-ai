@@ -76,11 +76,16 @@ def _run_ingest(task_id: str, payload: dict) -> dict:
         progress_cb=_progress_cb(task_id),
         stop_check=_stop_check(task_id),
     )
+    assets_result = _run_index_assets(
+        task_id,
+        {"workspace_id": payload["workspace_id"], "doc_id": result.doc_id},
+    )
     return {
         "doc_id": result.doc_id,
         "page_count": result.page_count,
         "chunk_count": result.chunk_count,
         "skipped": result.skipped,
+        "index_assets": assets_result,
     }
 
 
@@ -104,6 +109,21 @@ def _run_index(task_id: str, payload: dict) -> dict:
     }
 
 
+def _run_index_assets(task_id: str, payload: dict) -> dict:
+    from core.index_assets.generator import generate_doc_index_assets
+    from core.index_assets.store import upsert_doc_index_assets
+
+    doc_id = payload["doc_id"]
+    assets = generate_doc_index_assets(doc_id)
+    upsert_doc_index_assets(
+        doc_id=doc_id,
+        summary_text=assets.summary_text,
+        outline=assets.outline,
+        entities=assets.entities,
+    )
+    return {"doc_id": doc_id}
+
+
 def _run_ingest_index(task_id: str, payload: dict) -> dict:
     ingest_result = _run_ingest(task_id, payload)
     update_progress(task_id, 50.0)
@@ -116,7 +136,12 @@ def _run_ingest_index(task_id: str, payload: dict) -> dict:
             "batch_size": payload.get("batch_size", 32),
         },
     )
-    return {"ingest": ingest_result, "index": index_result}
+    update_progress(task_id, 80.0)
+    return {
+        "ingest": ingest_result,
+        "index": index_result,
+        "index_assets": ingest_result.get("index_assets"),
+    }
 
 
 def _run_generate(task_id: str, payload: dict) -> dict:
@@ -275,13 +300,17 @@ _TASK_HANDLERS = {
     "ingest": _run_ingest,
     "ingest_index": _run_ingest_index,
     "index": _run_index,
+    "index_assets": _run_index_assets,
     "ask": _run_ask,
     "generate_course_overview": _run_generate,
     "generate_course_cheatsheet": _run_generate,
     "generate_course_explain": _run_generate,
     "generate_course_qa": _run_generate,
+    "generate_exam_blueprint": _run_generate,
     "generate_paper_card": _run_generate,
     "generate_paper_aggregate": _run_generate,
+    "generate_experiment_plan": _run_generate,
+    "generate_deck": _run_generate,
     "generate_slides": _run_generate,
 }
 

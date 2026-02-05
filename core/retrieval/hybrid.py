@@ -13,6 +13,7 @@ class ScoredHit:
     page_end: int
     text: str
     score: float
+    file_type: str | None = None
 
 
 VECTOR_WEIGHT = 0.55
@@ -69,6 +70,7 @@ def fuse_scores(
                 doc_id=hit["doc_id"],
                 workspace_id=hit["workspace_id"],
                 filename=hit["filename"],
+                file_type=hit.get("file_type"),
                 page_start=hit["page_start"],
                 page_end=hit["page_end"],
                 text=hit["text"],

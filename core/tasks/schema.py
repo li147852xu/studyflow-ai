@@ -14,3 +14,5 @@ class TaskRecord:
     payload_json: str | None
     created_at: str
     updated_at: str
+    started_at: str | None = None
+    finished_at: str | None = None

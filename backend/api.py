@@ -38,8 +38,9 @@ from core.ingest.ocr import OCRSettings, ocr_available
 from core.plugins.base import PluginContext
 from core.plugins.registry import get_plugin, list_plugins, load_builtin_plugins
 from core.prompts.registry import list_prompts
+from core.version import VERSION
 from infra.db import get_connection, get_workspaces_dir
-from infra.models import init_db
+from core.storage.migrations import run_migrations
 from service.asset_service import list_versions, read_version
 from service.bundle_service import bundle_export, bundle_import
 from service.coach_service import start_coach, submit_coach
@@ -53,7 +54,7 @@ from service.presentation_service import generate_slides
 from service.retrieval_service import answer_with_retrieval
 from service.workspace_service import create_workspace, list_workspaces
 
-app = FastAPI(title="StudyFlow API", version="2.8.0")
+app = FastAPI(title="StudyFlow API", version=VERSION)
 
 
 def _verify_token(authorization: str | None = Header(None)) -> None:
@@ -69,12 +70,12 @@ def _verify_token(authorization: str | None = Header(None)) -> None:
 
 @app.on_event("startup")
 def _init_db() -> None:
-    init_db()
+    run_migrations()
 
 
 @app.get("/health", response_model=HealthResponse)
 def health() -> HealthResponse:
-    return HealthResponse(status="ok", version="2.8.0")
+    return HealthResponse(status="ok", version=VERSION)
 
 
 @app.get("/ocr/status", response_model=OcrStatusResponse, dependencies=[Depends(_verify_token)])

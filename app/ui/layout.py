@@ -7,11 +7,46 @@ import streamlit as st
 
 from app.ui.i18n import t
 from app.ui.locks import running_task_summary
+from core.version import VERSION
 from core.tasks.executor import shutdown_executor
 from core.ui_state.storage import get_setting, set_setting
 from service.workspace_service import create_workspace, list_workspaces
 
-NAV_ITEMS = ["Start", "Library", "Create", "Tools", "Help"]
+NAV_ITEMS = ["Dashboard", "Library", "Courses", "Research", "Assistant", "Tools", "Settings"]
+
+# Maximum navigation history size
+MAX_NAV_HISTORY = 20
+
+
+def _push_nav_history(nav: str) -> None:
+    """Push a navigation item to the history stack."""
+    history = st.session_state.setdefault("nav_history", [])
+    # Don't push if the same as the last item
+    if history and history[-1] == nav:
+        return
+    history.append(nav)
+    # Trim history if too long
+    if len(history) > MAX_NAV_HISTORY:
+        history[:] = history[-MAX_NAV_HISTORY:]
+
+
+def navigate_back() -> bool:
+    """Navigate to the previous page. Returns True if navigation occurred."""
+    history = st.session_state.get("nav_history", [])
+    if len(history) > 1:
+        # Pop current page
+        history.pop()
+        # Get and navigate to previous page
+        prev_nav = history[-1]
+        st.session_state["active_nav"] = prev_nav
+        return True
+    return False
+
+
+def can_go_back() -> bool:
+    """Check if there's history to go back to."""
+    history = st.session_state.get("nav_history", [])
+    return len(history) > 1
 
 
 def _clean_exit() -> None:
@@ -62,7 +97,8 @@ def render_sidebar() -> tuple[str | None, str]:
 
         st.markdown(f"### {t('navigation', active_workspace)}")
         if "active_nav" not in st.session_state:
-            st.session_state["active_nav"] = "Start"
+            st.session_state["active_nav"] = "Dashboard"
+            _push_nav_history("Dashboard")
         st.caption(t("go_to", active_workspace))
         for item in NAV_ITEMS:
             label = t(f"nav_{item.lower()}", active_workspace)
@@ -75,17 +111,17 @@ def render_sidebar() -> tuple[str | None, str]:
                 use_container_width=True,
             ):
                 st.session_state["active_nav"] = item
+                _push_nav_history(item)
                 st.rerun()
-        nav = st.session_state.get("active_nav", "Start")
-
-        if st.button(t("refresh_app", active_workspace)):
-            st.rerun()
+        nav = st.session_state.get("active_nav", "Dashboard")
+        
+        # Ensure current nav is in history
+        history = st.session_state.get("nav_history", [])
+        if not history or history[-1] != nav:
+            _push_nav_history(nav)
 
         st.divider()
-        if st.button(t("settings", active_workspace)):
-            st.session_state["active_nav"] = "Tools"
-            st.session_state["tools_tab"] = "settings"
-            st.rerun()
+        st.caption(f"StudyFlow v{VERSION}")
 
         st.divider()
         if st.button(t("exit_app", active_workspace), type="primary"):

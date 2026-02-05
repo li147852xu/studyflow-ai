@@ -1,61 +1,32 @@
-# StudyFlow AI
+# StudyFlow v3
 
-**Your AI-powered, local-first study workspace for PDFs and mainstream documents.**
+**StudyFlow v3 is a local-first Course & Research OS for serious learning and research workflows.**
 
-Transform how you study and research: import PDFs, get intelligent summaries, generate structured study materials, and receive personalized coaching—all while keeping your data private on your own machine.
-
----
-
-## Why StudyFlow AI?
-
-- **Privacy-First**: All data stays local. Your API keys are never stored on disk.
-- **Cited Outputs**: Every generated answer includes traceable references, with hoverable citations.
-- **Global Notifications**: Task completion toasts help you jump to results.
-- **Theme & Language**: Light/Dark switch with bilingual UI (EN/中文).
-- **Structured Assets**: Course overviews, paper cards, slides—all versioned and exportable.
-- **10-Minute Value**: Load demo data → generate your first output → export with citations.
-- **Extensible**: Plugin system for custom importers/exporters; CLI + API for automation.
+![StudyFlow v3](assets/preview.svg)
 
 ---
 
-## Table of Contents
-
-- [Quick Start (Docker)](#quick-start-docker)
-- [10-Minute Tutorial](#10-minute-tutorial)
-- [Feature Map](#feature-map)
-- [Configuration](#configuration)
-- [CLI Reference](#cli-reference)
-- [Troubleshooting](#troubleshooting)
-- [Architecture](#architecture)
-- [Privacy & Local-First](#privacy--local-first)
-- [Roadmap](#roadmap)
-- [Contributing](#contributing)
-
----
-
-## Quick Start (Docker)
-
-The fastest way to run StudyFlow AI:
+## Quick Start (Docker, 10 minutes)
 
 ```bash
-# 1. Clone the repository
+# 1) Clone
 git clone https://github.com/li147852xu/studyflow-ai.git
 cd studyflow-ai
 
-# 2. (Optional) Set your LLM API key in environment
+# 2) (Optional) Set your LLM environment
 export STUDYFLOW_LLM_BASE_URL=https://api.openai.com/v1
 export STUDYFLOW_LLM_API_KEY=sk-your-key
-export STUDYFLOW_LLM_MODEL=gpt-4
+export STUDYFLOW_LLM_MODEL=gpt-4o-mini
 
-# 3. Start with Docker Compose
+# 3) Start
 docker compose up --build
 
-# 4. Open your browser
+# 4) Open
 # UI: http://localhost:8501
-# API: http://localhost:8000 (if needed)
+# API: http://localhost:8000 (optional)
 ```
 
-**No Docker?** Install locally:
+No Docker:
 
 ```bash
 pip install -e .
@@ -64,60 +35,54 @@ streamlit run app/main.py
 
 ---
 
-## 10-Minute Tutorial
+## v3 Object Model
 
-Get value from StudyFlow AI in just a few steps:
-
-### Step 1: Launch
-
-```bash
-docker compose up --build
-# Open http://localhost:8501
-```
-
-### Step 2: Configure LLM (if not set via environment)
-
-1. Go to **Tools → Settings**
-2. Enter your LLM Base URL (e.g., `https://api.openai.com/v1`)
-3. Enter your Model name (e.g., `gpt-4` or `deepseek-chat`)
-4. Enter your API Key
-5. Click **Save Settings**
-
-### Step 3: Load Demo Data
-
-1. Go to **Home** page
-2. Click **Load Demo Data** (loads sample ML fundamentals PDF)
-3. Wait for automatic processing (ingest + index)
-
-### Step 4: Generate Your First Output
-
-1. Go to **Create Studio → Course Sprint**
-2. Select or create a course (e.g., "ML Intro")
-3. Link the demo document to the course
-4. Click **Generate Course Overview**
-5. View the generated content with citations!
-
-### Step 5: Export
-
-1. Go to **Tools → Recent Activity**
-2. Find your generated output
-3. Click **Export Pack** to download slides, citations, and metadata
+- **Courses**: course info, schedule, lectures, materials, assignments, exam blueprint, course Q&A
+- **Research**: projects, papers, idea confirmation, experiment plans/runs, project decks
+- **Timetable + Todos**: unified events and tasks for daily flow
+- **Library**: asset repository only, linked into courses/assignments/projects
 
 ---
 
-## Feature Map
+## RAG Coverage + Token Budget (v3 Core)
 
-### Start Page
-- **Setup Checklist**: Verify LLM, retrieval mode, OCR, and workspace status
-- **Quick Actions**: One-click navigation to Import, Ask, and Create
-- **Recent Activity**: View last 10 operations with quick access
+StudyFlow v3 solves “full course/project coverage” with offline index assets and map-reduce:
 
-### Library
-- **Import Sources**: Upload PDF/TXT/MD/DOCX/PPTX/HTML/images (OCR optional) or import from Zotero/arXiv/DOI/URL/folder sync
-- **Document Types**: Organize as Course, Paper, or Other
-- **Pagination & Sorting**: Search, sort, and page through larger libraries
-- **Auto-Processing**: Imports trigger automatic chunking and indexing
-- **Document Summaries**: LLM-generated one-line descriptions
+1. **Index assets (per doc)**: summary (300–800 tokens), outline, entities — stored once offline.
+2. **Query classifier**: local vs global (full course / full project).
+3. **Global map-reduce**: one short map per doc, then reduce; coverage audit included.
+4. **Coverage report**: included docs, missing docs, per-lecture/per-paper evidence counts.
+5. **Token budgets**: default map ≤ 250 tokens/doc, reduce ≤ 600 tokens (configurable in Settings).
+
+---
+
+## Migration (v2 → v3)
+
+Run database migrations:
+
+```bash
+studyflow migrate
+```
+
+---
+
+## Verification
+
+```bash
+python scripts/verify_v3_release.py
+python -m compileall .
+pytest -q
+python -c "import app.main"
+```
+
+---
+
+## Troubleshooting
+
+- **Doctor**: Tools → Diagnostics → Doctor
+- **Index rebuild**: Tools → Diagnostics → Rebuild Index
+- **Missing coverage**: use “Rebuild index / Expand scope / Import missing” buttons
+
 
 ### Create
 | Tab | What it generates |

@@ -78,6 +78,14 @@ def enqueue_index_task(
     )
 
 
+def enqueue_index_assets_task(*, workspace_id: str, doc_id: str) -> str:
+    return enqueue_task(
+        workspace_id=workspace_id,
+        type="index_assets",
+        payload={"workspace_id": workspace_id, "doc_id": doc_id},
+    )
+
+
 def run_task_by_id(task_id: str) -> dict:
     return run_task(task_id)
 

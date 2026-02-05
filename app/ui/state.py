@@ -3,11 +3,11 @@ from __future__ import annotations
 import streamlit as st
 
 from core.ui_state.storage import get_setting
-from infra.models import init_db
+from core.storage.migrations import run_migrations
 
 
 def init_app_state() -> None:
-    init_db()
+    run_migrations()
     st.session_state.setdefault("workspace_id", get_setting(None, "last_workspace_id") or "")
     st.session_state.setdefault("llm_base_url", get_setting(None, "llm_base_url") or "")
     st.session_state.setdefault("llm_model", get_setting(None, "llm_model") or "")
@@ -34,10 +34,10 @@ def init_app_state() -> None:
     st.session_state.setdefault(
         "output_language", get_setting(None, "output_language") or "en"
     )
-    st.session_state.setdefault("active_nav", "Start")
+    st.session_state.setdefault("active_nav", "Dashboard")
     st.session_state.setdefault("tools_tab", "coach")
     st.session_state.setdefault("create_tab", "course")
-    st.session_state.setdefault("retrieval_mode", "auto")
+    st.session_state.setdefault("retrieval_mode", get_setting(None, "retrieval_mode") or "hybrid")
     st.session_state.setdefault("inspector_collapsed", False)
     st.session_state.setdefault("last_seen_task_state", "")
     st.session_state.setdefault("auto_refresh_last", 0.0)

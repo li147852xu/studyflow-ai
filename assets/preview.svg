@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="720" viewBox="0 0 1200 720">
+  <rect width="1200" height="720" fill="#0f172a"/>
+  <rect x="80" y="80" width="1040" height="560" rx="24" fill="#111827" stroke="#334155" stroke-width="2"/>
+  <text x="140" y="160" fill="#e2e8f0" font-size="36" font-family="Arial, Helvetica, sans-serif">StudyFlow v3</text>
+  <text x="140" y="210" fill="#94a3b8" font-size="18" font-family="Arial, Helvetica, sans-serif">Course & Research OS � Local-first</text>
+  <rect x="140" y="260" width="920" height="300" rx="16" fill="#0b1220" stroke="#1f2937" stroke-width="2"/>
+  <text x="180" y="320" fill="#e2e8f0" font-size="20" font-family="Arial, Helvetica, sans-serif">Dashboard � Courses � Research � Library � Assistant</text>
+  <text x="180" y="360" fill="#94a3b8" font-size="16" font-family="Arial, Helvetica, sans-serif">Coverage-audited RAG with map-reduce budgets</text>
+</svg>

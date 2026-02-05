@@ -1,5 +1,27 @@
 # VERSION LOG
 
+## v3.0.0 (2026-02-05) — Course & Research OS (Local-first)
+
+### Highlights
+- Unified **Courses / Research / Timetable / Todos** object model
+- Offline **doc_index_assets** (summary/outline/entities) for global coverage
+- Global **map-reduce RAG** with coverage audit + token budgets
+- New single-page UI architecture with Dashboard, Courses, Research, Library, Assistant, Tools, Settings
+- Background tasks with global toasts and write locks
+
+### Migration
+- Run: `studyflow migrate`
+
+### Verification
+```bash
+python scripts/verify_v3_release.py
+python -m compileall .
+pytest -q
+python -c "import app.main"
+```
+
+---
+
 ## UI + Library Enhancement (2026-01-31)
 
 - **Multi-format Library ingest**: PDF, TXT/MD, DOCX, PPTX, HTML, PNG/JPG (OCR optional)

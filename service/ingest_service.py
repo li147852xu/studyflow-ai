@@ -98,15 +98,17 @@ def _insert_document(
     image_pages_count: int,
 ) -> str:
     doc_id = str(uuid.uuid4())
+    file_ext = file_type or ""
     with get_connection() as connection:
         connection.execute(
             """
             INSERT INTO documents (
                 id, workspace_id, filename, path, doc_type, sha256, page_count,
                 ocr_mode, ocr_pages_count, image_pages_count, file_type, size_bytes,
+                file_name, file_ext, file_size, imported_at,
                 source, created_at, updated_at
             )
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (
                 doc_id,
@@ -121,6 +123,10 @@ def _insert_document(
                 image_pages_count,
                 file_type,
                 size_bytes,
+                filename,
+                file_ext,
+                size_bytes,
+                _now_iso(),
                 source,
                 _now_iso(),
                 _now_iso(),
