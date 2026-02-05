@@ -14,13 +14,12 @@ from app.ui.components import (
     render_empty_state,
     render_header_card,
     render_section_with_help,
-    section_title,
 )
 from app.ui.labels import L
 from app.ui.locks import running_task_summary
 from core.domains.research import (
-    add_paper,
     add_idea_dialogue,
+    add_paper,
     create_project,
     list_experiment_plans,
     list_experiment_runs,
@@ -56,7 +55,7 @@ def _select_project(workspace_id: str) -> dict | None:
 def render_research(*, main_col, inspector_col, workspace_id: str | None) -> None:
     with main_col:
         render_section_with_help(L("科研平台", "Research Platform"), "research")
-        
+
         if not workspace_id:
             render_empty_state(
                 "🔬",
@@ -76,10 +75,10 @@ def render_research(*, main_col, inspector_col, workspace_id: str | None) -> Non
         with col2:
             st.markdown("<div style='height:28px'></div>", unsafe_allow_html=True)
             create_new = st.button(L("➕ 新建项目", "➕ New Project"), key="btn_new_project_top")
-        
+
         if create_new:
             st.session_state["show_create_project"] = True
-        
+
         if st.session_state.get("show_create_project", False):
             with st.expander(L("新建项目", "Create Project"), expanded=True):
                 title = st.text_input(
@@ -168,9 +167,9 @@ def render_research(*, main_col, inspector_col, workspace_id: str | None) -> Non
 def _render_papers_tab(project: dict, workspace_id: str, locked: bool) -> None:
     """Render the papers management tab."""
     papers = list_project_papers(project["id"])
-    
+
     st.markdown(f"#### 📄 {L('论文库', 'Paper Library')}")
-    
+
     if papers:
         for paper in papers:
             col1, col2, col3 = st.columns([4, 1, 1])
@@ -204,7 +203,7 @@ def _render_papers_tab(project: dict, workspace_id: str, locked: bool) -> None:
                         )
                         st.session_state[f"paper_card_{paper['id']}"] = result["content"]
                         st.rerun()
-        
+
         # Show paper cards if generated
         for paper in papers:
             card_content = st.session_state.get(f"paper_card_{paper['id']}")
@@ -222,7 +221,7 @@ def _render_papers_tab(project: dict, workspace_id: str, locked: bool) -> None:
     with st.expander(L("➕ 从资料库关联论文", "➕ Link Paper from Library"), expanded=False):
         docs = list_documents(workspace_id)
         doc_map = {doc["filename"]: doc for doc in docs}
-        
+
         if not doc_map:
             st.info(L("资料库为空。请先在资料库页面导入文档。", "Library is empty. Import documents in the Library page first."))
         else:
@@ -238,9 +237,9 @@ def _render_papers_tab(project: dict, workspace_id: str, locked: bool) -> None:
             with col2:
                 year = st.text_input(L("年份", "Year"), key="paper_year", placeholder="2025")
                 venue = st.text_input(L("会议/期刊", "Venue"), key="paper_venue", placeholder=L("可选", "Optional"))
-            
+
             if st.button(L("添加论文", "Add Paper"), disabled=locked or not doc_name, key="btn_add_paper", type="primary"):
-                paper_id = add_paper(
+                add_paper(
                     workspace_id=workspace_id,
                     doc_id=doc_map[doc_name]["id"],
                     title=title.strip() or doc_name,
@@ -271,7 +270,7 @@ def _render_papers_tab(project: dict, workspace_id: str, locked: bool) -> None:
                         col1.metric(L("已包含", "Included"), coverage.get("included_docs", 0))
                         col2.metric(L("缺失", "Missing"), len(coverage.get("missing_docs", [])))
                         col3.metric(L("总数", "Total"), coverage.get("total_docs", 0))
-                        
+
                         if coverage.get("missing_docs"):
                             st.warning(L("⚠️ 覆盖不完整", "⚠️ Coverage incomplete"))
                     render_doc_citations(result.get("citations"), workspace_id)
@@ -286,9 +285,9 @@ def _render_papers_tab(project: dict, workspace_id: str, locked: bool) -> None:
 def _render_ideas_tab(project: dict, workspace_id: str, locked: bool) -> None:
     """Render the ideas management tab."""
     ideas = list_ideas(project["id"])
-    
+
     st.markdown(f"#### 💡 {L('创新点管理', 'Ideas Management')}")
-    
+
     if ideas:
         for idea in ideas:
             status_icon = "✅" if idea['status'] == 'confirmed' else "📝"
@@ -344,14 +343,14 @@ def _render_ideas_tab(project: dict, workspace_id: str, locked: bool) -> None:
             idea_map = {idea["title"]: idea for idea in ideas}
             selected = st.selectbox(L("选择创新点", "Select Idea"), options=list(idea_map.keys()), key="idea_dialogue")
             dialogue = list_idea_dialogue(idea_map[selected]["id"])
-            
+
             if dialogue:
                 for turn in dialogue:
                     role_icon = "👤" if turn['role'] == 'user' else "🤖"
                     st.markdown(f"**{role_icon} {turn['role']}:** {turn['content']}")
             else:
                 st.caption(L("暂无对话记录。", "No dialogue yet."))
-            
+
             st.divider()
             new_turn = st.text_area(L("新增对话", "Add Message"), key="idea_dialogue_turn", height=80)
             col1, col2 = st.columns([1, 3])
@@ -373,9 +372,9 @@ def _render_experiments_tab(project: dict, workspace_id: str, locked: bool) -> N
     """Render the experiments management tab."""
     plans = list_experiment_plans(project["id"])
     ideas = list_ideas(project["id"])
-    
+
     st.markdown(f"#### 🧪 {L('实验管理', 'Experiment Management')}")
-    
+
     # Show existing plans
     if plans:
         st.markdown(f"**{L('实验计划', 'Experiment Plans')}**")
@@ -428,11 +427,11 @@ def _render_experiments_tab(project: dict, workspace_id: str, locked: bool) -> N
         with col2:
             plan_id_options = ["-"] + [str(p["id"]) for p in plans]
             plan_select = st.selectbox(L("关联计划", "Link to Plan"), options=plan_id_options, key="run_plan_select")
-        
+
         result_text = st.text_area(L("实验结果", "Result"), key="run_result", height=80, placeholder=L("描述实验结果...", "Describe the outcome..."))
         notes = st.text_area(L("备注与观察", "Notes & Observations"), key="run_notes", height=80)
         next_action = st.text_input(L("下一步行动", "Next Action"), key="run_next")
-        
+
         if st.button(L("添加记录", "Add Run"), disabled=locked or not date.strip(), key="btn_add_exp_run", type="primary"):
             add_experiment_run(
                 project_id=project["id"],
@@ -449,9 +448,9 @@ def _render_experiments_tab(project: dict, workspace_id: str, locked: bool) -> N
 def _render_progress_tab(project: dict, workspace_id: str) -> None:
     """Render the progress timeline tab."""
     runs = list_experiment_runs(project["id"])
-    
+
     st.markdown(f"#### 📈 {L('进度时间线', 'Progress Timeline')}")
-    
+
     if not runs:
         render_empty_state(
             "📈",
@@ -478,19 +477,19 @@ def _render_progress_tab(project: dict, workspace_id: str) -> None:
 def _render_decks_tab(project: dict, workspace_id: str, locked: bool) -> None:
     """Render the presentation decks tab."""
     papers = list_project_papers(project["id"])
-    
+
     st.markdown(f"#### 📊 {L('汇报生成', 'Deck Generation')}")
-    
+
     query = st.text_input(
         L("汇报重点", "Deck Focus"),
         key="deck_focus",
         placeholder=L("例如：注意力机制的最新进展", "e.g. Recent advances in attention mechanisms"),
     )
-    
+
     col1, col2 = st.columns([1, 1])
     with col1:
         duration = st.number_input(L("时长（分钟）", "Duration (min)"), min_value=5, max_value=60, value=10, key="deck_duration")
-    
+
     if st.button(L("生成汇报", "Generate Deck"), disabled=locked, key="btn_gen_deck", type="primary"):
         if not papers:
             st.warning(L("请先添加论文以生成汇报。", "Please add papers first to generate a deck."))
@@ -524,16 +523,16 @@ def _render_decks_tab(project: dict, workspace_id: str, locked: bool) -> None:
                     target={"nav": "Research"},
                     task_id=task_id,
                 )
-            
+
             st.markdown(f"**{L('生成的汇报', 'Generated Deck')} (Marp)**")
             render_content_box(deck["content"])
-            
+
             if coverage:
                 st.markdown(f"**{L('覆盖率报告', 'Coverage Report')}**")
                 col1, col2, col3 = st.columns(3)
                 col1.metric(L("已包含", "Included"), coverage.get("included_docs", 0))
                 col2.metric(L("缺失", "Missing"), len(coverage.get("missing_docs", [])))
                 col3.metric(L("总数", "Total"), coverage.get("total_docs", 0))
-    
+
     if not papers:
         st.info(L("💡 提示：先在「论文」页签添加论文，才能生成覆盖完整的汇报。", "💡 Tip: Add papers in the Papers tab first to generate comprehensive decks."))

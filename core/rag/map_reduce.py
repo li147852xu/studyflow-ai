@@ -57,7 +57,7 @@ def _map_prompt(query: str, assets: dict, title: str, language: str = "en") -> s
     summary = assets.get("summary_text") or ""
     outline = assets.get("outline") or {}
     entities = assets.get("entities") or []
-    
+
     if language == "zh":
         return (
             "你正在创建一个简短的证据笔记，用于整课程/项目级别的 map-reduce 答案生成。\n"
@@ -83,7 +83,7 @@ def _reduce_prompt(query: str, map_outputs: list[dict], language: str = "en") ->
     bullets = "\n".join(
         f"- {item['title']}: {item['content']}" for item in map_outputs if item.get("content")
     )
-    
+
     if language == "zh":
         return (
             "你正在将多个证据笔记汇总成最终答案。\n"
@@ -136,7 +136,7 @@ def map_reduce_course_query(
     reduce_tokens: int,
 ) -> MapReduceResult:
     language = _get_output_language(workspace_id)
-    
+
     with get_connection() as connection:
         lecture_rows = connection.execute(
             """
@@ -216,7 +216,7 @@ def map_reduce_project_query(
     reduce_tokens: int,
 ) -> MapReduceResult:
     language = _get_output_language(workspace_id)
-    
+
     with get_connection() as connection:
         paper_rows = connection.execute(
             """

@@ -15,16 +15,16 @@ def render_help(*, workspace_id: str | None = None) -> None:
             # Render paragraphs
             for paragraph in section.get("paragraphs", []):
                 st.write(paragraph)
-            
+
             # Render main bullets
             for bullet in section.get("bullets", []):
                 st.write(f"- {bullet}")
-            
+
             # Render code block if present
             code = section.get("code")
             if code:
                 st.code(code, language="bash")
-            
+
             # Render subsections
             for subsection in section.get("subsections", []):
                 subtitle = subsection.get("subtitle", "")

@@ -9,12 +9,11 @@ from app.ui.components import (
     render_empty_state,
     render_header_card,
     render_section_with_help,
-    section_title,
 )
 from app.ui.labels import L
 from app.ui.locks import running_task_summary
 from core.domains.course import list_courses
-from core.domains.research import list_projects, list_project_papers
+from core.domains.research import list_project_papers, list_projects
 from core.rag import classify_query, map_reduce_course_query, map_reduce_project_query
 from core.ui_state.storage import get_setting
 from service.course_v3_service import course_docs_for_qa
@@ -24,7 +23,7 @@ from service.rag_service import course_query, project_query
 def render_assistant(*, main_col, inspector_col, workspace_id: str | None) -> None:
     with main_col:
         render_section_with_help(L("AI 助手", "AI Assistant"), "assistant")
-        
+
         if not workspace_id:
             render_empty_state(
                 "🤖",
@@ -45,7 +44,7 @@ def render_assistant(*, main_col, inspector_col, workspace_id: str | None) -> No
         # Scope selection
         st.markdown(f"#### 🎯 {L('选择范围', 'Select Scope')}")
         st.caption(L("限定范围可以获得更精准的回答。", "Limiting scope provides more accurate answers."))
-        
+
         scope = st.selectbox(
             L("回答范围", "Answer Scope"),
             options=["course", "project", "mixed"],
@@ -56,12 +55,12 @@ def render_assistant(*, main_col, inspector_col, workspace_id: str | None) -> No
             }.get(value, value),
             key="assistant_scope_select",
         )
-        
+
         course = None
         project = None
-        
+
         col1, col2 = st.columns(2)
-        
+
         with col1:
             if scope in {"course", "mixed"}:
                 courses = list_courses(workspace_id)
@@ -75,7 +74,7 @@ def render_assistant(*, main_col, inspector_col, workspace_id: str | None) -> No
                     course = course_map[course_name]
                 else:
                     st.info(L("暂无课程。请先在「课程」页面创建。", "No courses. Create one in the Courses page first."))
-        
+
         with col2:
             if scope in {"project", "mixed"}:
                 projects = list_projects(workspace_id)
@@ -94,7 +93,7 @@ def render_assistant(*, main_col, inspector_col, workspace_id: str | None) -> No
 
         # Question input
         st.markdown(f"#### 💬 {L('提问', 'Ask a Question')}")
-        
+
         question = st.text_area(
             L("你的问题", "Your Question"),
             key="assistant_question",
@@ -104,7 +103,7 @@ def render_assistant(*, main_col, inspector_col, workspace_id: str | None) -> No
             ),
             height=100,
         )
-        
+
         # Advanced settings
         with st.expander(L("⚙️ 高级设置", "⚙️ Advanced Settings"), expanded=False):
             col1, col2 = st.columns(2)
@@ -151,7 +150,7 @@ def render_assistant(*, main_col, inspector_col, workspace_id: str | None) -> No
         st.divider()
         st.markdown(f"#### 🔧 {L('覆盖率工具', 'Coverage Tools')}")
         st.caption(L("如果回答不完整，可以尝试以下操作。", "If answers are incomplete, try these actions."))
-        
+
         cols = st.columns(3)
         with cols[0]:
             if st.button(L("📥 导入缺失", "📥 Import Missing"), key="assistant_import_missing"):
@@ -167,19 +166,19 @@ def render_assistant(*, main_col, inspector_col, workspace_id: str | None) -> No
 
     with inspector_col:
         st.markdown(f"### {L('当前范围', 'Current Scope')}")
-        
+
         scope_labels = {
             "course": L("课程范围", "Course Scope"),
             "project": L("科研范围", "Research Scope"),
             "mixed": L("混合范围", "Mixed Scope"),
         }
         st.markdown(f"**{scope_labels.get(scope, scope)}**")
-        
+
         if course:
             st.markdown(f"📚 {course['name']}")
         if project:
             st.markdown(f"🔬 {project['title']}")
-        
+
         st.divider()
         st.markdown(f"### {L('使用提示', 'Tips')}")
         st.caption(L(
@@ -203,9 +202,9 @@ def _handle_question(
 ) -> None:
     """Handle the question and display results."""
     query_type = classify_query(question)
-    
+
     st.markdown(f"### {L('回答', 'Answer')}")
-    
+
     if scope == "course" and course:
         result = course_query(
             workspace_id=workspace_id,
@@ -214,7 +213,7 @@ def _handle_question(
             doc_ids=course_docs_for_qa(course["id"]),
         )
         _display_result(result, workspace_id)
-        
+
     elif scope == "project" and project:
         doc_ids = [paper["doc_id"] for paper in list_project_papers(project["id"])]
         result = project_query(
@@ -224,7 +223,7 @@ def _handle_question(
             doc_ids=doc_ids,
         )
         _display_result(result, workspace_id)
-        
+
     elif scope == "mixed":
         if query_type == "global":
             results = []
@@ -248,10 +247,10 @@ def _handle_question(
                         reduce_tokens=reduce_tokens,
                     )
                 )
-            
+
             combined = "\n\n".join([item.answer for item in results])
             render_content_box(combined, L("综合回答", "Combined Answer"))
-            
+
             for i, item in enumerate(results):
                 with st.expander(f"{L('覆盖率报告', 'Coverage Report')} #{i+1}", expanded=True):
                     _display_coverage(item.coverage)
@@ -262,7 +261,7 @@ def _handle_question(
                 doc_ids.extend(course_docs_for_qa(course["id"]))
             if project:
                 doc_ids.extend([paper["doc_id"] for paper in list_project_papers(project["id"])])
-            
+
             result = course_query(
                 workspace_id=workspace_id,
                 course_id=course["id"] if course else "",
@@ -282,12 +281,12 @@ def _display_result(result: dict, workspace_id: str) -> None:
     """Display query result with appropriate formatting."""
     if result.get("query_type") == "global":
         render_content_box(result["answer"])
-        
+
         coverage = result.get("coverage")
         if coverage:
             with st.expander(L("📊 覆盖率报告", "📊 Coverage Report"), expanded=True):
                 _display_coverage(coverage)
-        
+
         render_doc_citations(result.get("citations"), workspace_id)
     else:
         render_answer_with_citations(
@@ -301,12 +300,12 @@ def _display_coverage(coverage: dict) -> None:
     """Display coverage metrics."""
     if not coverage:
         return
-    
+
     col1, col2, col3 = st.columns(3)
     col1.metric(L("已包含", "Included"), coverage.get("included_docs", 0))
     col2.metric(L("缺失", "Missing"), len(coverage.get("missing_docs", [])))
     col3.metric(L("总数", "Total"), coverage.get("total_docs", 0))
-    
+
     missing = coverage.get("missing_docs", [])
     if missing:
         st.warning(f"⚠️ {L('以下文档未被覆盖', 'The following documents were not covered')}: {', '.join(missing[:5])}")

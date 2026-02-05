@@ -2,10 +2,16 @@ from __future__ import annotations
 
 import streamlit as st
 
-from app.ui.components import render_empty_state, render_header_card, render_section_with_help, section_title
+from app.ui.components import render_empty_state, render_section_with_help
 from app.ui.labels import L
 from app.ui.locks import running_task_summary
-from core.domains.course import add_assignment_asset, add_lecture_material, list_assignments, list_course_lectures, list_courses
+from core.domains.course import (
+    add_assignment_asset,
+    add_lecture_material,
+    list_assignments,
+    list_course_lectures,
+    list_courses,
+)
 from core.domains.research import add_paper, list_projects
 from infra.db import get_connection
 from service.document_service import count_documents, get_document, list_documents, set_document_type
@@ -89,7 +95,7 @@ def _format_size(size: int | None) -> str:
 def render_library(*, main_col, inspector_col, workspace_id: str | None) -> None:
     with main_col:
         render_section_with_help(L("资料库", "Library"), "library")
-        
+
         if not workspace_id:
             render_empty_state(
                 "📚",
@@ -129,7 +135,7 @@ def render_library(*, main_col, inspector_col, workspace_id: str | None) -> None
         # Filters in an expander for cleaner look
         with st.expander(L("🔍 筛选与排序", "🔍 Filters & Sorting"), expanded=True):
             col1, col2, col3, col4 = st.columns(4)
-            
+
             with col1:
                 doc_type = st.selectbox(
                     L("文档类型", "Doc Type"),
@@ -142,7 +148,7 @@ def render_library(*, main_col, inspector_col, workspace_id: str | None) -> None
                     }.get(v, v),
                     key="library_doc_type_filter",
                 )
-            
+
             with col2:
                 # Get available file types
                 with get_connection() as connection:
@@ -157,7 +163,7 @@ def render_library(*, main_col, inspector_col, workspace_id: str | None) -> None
                     format_func=lambda v: L("全部格式", "All Formats") if v == "all" else v.upper(),
                     key="library_file_type_filter",
                 )
-            
+
             with col3:
                 sort_by = st.selectbox(
                     L("排序", "Sort By"),
@@ -169,7 +175,7 @@ def render_library(*, main_col, inspector_col, workspace_id: str | None) -> None
                     }.get(v, v),
                     key="library_sort_by",
                 )
-            
+
             with col4:
                 sort_order = st.selectbox(
                     L("顺序", "Order"),
@@ -191,10 +197,10 @@ def render_library(*, main_col, inspector_col, workspace_id: str | None) -> None
             doc_type=None if doc_type == "all" else doc_type,
             search=search or None,
         )
-        
+
         page_size = 12
         total_pages = max(1, (total + page_size - 1) // page_size)
-        
+
         # Pagination controls at top
         pag_col1, pag_col2, pag_col3 = st.columns([1, 2, 1])
         with pag_col1:
@@ -211,7 +217,7 @@ def render_library(*, main_col, inspector_col, workspace_id: str | None) -> None
             if st.button("▶", key="lib_next_page", disabled=st.session_state.get("library_page", 1) >= total_pages):
                 st.session_state["library_page"] = min(total_pages, st.session_state.get("library_page", 1) + 1)
                 st.rerun()
-        
+
         page = st.session_state.get("library_page", 1)
         offset = (int(page) - 1) * page_size
         docs = list_documents(
@@ -223,7 +229,7 @@ def render_library(*, main_col, inspector_col, workspace_id: str | None) -> None
             doc_type=None if doc_type == "all" else doc_type,
             search=search or None,
         )
-        
+
         if file_type != "all":
             docs = [doc for doc in docs if doc.get("file_type") == file_type]
 
@@ -236,7 +242,7 @@ def render_library(*, main_col, inspector_col, workspace_id: str | None) -> None
         else:
             # Document grid
             st.markdown(
-                f"""
+                """
                 <div style="
                     display: grid;
                     grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
@@ -246,7 +252,7 @@ def render_library(*, main_col, inspector_col, workspace_id: str | None) -> None
                 """,
                 unsafe_allow_html=True,
             )
-            
+
             # Use columns for grid layout
             cols = st.columns(3)
             for idx, doc in enumerate(docs):
@@ -257,27 +263,27 @@ def render_library(*, main_col, inspector_col, workspace_id: str | None) -> None
                     "paper": L("论文", "Paper"),
                     "other": L("其他", "Other"),
                 }.get(doc.get("doc_type", "other"), doc.get("doc_type", "-"))
-                
+
                 type_color = {
                     "course": "var(--primary-color)",
                     "paper": "var(--success-color)",
                     "other": "var(--muted-text)",
                 }.get(doc.get("doc_type", "other"), "var(--muted-text)")
-                
+
                 imported = doc.get("imported_at") or doc.get("created_at") or "-"
                 if len(imported) > 10:
                     imported = imported[:10]
-                
+
                 filename_display = doc["filename"]
                 if len(filename_display) > 28:
                     filename_display = filename_display[:25] + "..."
-                
+
                 with cols[idx % 3]:
                     # Card with click handler
                     selected = st.session_state.get("library_selected_doc") == doc["id"]
                     border_color = "var(--primary-color)" if selected else "var(--card-border)"
                     bg_color = "var(--primary-light)" if selected else "var(--card-bg)"
-                    
+
                     st.markdown(
                         f"""
                         <div style="
@@ -321,7 +327,7 @@ def render_library(*, main_col, inspector_col, workspace_id: str | None) -> None
 
     with inspector_col:
         st.markdown(f"### {L('文档详情', 'Document Details')}")
-        
+
         doc_id = st.session_state.get("library_selected_doc")
         if not doc_id:
             st.markdown(
@@ -342,18 +348,18 @@ def render_library(*, main_col, inspector_col, workspace_id: str | None) -> None
                 unsafe_allow_html=True,
             )
             return
-        
+
         doc = get_document(doc_id)
         if not doc:
             st.error(L("文档不存在", "Document not found"))
             return
-        
+
         # Document header card
         icon = _get_file_icon(doc.get("file_type"))
         filename_display = doc['filename']
         if len(filename_display) > 30:
             filename_display = filename_display[:27] + "..."
-        
+
         st.markdown(
             f"""
             <div style="
@@ -369,7 +375,7 @@ def render_library(*, main_col, inspector_col, workspace_id: str | None) -> None
             """,
             unsafe_allow_html=True,
         )
-        
+
         # Basic info in a clean grid
         st.markdown(f"#### {L('基本信息', 'Basic Info')}")
         info_cols = st.columns(2)
@@ -377,14 +383,14 @@ def render_library(*, main_col, inspector_col, workspace_id: str | None) -> None
             st.metric(L("类型", "Type"), doc.get('file_type') or '-')
         with info_cols[1]:
             st.metric(L("大小", "Size"), _format_size(doc.get('size_bytes') or doc.get('file_size')))
-        
+
         info_cols2 = st.columns(2)
         with info_cols2[0]:
             st.metric(L("页数", "Pages"), doc.get('page_count') or '-')
         with info_cols2[1]:
             imported = (doc.get('imported_at') or doc.get('created_at') or '-')[:10]
             st.metric(L("导入", "Imported"), imported)
-        
+
         # Document type selector
         st.markdown(f"#### {L('文档分类', 'Document Type')}")
         type_options = ["course", "paper", "other"]
@@ -393,7 +399,7 @@ def render_library(*, main_col, inspector_col, workspace_id: str | None) -> None
             type_index = type_options.index(current_type)
         except ValueError:
             type_index = 2
-        
+
         new_type = st.selectbox(
             L("类型", "Type"),
             options=type_options,
@@ -406,51 +412,51 @@ def render_library(*, main_col, inspector_col, workspace_id: str | None) -> None
             key="library_inspector_doc_type",
             label_visibility="collapsed",
         )
-        
+
         if st.button(L("保存类型", "Save Type"), disabled=locked, key="btn_save_doc_type"):
             set_document_type(doc_id=doc_id, doc_type=new_type)
             st.success(L("✓ 已更新", "✓ Updated"))
             st.rerun()
-        
+
         # Associations
         associations = _doc_associations(doc_id)
-        
+
         st.markdown(f"#### {L('关联信息', 'Associations')}")
-        
+
         has_associations = False
-        
+
         if associations["courses"]:
             has_associations = True
             st.markdown(f"**{L('关联课程', 'Linked Courses')}:**")
             for course in associations["courses"]:
                 st.write(f"  📚 {course['name']}")
-        
+
         if associations["lectures"]:
             has_associations = True
             st.markdown(f"**{L('关联讲次', 'Linked Lectures')}:**")
             for lecture in associations["lectures"]:
                 st.write(f"  📖 {lecture.get('course_name')} - {L('第', 'Lecture ')}{lecture.get('lecture_no')}{L('讲', '')}")
-        
+
         if associations["assignments"]:
             has_associations = True
             st.markdown(f"**{L('关联作业', 'Linked Assignments')}:**")
             for assignment in associations["assignments"]:
                 st.write(f"  📝 {assignment.get('course_name')} - {assignment.get('title')}")
-        
+
         if associations["papers"]:
             has_associations = True
             st.markdown(f"**{L('关联论文', 'Linked Papers')}:**")
             for paper in associations["papers"]:
                 project = paper.get('project_title') or L('无项目', 'No project')
                 st.write(f"  📄 {paper.get('title')} ({project})")
-        
+
         if not has_associations:
             st.caption(L("暂无关联", "No associations"))
-        
+
         # Quick link section
         st.divider()
         st.markdown(f"#### {L('快速关联', 'Quick Link')}")
-        
+
         # Link to course
         courses = list_courses(workspace_id)
         if courses:
@@ -462,7 +468,7 @@ def render_library(*, main_col, inspector_col, workspace_id: str | None) -> None
                     key="library_attach_course",
                     label_visibility="collapsed",
                 )
-                
+
                 lectures = list_course_lectures(course_map[course_choice]["id"])
                 if lectures:
                     lecture_map = {f"{L('第', 'Lecture ')}{lec.get('lecture_no')}{L('讲', '')}": lec for lec in lectures}
@@ -492,7 +498,7 @@ def render_library(*, main_col, inspector_col, workspace_id: str | None) -> None
                         )
                         st.success(L("✓ 已关联", "✓ Linked"))
                         st.rerun()
-                
+
                 assignments = list_assignments(course_map[course_choice]["id"])
                 if assignments:
                     st.markdown("---")
@@ -523,7 +529,7 @@ def render_library(*, main_col, inspector_col, workspace_id: str | None) -> None
                         )
                         st.success(L("✓ 已关联", "✓ Linked"))
                         st.rerun()
-        
+
         # Link to project as paper
         projects = list_projects(workspace_id)
         if projects:
@@ -542,7 +548,7 @@ def render_library(*, main_col, inspector_col, workspace_id: str | None) -> None
                     year = st.text_input(L("年份", "Year"), key="library_paper_year", placeholder="2026")
                 with col2:
                     venue = st.text_input(L("期刊/会议", "Venue"), key="library_paper_venue")
-                
+
                 if st.button(L("关联为论文", "Link as Paper"), disabled=locked, key="btn_attach_as_paper", type="primary"):
                     add_paper(
                         workspace_id=workspace_id,

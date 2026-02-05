@@ -3,19 +3,19 @@ from __future__ import annotations
 import json
 from datetime import datetime, timezone
 
+from core.agents.course_agent import CourseAgent
 from core.assets.store import get_asset_by_ref, list_asset_versions, read_asset_content
 from core.domains.course import upsert_exam_asset
 from core.index_assets.store import get_doc_index_assets
+from core.quality.citations_check import check_citations
 from core.rag import map_reduce_course_query
+from core.telemetry.run_logger import log_run
 from core.ui_state.storage import get_setting
 from infra.db import get_connection
 from service.asset_service import create_asset_version
-from service.recent_activity_service import add_activity
-from core.agents.course_agent import CourseAgent
-from service.metadata_service import llm_metadata
-from core.quality.citations_check import check_citations
-from core.telemetry.run_logger import log_run
 from service.chat_service import ChatConfigError, chat
+from service.metadata_service import llm_metadata
+from service.recent_activity_service import add_activity
 
 
 def _now_iso() -> str:
@@ -46,13 +46,13 @@ def generate_exam_blueprint(*, workspace_id: str, course_id: str) -> dict:
     map_tokens = int(get_setting(workspace_id, "rag_map_tokens") or 250)
     reduce_tokens = int(get_setting(workspace_id, "rag_reduce_tokens") or 600)
     output_lang = get_setting(workspace_id, "output_language") or "en"
-    
+
     # Build query in appropriate language
     if output_lang == "zh":
         query = "整门课程的考试大纲，包括考试范围、重要概念、题型分布、复习重点等"
     else:
         query = "Exam blueprint for the whole course, including scope, key concepts, question types, and study focus"
-    
+
     result = map_reduce_course_query(
         workspace_id=workspace_id,
         course_id=course_id,
@@ -105,7 +105,7 @@ def generate_assignment_analysis(
     title: str,
 ) -> dict:
     output_lang = get_setting(workspace_id, "output_language") or "en"
-    
+
     with get_connection() as connection:
         rows = connection.execute(
             """
@@ -121,7 +121,7 @@ def generate_assignment_analysis(
         assets = get_doc_index_assets(row["doc_id"])
         if assets and assets.get("summary_text"):
             summaries.append(f"{row['filename']}: {assets['summary_text']}")
-    
+
     if output_lang == "zh":
         prompt = (
             "你正在分析一份作业。请提供：问题拆解、评分标准、常见陷阱、解题框架。\n"
@@ -148,7 +148,7 @@ def generate_assignment_analysis(
             "Common pitfalls:\n- Note common mistakes.\n\n"
             "Solution framework:\n- Outline steps without full answers."
         )
-    
+
     try:
         content = chat(prompt=prompt, max_tokens=700, temperature=0.2)
     except ChatConfigError:

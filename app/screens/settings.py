@@ -4,7 +4,7 @@ import os
 
 import streamlit as st
 
-from app.ui.components import render_empty_state, render_header_card, render_section_with_help, section_title
+from app.ui.components import render_empty_state, render_header_card, render_section_with_help
 from app.ui.labels import L
 from core.ui_state.storage import get_setting, set_setting
 
@@ -51,7 +51,7 @@ def _save_settings(
 def render_settings(*, main_col, inspector_col, workspace_id: str | None) -> None:
     with main_col:
         render_section_with_help(L("设置", "Settings"), "settings")
-        
+
         if not workspace_id:
             render_empty_state(
                 "⚙️",
@@ -99,7 +99,7 @@ def render_settings(*, main_col, inspector_col, workspace_id: str | None) -> Non
             unsafe_allow_html=True,
         )
         st.markdown("")  # This will be replaced by the actual form below
-        
+
         col1, col2 = st.columns(2)
         with col1:
             llm_base_url = st.text_input(
@@ -117,7 +117,7 @@ def render_settings(*, main_col, inspector_col, workspace_id: str | None) -> Non
                 help=L("对话模型名称。", "Chat model name."),
                 key="settings_llm_model",
             )
-        
+
         llm_api_key = st.text_input(
             L("API 密钥", "API Key"),
             value=_load_setting(workspace_id, "llm_api_key"),
@@ -132,9 +132,9 @@ def render_settings(*, main_col, inspector_col, workspace_id: str | None) -> Non
         # Retrieval Settings
         st.markdown(f"### 🔍 {L('检索配置', 'Retrieval Configuration')}")
         st.caption(L("配置文档检索和 RAG 参数。", "Configure document retrieval and RAG parameters."))
-        
+
         col1, col2, col3 = st.columns(3)
-        
+
         with col1:
             stored_mode = _load_setting(workspace_id, "retrieval_mode", "hybrid")
             try:
@@ -153,7 +153,7 @@ def render_settings(*, main_col, inspector_col, workspace_id: str | None) -> Non
                 help=L("混合模式通常效果最佳。", "Hybrid mode usually works best."),
                 key="settings_retrieval_mode",
             )
-        
+
         with col2:
             map_tokens = st.number_input(
                 L("Map 预算", "Map Tokens"),
@@ -163,7 +163,7 @@ def render_settings(*, main_col, inspector_col, workspace_id: str | None) -> Non
                 help=L("每个文档的 token 预算。", "Token budget per document."),
                 key="settings_map_tokens",
             )
-        
+
         with col3:
             reduce_tokens = st.number_input(
                 L("Reduce 预算", "Reduce Tokens"),
@@ -179,9 +179,9 @@ def render_settings(*, main_col, inspector_col, workspace_id: str | None) -> Non
         # Theme & Language
         st.markdown(f"### 🎨 {L('外观与语言', 'Appearance & Language')}")
         st.caption(L("个性化界面设置。", "Personalize the interface."))
-        
+
         col1, col2, col3 = st.columns(3)
-        
+
         with col1:
             stored_theme = _load_setting(workspace_id, "ui_theme", "light")
             theme = st.selectbox(
@@ -194,7 +194,7 @@ def render_settings(*, main_col, inspector_col, workspace_id: str | None) -> Non
                 }.get(x, x),
                 key="settings_theme",
             )
-        
+
         with col2:
             stored_lang = _load_setting(workspace_id, "ui_language", "en")
             language = st.selectbox(
@@ -208,7 +208,7 @@ def render_settings(*, main_col, inspector_col, workspace_id: str | None) -> Non
                 key="settings_language",
                 help=L("控制界面显示语言。", "Controls UI display language."),
             )
-        
+
         with col3:
             stored_output_lang = _load_setting(workspace_id, "output_language", "en")
             output_language = st.selectbox(
@@ -254,11 +254,11 @@ def render_settings(*, main_col, inspector_col, workspace_id: str | None) -> Non
 
     with inspector_col:
         st.markdown(f"### {L('配置状态', 'Configuration Status')}")
-        
+
         # Check LLM configuration
         llm_key = _load_setting(workspace_id, "llm_api_key")
         llm_model_name = _load_setting(workspace_id, "llm_model")
-        
+
         # LLM Status Card
         if llm_key and llm_model_name:
             st.markdown(
@@ -297,19 +297,19 @@ def render_settings(*, main_col, inspector_col, workspace_id: str | None) -> Non
                 """,
                 unsafe_allow_html=True,
             )
-        
+
         st.markdown("")  # Spacing
-        
+
         # Settings summary
         st.markdown(f"#### {L('当前配置', 'Current Settings')}")
-        
+
         settings_items = [
             ("🔍", L("检索模式", "Retrieval"), _load_setting(workspace_id, "retrieval_mode", "hybrid")),
             ("🎨", L("主题", "Theme"), _load_setting(workspace_id, "ui_theme", "light")),
             ("🌐", L("界面语言", "UI Lang"), _load_setting(workspace_id, "ui_language", "en")),
             ("📝", L("输出语言", "Output Lang"), _load_setting(workspace_id, "output_language", "en")),
         ]
-        
+
         for icon, label, value in settings_items:
             st.markdown(
                 f"""
@@ -333,9 +333,9 @@ def render_settings(*, main_col, inspector_col, workspace_id: str | None) -> Non
                 """,
                 unsafe_allow_html=True,
             )
-        
+
         st.markdown("")  # Spacing
-        
+
         # Tips section
         st.markdown(f"#### {L('提示', 'Tips')}")
         tips = [

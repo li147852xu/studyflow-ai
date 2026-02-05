@@ -7,9 +7,9 @@ import streamlit as st
 
 from app.ui.i18n import t
 from app.ui.locks import running_task_summary
-from core.version import VERSION
 from core.tasks.executor import shutdown_executor
 from core.ui_state.storage import get_setting, set_setting
+from core.version import VERSION
 from service.workspace_service import create_workspace, list_workspaces
 
 NAV_ITEMS = ["Dashboard", "Library", "Courses", "Research", "Assistant", "Tools", "Settings"]
@@ -114,7 +114,7 @@ def render_sidebar() -> tuple[str | None, str]:
                 _push_nav_history(item)
                 st.rerun()
         nav = st.session_state.get("active_nav", "Dashboard")
-        
+
         # Ensure current nav is in history
         history = st.session_state.get("nav_history", [])
         if not history or history[-1] != nav:

@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from core.rag import MapReduceResult, classify_query, map_reduce_course_query, map_reduce_project_query
+from core.rag import classify_query, map_reduce_course_query, map_reduce_project_query
 from core.ui_state.storage import get_setting
 from service.retrieval_service import answer_with_retrieval
 

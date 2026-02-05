@@ -4,13 +4,13 @@ from datetime import datetime, timedelta
 
 import streamlit as st
 
-from app.ui.components import render_empty_state, render_header_card, render_section_with_help, section_title
+from app.ui.components import render_empty_state, render_header_card, render_section_with_help
 from app.ui.labels import L
 from app.ui.locks import running_task_summary
-from core.domains.timetable import create_event, list_events
-from core.domains.todo import create_todo, list_todos, update_todo_status
 from core.domains.course import list_courses, list_schedules
 from core.domains.research import list_projects
+from core.domains.timetable import create_event, list_events
+from core.domains.todo import create_todo, list_todos, update_todo_status
 from core.ui_state.guards import llm_ready
 from service.recent_activity_service import list_recent_activity
 from service.retrieval_service import index_status
@@ -42,7 +42,7 @@ def _get_course_schedules_for_today(courses: list[dict]) -> list[dict]:
         "周六": "saturday",
         "周日": "sunday",
     }[today_weekday].lower()
-    
+
     result = []
     for course in courses:
         schedules = list_schedules(course["id"])
@@ -57,7 +57,7 @@ def _get_course_schedules_for_today(courses: list[dict]) -> list[dict]:
                     "end_time": sched.get("end_time") or "00:00",
                     "location": sched.get("location"),
                 })
-    
+
     # Sort by start time
     result.sort(key=lambda x: x["start_time"])
     return result
@@ -101,7 +101,7 @@ def _render_stat_card(icon: str, value: str | int, label: str, color: str = "pri
 def render_dashboard(*, main_col, inspector_col, workspace_id: str | None) -> None:
     with main_col:
         render_section_with_help(L("仪表盘", "Dashboard"), "dashboard")
-        
+
         if not workspace_id:
             render_empty_state(
                 "📊",
@@ -122,7 +122,7 @@ def render_dashboard(*, main_col, inspector_col, workspace_id: str | None) -> No
             greeting = L("下午好", "Good afternoon")
         else:
             greeting = L("晚上好", "Good evening")
-        
+
         today_str = datetime.now().strftime("%Y年%m月%d日" if L("", "") == "" else "%B %d, %Y")
         weekday = datetime.now().strftime("%A")
         render_header_card(
@@ -133,22 +133,22 @@ def render_dashboard(*, main_col, inspector_col, workspace_id: str | None) -> No
         # Setup status alerts
         status = index_status(workspace_id)
         doc_count = status.get("doc_count", 0)  # Fix: use correct key
-        
+
         # Load LLM settings from storage if not in session state
         from core.ui_state.storage import get_setting
         llm_base_url = st.session_state.get("llm_base_url") or get_setting(workspace_id, "llm_base_url") or ""
         llm_model = st.session_state.get("llm_model") or get_setting(workspace_id, "llm_model") or ""
         llm_api_key = st.session_state.get("llm_api_key") or get_setting(workspace_id, "llm_api_key") or ""
-        
+
         llm_ok, reason = llm_ready(llm_base_url, llm_model, llm_api_key)
-        
+
         # Status alerts in a collapsible section
         alerts = []
         if not llm_ok:
             alerts.append(("warning", reason or L('LLM 未配置，请在设置中配置。', 'LLM not configured. Please configure in Settings.')))
         if doc_count == 0:
             alerts.append(("info", L('尚未导入文档。请在「资料库」页面导入文档开始使用。', 'No documents yet. Import documents in the Library page to get started.')))
-        
+
         if alerts:
             with st.container():
                 for alert_type, message in alerts:
@@ -159,12 +159,12 @@ def render_dashboard(*, main_col, inspector_col, workspace_id: str | None) -> No
 
         # Quick stats row
         st.markdown(f"### 📊 {L('快速概览', 'Quick Overview')}")
-        
+
         courses = list_courses(workspace_id)
         projects = list_projects(workspace_id)
         todos = list_todos(workspace_id=workspace_id)
         pending_todos = [t for t in todos if t.get("status") != "done"]
-        
+
         stat_cols = st.columns(4)
         with stat_cols[0]:
             _render_stat_card("📚", len(courses), L("课程", "Courses"), "primary")
@@ -174,21 +174,21 @@ def render_dashboard(*, main_col, inspector_col, workspace_id: str | None) -> No
             _render_stat_card("📄", doc_count, L("文档", "Documents"), "warning")
         with stat_cols[3]:
             _render_stat_card("✅", len(pending_todos), L("待办", "Pending"), "error" if len(pending_todos) > 5 else "primary")
-        
+
         st.markdown("")  # Spacing
 
         # Today's Schedule Section (Course schedules + custom events)
         st.markdown(f"### 📅 {L('今日课表与日程', 'Today Timetable & Schedule')}")
-        
+
         # Get course schedules for today
         course_schedules = _get_course_schedules_for_today(courses)
-        
+
         # Get custom events
         start, end = _today_range()
         events = list_events(workspace_id=workspace_id, start_at=start, end_at=end)
-        
+
         has_any_schedule = bool(course_schedules) or bool(events)
-        
+
         if not has_any_schedule:
             st.markdown(
                 f"""
@@ -224,7 +224,7 @@ def render_dashboard(*, main_col, inspector_col, workspace_id: str | None) -> No
                         """,
                         unsafe_allow_html=True,
                     )
-            
+
             # Show custom events
             if events:
                 if course_schedules:
@@ -265,7 +265,7 @@ def render_dashboard(*, main_col, inspector_col, workspace_id: str | None) -> No
                     placeholder="2026-02-05 10:30",
                 )
             location = st.text_input(L("地点", "Location"), key="event_location", placeholder=L("可选", "Optional"))
-            
+
             if courses:
                 course_map = {course["name"]: course for course in courses}
                 selected_course = st.selectbox(
@@ -276,7 +276,7 @@ def render_dashboard(*, main_col, inspector_col, workspace_id: str | None) -> No
                 linked_course_id = course_map[selected_course]["id"] if selected_course != "-" else None
             else:
                 linked_course_id = None
-            
+
             if st.button(L("添加", "Add"), disabled=locked or not title.strip(), key="btn_add_event", type="primary"):
                 create_event(
                     workspace_id=workspace_id,
@@ -295,14 +295,14 @@ def render_dashboard(*, main_col, inspector_col, workspace_id: str | None) -> No
 
         # Today's Todos Section
         st.markdown(f"### ✅ {L('今日待办', 'Today Todos')}")
-        
+
         today = datetime.now().date().isoformat()
         today_todos = [
             todo
             for todo in todos
             if not todo.get("due_at") or str(todo["due_at"]).startswith(today)
         ]
-        
+
         if not today_todos:
             st.markdown(
                 f"""
@@ -334,7 +334,7 @@ def render_dashboard(*, main_col, inspector_col, workspace_id: str | None) -> No
                         st.markdown(f"<span style='text-decoration: line-through; color: var(--muted-text);'>{todo['title']}</span>", unsafe_allow_html=True)
                     else:
                         st.markdown(f"<span style='color: var(--text-color);'>{todo['title']}</span>", unsafe_allow_html=True)
-                
+
                 if checked and todo["status"] != "done":
                     update_todo_status(todo_id=todo["id"], status="done")
                     st.rerun()
@@ -353,10 +353,10 @@ def render_dashboard(*, main_col, inspector_col, workspace_id: str | None) -> No
                 key="todo_due",
                 placeholder="2026-02-10",
             )
-            
+
             course_id = None
             project_id = None
-            
+
             col1, col2 = st.columns(2)
             with col1:
                 if courses:
@@ -376,7 +376,7 @@ def render_dashboard(*, main_col, inspector_col, workspace_id: str | None) -> No
                         key="todo_linked_project",
                     )
                     project_id = project_map[selected_project]["id"] if selected_project != "-" else None
-            
+
             if st.button(L("添加", "Add"), disabled=locked or not title.strip(), key="btn_add_todo", type="primary"):
                 create_todo(
                     workspace_id=workspace_id,
@@ -393,9 +393,9 @@ def render_dashboard(*, main_col, inspector_col, workspace_id: str | None) -> No
 
         # Recent Activity
         st.markdown(f"### 📋 {L('最近活动', 'Recent Activity')}")
-        
+
         activity = list_recent_activity(workspace_id, limit=10)
-        
+
         if not activity:
             st.markdown(
                 f"""
@@ -420,16 +420,9 @@ def render_dashboard(*, main_col, inspector_col, workspace_id: str | None) -> No
                     "running": "⏳",
                     "queued": "📋",
                 }.get(item.get("status", ""), "📄")
-                
-                status_color = {
-                    "succeeded": "var(--success-color)",
-                    "failed": "var(--error-color)",
-                    "running": "var(--warning-color)",
-                    "queued": "var(--muted-text)",
-                }.get(item.get("status", ""), "var(--muted-text)")
-                
+
                 time_str = item['created_at'][:16].replace("T", " ")
-                
+
                 st.markdown(
                     f"""
                     <div style="
@@ -454,13 +447,13 @@ def render_dashboard(*, main_col, inspector_col, workspace_id: str | None) -> No
 
     with inspector_col:
         st.markdown(f"### {L('系统状态', 'System Status')}")
-        
+
         if workspace_id:
             # System health indicator
             health_ok = llm_ok and doc_count > 0
             health_icon = "🟢" if health_ok else "🟡" if llm_ok else "🔴"
             health_text = L("系统就绪", "System Ready") if health_ok else L("需要配置", "Setup Required") if not llm_ok else L("需要文档", "Documents Needed")
-            
+
             st.markdown(
                 f"""
                 <div style="
@@ -476,20 +469,20 @@ def render_dashboard(*, main_col, inspector_col, workspace_id: str | None) -> No
                 """,
                 unsafe_allow_html=True,
             )
-            
+
             # Stats grid
             st.markdown(f"#### {L('索引统计', 'Index Stats')}")
             col1, col2 = st.columns(2)
             col1.metric(L("文档", "Docs"), doc_count)
             col2.metric(L("切块", "Chunks"), status.get("chunk_count", 0))
-            
+
             col1, col2 = st.columns(2)
             col1.metric(L("向量", "Vectors"), status.get("vector_count", 0))
             bm25_status = L("就绪", "Ready") if status.get("bm25_exists") else L("缺失", "N/A")
             col2.metric(L("BM25", "BM25"), bm25_status)
-            
+
             st.markdown("")  # Spacing
-            
+
             # LLM status card
             st.markdown(f"#### {L('LLM 状态', 'LLM Status')}")
             if llm_ok:
@@ -532,9 +525,9 @@ def render_dashboard(*, main_col, inspector_col, workspace_id: str | None) -> No
                 if st.button(L("前往设置", "Go to Settings"), key="btn_goto_settings", type="primary", use_container_width=True):
                     st.session_state["active_nav"] = "Settings"
                     st.rerun()
-            
+
             st.markdown("")  # Spacing
-            
+
             # Quick actions
             st.markdown(f"#### {L('快速操作', 'Quick Actions')}")
             if st.button(L("📚 导入文档", "📚 Import Documents"), key="btn_quick_import", use_container_width=True):

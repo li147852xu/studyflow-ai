@@ -22,8 +22,8 @@ from cli.commands.related_cmd import related_app
 from cli.commands.tasks_cmd import tasks_app
 from cli.commands.workspace import workspace_app
 from core.config.loader import ConfigError, apply_profile, load_config
-from core.version import VERSION
 from core.storage.migrations import run_migrations
+from core.version import VERSION
 
 app = typer.Typer(help="StudyFlow CLI")
 

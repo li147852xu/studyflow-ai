@@ -21,7 +21,7 @@ def render_help_link(topic: str = "") -> None:
     """Render a help link that navigates to the help center."""
     workspace_id = st.session_state.get("workspace_id")
     help_label = t("help_link_label", workspace_id)
-    
+
     if st.button(
         f"❓ {help_label}",
         key=f"help_link_{topic or 'general'}",
@@ -36,13 +36,13 @@ def render_section_with_help(title: str, help_topic: str = "") -> None:
     """Render a section title with a help link in the same row."""
     workspace_id = st.session_state.get("workspace_id")
     help_label = t("help", workspace_id)
-    
+
     col1, col2 = st.columns([6, 1])
     with col1:
         section_title(title)
     with col2:
         if st.button(
-            f"❓",
+            "❓",
             key=f"section_help_{help_topic or title}",
             help=f"{help_label}: {title}",
         ):
@@ -56,16 +56,16 @@ def render_section_with_help(title: str, help_topic: str = "") -> None:
 
 def render_back_button() -> bool:
     """Render a back button that navigates to the previous page.
-    
+
     Returns True if the button was clicked and navigation occurred.
     """
     from app.ui.layout import can_go_back, navigate_back
-    
+
     workspace_id = st.session_state.get("workspace_id")
-    
+
     if not can_go_back():
         return False
-    
+
     back_label = t("back_button", workspace_id)
     if st.button(f"← {back_label}", key="global_back_btn"):
         if navigate_back():
@@ -105,24 +105,24 @@ def render_content_box(content: str, title: str | None = None) -> None:
 def _md_to_html(md_text: str) -> str:
     """Convert basic markdown to HTML for display."""
     import re
-    
+
     # Escape HTML first
     text = html.escape(md_text)
-    
+
     # Convert headers
     text = re.sub(r'^##### (.+)$', r'<h5>\1</h5>', text, flags=re.MULTILINE)
     text = re.sub(r'^#### (.+)$', r'<h4>\1</h4>', text, flags=re.MULTILINE)
     text = re.sub(r'^### (.+)$', r'<h3>\1</h3>', text, flags=re.MULTILINE)
     text = re.sub(r'^## (.+)$', r'<h2>\1</h2>', text, flags=re.MULTILINE)
     text = re.sub(r'^# (.+)$', r'<h1>\1</h1>', text, flags=re.MULTILINE)
-    
+
     # Convert bold and italic
     text = re.sub(r'\*\*(.+?)\*\*', r'<strong>\1</strong>', text)
     text = re.sub(r'\*(.+?)\*', r'<em>\1</em>', text)
-    
+
     # Convert inline code
     text = re.sub(r'`(.+?)`', r'<code>\1</code>', text)
-    
+
     # Convert bullet lists
     lines = text.split('\n')
     result = []
@@ -152,7 +152,7 @@ def _md_to_html(md_text: str) -> str:
                 result.append('')
     if in_list:
         result.append('</ul>')
-    
+
     return '\n'.join(result)
 
 
@@ -195,7 +195,7 @@ def render_doc_card(filename: str, file_type: str | None, doc_type: str | None, 
         icon = "📙"
     elif file_type in ("txt", "md"):
         icon = "📝"
-    
+
     size_str = ""
     if size:
         if size > 1024 * 1024:
@@ -204,7 +204,7 @@ def render_doc_card(filename: str, file_type: str | None, doc_type: str | None, 
             size_str = f"{size / 1024:.1f} KB"
         else:
             size_str = f"{size} B"
-    
+
     st.markdown(
         f"""
         <div class='sf-doc-card'>
@@ -440,10 +440,10 @@ def render_global_notifications(workspace_id: str | None) -> None:
     """Render the notification center with task status and history."""
     if not workspace_id:
         return
-    
+
     _collect_task_notifications(workspace_id)
     notifications: list[dict] = st.session_state.get("notifications_queue", [])
-    
+
     # Deduplicate notifications by ID (keep first occurrence)
     seen_ids: set[str] = set()
     deduped_notifications: list[dict] = []
@@ -457,45 +457,45 @@ def render_global_notifications(workspace_id: str | None) -> None:
             import uuid
             n["id"] = f"temp_{uuid.uuid4().hex[:8]}"
             deduped_notifications.append(n)
-    
+
     # Update session state with deduped list
     st.session_state["notifications_queue"] = deduped_notifications
-    
+
     # Count running notifications from queue
     running_notifications = [n for n in deduped_notifications if n.get("status") == "running"]
     completed_notifications = [n for n in deduped_notifications if n.get("status") != "running"]
-    
+
     # Check for running tasks from task service
     from service.tasks_service import list_tasks_for_workspace
     try:
         tasks = list_tasks_for_workspace(workspace_id=workspace_id)
         running_tasks = [
-            t for t in tasks 
+            t for t in tasks
             if (t["status"] if isinstance(t, dict) else t.status) in {"queued", "running"}
         ]
     except Exception:
         running_tasks = []
-    
+
     # Calculate counts
     total_running = len(running_notifications) + len(running_tasks)
     notification_count = len(completed_notifications)
-    
+
     # Build header with status indicators
     header_parts = ["🔔 " + t("notification_center", workspace_id)]
     if total_running > 0:
         header_parts.append(f"⏳ {total_running}")
     if notification_count > 0:
         header_parts.append(f"📬 {notification_count}")
-    
+
     header_text = " · ".join(header_parts)
-    
+
     # Show expanded if there are running tasks or new notifications
     should_expand = total_running > 0 or (notification_count > 0 and notification_count <= 3)
-    
+
     with st.expander(header_text, expanded=should_expand):
         # Running section - from both notifications queue and task service
         has_running = total_running > 0
-        
+
         if has_running:
             st.markdown(
                 f"""
@@ -512,12 +512,12 @@ def render_global_notifications(workspace_id: str | None) -> None:
                 """,
                 unsafe_allow_html=True,
             )
-            
+
             # Show running notifications
             for notice in running_notifications:
                 title = notice.get("title") or t("notification_task", workspace_id)
                 st.markdown(f"<div style='color: var(--text-color); padding: 4px 0;'>• {title}</div>", unsafe_allow_html=True)
-            
+
             # Show running tasks from service
             for task in running_tasks[:5]:
                 task_type = task["type"] if isinstance(task, dict) else task.type
@@ -527,16 +527,16 @@ def render_global_notifications(workspace_id: str | None) -> None:
                 st.markdown(f"<div style='color: var(--text-color); padding: 4px 0;'>• {task_label}</div>", unsafe_allow_html=True)
                 if progress_val > 0:
                     st.progress(progress_val / 100 if progress_val <= 100 else 1.0)
-            
+
             st.markdown("</div>", unsafe_allow_html=True)
-        
+
         # Completed notifications section
         if not completed_notifications:
             if not has_running:
                 st.caption(t("no_notifications", workspace_id))
         else:
             st.markdown(f"**{t('recent_notifications', workspace_id)}**")
-            
+
             # Pagination
             page_key = "notification_page"
             page_size = 5
@@ -563,7 +563,7 @@ def render_global_notifications(workspace_id: str | None) -> None:
                 if cols[2].button("▶", key="notif_next", disabled=current_page >= total_pages):
                     st.session_state[page_key] = current_page + 1
                     st.rerun()
-            
+
             # Clear all button
             if st.button(t("clear_all_notifications", workspace_id), key="btn_clear_all_notif", use_container_width=True):
                 st.session_state["notifications_queue"] = []
@@ -578,7 +578,7 @@ def _render_notification_card(notice: dict, compact: bool = False, key_suffix: s
     summary = notice.get("summary") or "-"
     completed_at = notice.get("completed_at") or "-"
     notice_id = notice.get("id", "unknown")
-    
+
     # Status styling
     status_colors = {
         "running": ("⏳", "var(--warning-color)", "var(--warning-light)"),
@@ -587,7 +587,7 @@ def _render_notification_card(notice: dict, compact: bool = False, key_suffix: s
         "queued": ("📋", "var(--muted-text)", "var(--surface-bg)"),
     }
     icon, color, bg = status_colors.get(status, status_colors["queued"])
-    
+
     # Render card with HTML for better styling
     st.markdown(
         f"""
@@ -609,7 +609,7 @@ def _render_notification_card(notice: dict, compact: bool = False, key_suffix: s
         """,
         unsafe_allow_html=True,
     )
-    
+
     # Buttons in horizontal layout - use unique key with suffix
     unique_key = f"{notice_id}{key_suffix}"
     btn_cols = st.columns([1, 1, 3])
@@ -758,12 +758,12 @@ def push_notification(
     task_id: str | None = None,
 ) -> None:
     """Manually push a notification to the notification queue.
-    
+
     If task_id is provided, also updates the database task status.
     """
     import uuid
     from datetime import datetime
-    
+
     # Update database task if task_id provided
     if task_id:
         from core.tasks.store import update_progress, update_status
@@ -774,18 +774,18 @@ def push_notification(
             update_status(task_id, status)
         except Exception:
             pass
-    
+
     notifications = st.session_state.setdefault("notifications_queue", [])
-    
+
     # Remove any existing notification with same task_id OR running notification with same task_type
     notifications[:] = [
-        n for n in notifications 
+        n for n in notifications
         if not (
-            (task_id and n.get("id") == task_id) or 
+            (task_id and n.get("id") == task_id) or
             (n.get("task_type") == task_type and n.get("status") == "running")
         )
     ]
-    
+
     notice = {
         "id": task_id or str(uuid.uuid4()),
         "task_type": task_type,
@@ -795,10 +795,10 @@ def push_notification(
         "summary": summary or t("notification_generic_summary", workspace_id),
         "target": target or {"nav": "Tools", "tools_tab": "recent_activity"},
     }
-    
+
     notifications.insert(0, notice)
     notifications[:] = notifications[:20]
-    
+
     # Show toast notification
     try:
         status_icon = "✅" if status == "succeeded" else "❌" if status == "failed" else "📬"
@@ -815,12 +815,12 @@ def push_generation_start_notification(
     create_db_task: bool = True,
 ) -> str:
     """Push a notification when generation starts. Returns the task ID.
-    
+
     Also creates a database task entry so it shows in the Task Center.
     """
     import uuid
     from datetime import datetime
-    
+
     # Create database task if requested
     task_id = None
     if create_db_task:
@@ -835,17 +835,17 @@ def push_generation_start_notification(
             update_status(task_id, "running")
         except Exception:
             pass  # Fallback to notification-only mode
-    
+
     notifications = st.session_state.setdefault("notifications_queue", [])
-    
+
     # Remove any existing running notification for the same task_type to prevent duplicates
     notifications[:] = [
-        n for n in notifications 
+        n for n in notifications
         if not (n.get("task_type") == task_type and n.get("status") == "running")
     ]
-    
+
     notif_id = task_id or f"gen_{task_type}_{uuid.uuid4().hex[:8]}"
-    
+
     notice = {
         "id": notif_id,
         "task_type": task_type,
@@ -856,16 +856,16 @@ def push_generation_start_notification(
         "summary": t("task_status_running", workspace_id),
         "target": {"nav": "Tools", "tools_tab": "tasks"},
     }
-    
+
     notifications.insert(0, notice)
     notifications[:] = notifications[:20]
-    
+
     # Show toast notification
     try:
         st.toast(f"⏳ {title} {t('task_status_running', workspace_id)}")
     except Exception:
         pass
-    
+
     return notif_id
 
 
@@ -878,9 +878,9 @@ def update_notification_status(
 ) -> None:
     """Update an existing notification's status."""
     from datetime import datetime
-    
+
     notifications = st.session_state.get("notifications_queue", [])
-    
+
     for notice in notifications:
         if notice.get("id") == notification_id:
             notice["status"] = status

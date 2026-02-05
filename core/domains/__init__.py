@@ -10,8 +10,8 @@ from core.domains.course import (
     delete_course,
     get_course,
     link_course_document,
-    list_course_documents,
     list_assignments,
+    list_course_documents,
     list_course_lectures,
     list_courses,
     list_lecture_materials,
@@ -33,8 +33,8 @@ from core.domains.research import (
     list_experiment_runs,
     list_idea_dialogue,
     list_ideas,
-    list_projects,
     list_project_papers,
+    list_projects,
     update_project,
 )
 from core.domains.timetable import create_event, list_events
@@ -42,7 +42,10 @@ from core.domains.todo import create_todo, list_todos, update_todo_status
 
 __all__ = [
     "add_assignment_asset",
+    "add_idea_dialogue",
     "add_lecture_material",
+    "add_paper",
+    "confirm_idea",
     "create_assignment",
     "create_course",
     "create_deck",

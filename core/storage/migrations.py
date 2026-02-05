@@ -5,7 +5,6 @@ from datetime import datetime, timezone
 from infra.db import get_connection
 from infra.models import init_db
 
-
 LATEST_VERSION = "3.0.0"
 
 

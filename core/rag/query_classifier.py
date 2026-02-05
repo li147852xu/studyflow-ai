@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-
 GLOBAL_HINTS = {
     "全课",
     "整堂课",

@@ -2,8 +2,8 @@ from __future__ import annotations
 
 import streamlit as st
 
-from core.ui_state.storage import get_setting
 from core.storage.migrations import run_migrations
+from core.ui_state.storage import get_setting
 
 
 def init_app_state() -> None:

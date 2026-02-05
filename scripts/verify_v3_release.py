@@ -9,12 +9,19 @@ from pathlib import Path
 import streamlit as st  # noqa: F401
 
 from app.ui import components as ui_components
+from core.domains.course import (
+    add_assignment_asset,
+    add_lecture_material,
+    create_assignment,
+    create_course,
+    create_lecture,
+)
+from core.domains.research import add_paper, create_project
 from core.index_assets.store import get_doc_index_assets
 from core.storage.migrations import run_migrations
 from core.version import VERSION
 from infra.db import get_workspaces_dir
 from service.course_v3_service import generate_exam_blueprint
-from service.document_service import list_documents
 from service.ingest_service import ingest_document
 from service.recent_activity_service import add_activity, list_recent_activity
 from service.research_v3_service import (
@@ -27,14 +34,6 @@ from service.research_v3_service import (
 )
 from service.tasks_service import enqueue_index_assets_task, run_task_by_id
 from service.workspace_service import create_workspace
-from core.domains.course import (
-    add_assignment_asset,
-    add_lecture_material,
-    create_assignment,
-    create_course,
-    create_lecture,
-)
-from core.domains.research import add_paper, create_project, list_project_papers
 
 
 def _run_cmd(cmd: list[str]) -> None:
@@ -151,7 +150,7 @@ def main() -> None:
     ui_components._collect_task_notifications(workspace_id)  # noqa: SLF001
 
     print("v3 verify complete")
-    
+
     # Cleanup test workspace
     _cleanup_test_workspace(workspace_id)
 
@@ -159,7 +158,7 @@ def main() -> None:
 def _cleanup_test_workspace(workspace_id: str) -> None:
     """Clean up the test workspace created during verification."""
     from service.workspace_service import delete_workspace_except
-    
+
     print("\nCleaning up test workspace...")
     deleted = delete_workspace_except(keep_names=["test1"])
     print(f"Cleaned up {deleted} test workspace(s), keeping 'test1'")

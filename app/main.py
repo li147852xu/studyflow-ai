@@ -17,14 +17,9 @@ from app.components.inspector import (
 )
 from app.components.library_panel import render_library_panel
 from app.components.plugins_center import render_plugins_center
-from app.components.settings_center import render_settings_center
 from app.components.tasks_center import render_tasks_center
 from app.components.workbench_view import render_workbench_list
 from app.components.workflow_wizard import render_workflow_selector, render_workflow_steps
-from app.ui import apply_theme, init_app_state
-from app.ui.auto_refresh import inject_auto_refresh, maybe_auto_refresh
-from app.ui.components import render_back_button, render_global_notifications
-from app.ui.layout import render_main_columns, render_sidebar
 from app.screens.assistant import render_assistant as render_assistant_page
 from app.screens.courses import render_courses as render_courses_page
 from app.screens.dashboard import render_dashboard as render_dashboard_page
@@ -32,6 +27,10 @@ from app.screens.library import render_library as render_library_page
 from app.screens.research import render_research as render_research_page
 from app.screens.settings import render_settings as render_settings_page
 from app.screens.tools import render_tools as render_tools_page
+from app.ui import apply_theme, init_app_state
+from app.ui.auto_refresh import inject_auto_refresh, maybe_auto_refresh
+from app.ui.components import render_back_button, render_global_notifications
+from app.ui.layout import render_main_columns, render_sidebar
 from core.config.loader import ConfigError, apply_profile, load_config
 from core.ui_state.guards import llm_ready
 from core.ui_state.storage import (

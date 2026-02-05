@@ -38,9 +38,9 @@ from core.ingest.ocr import OCRSettings, ocr_available
 from core.plugins.base import PluginContext
 from core.plugins.registry import get_plugin, list_plugins, load_builtin_plugins
 from core.prompts.registry import list_prompts
+from core.storage.migrations import run_migrations
 from core.version import VERSION
 from infra.db import get_connection, get_workspaces_dir
-from core.storage.migrations import run_migrations
 from service.asset_service import list_versions, read_version
 from service.bundle_service import bundle_export, bundle_import
 from service.coach_service import start_coach, submit_coach

@@ -49,21 +49,21 @@ def rename_workspace(workspace_id: str, new_name: str) -> None:
 
 def delete_workspace_except(keep_names: list[str] | None = None) -> int:
     """Delete all workspaces except those with names in keep_names.
-    
+
     Returns the number of deleted workspaces.
     """
     if keep_names is None:
         keep_names = []
     keep_names_lower = [n.lower() for n in keep_names]
-    
+
     workspaces = list_workspaces()
     deleted_count = 0
-    
+
     for ws in workspaces:
         if ws["name"].lower() not in keep_names_lower:
             delete_workspace(ws["id"])
             deleted_count += 1
-    
+
     return deleted_count
 
 

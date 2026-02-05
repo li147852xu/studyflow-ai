@@ -22,7 +22,6 @@ def apply_theme() -> None:
         primary_color = "#3B82F6"
         primary_hover = "#2563EB"
         primary_light = "rgba(59, 130, 246, 0.15)"
-        hover_bg = "#252B38"
         success_color = "#10B981"
         success_light = "rgba(16, 185, 129, 0.15)"
         warning_color = "#F59E0B"
@@ -50,7 +49,6 @@ def apply_theme() -> None:
         primary_color = "#3B82F6"
         primary_hover = "#2563EB"
         primary_light = "rgba(59, 130, 246, 0.08)"
-        hover_bg = "#F1F5F9"
         success_color = "#10B981"
         success_light = "rgba(16, 185, 129, 0.1)"
         warning_color = "#F59E0B"
@@ -73,18 +71,18 @@ def apply_theme() -> None:
           --text-color: {text_color};
           --muted-text: {muted_text};
           --divider-color: {divider_color};
-          
+
           /* Card & surface */
           --card-bg: {card_bg};
           --card-border: {card_border};
           --surface-bg: {surface_bg};
           --input-bg: {input_bg};
-          
+
           /* Primary brand */
           --primary-color: {primary_color};
           --primary-hover: {primary_hover};
           --primary-light: {primary_light};
-          
+
           /* Semantic colors */
           --success-color: {success_color};
           --success-light: {success_light};
@@ -92,21 +90,21 @@ def apply_theme() -> None:
           --warning-light: {warning_light};
           --error-color: {error_color};
           --error-light: {error_light};
-          
+
           /* Shadows */
           --shadow-sm: {shadow_sm};
           --shadow-md: {shadow_md};
           --shadow-lg: {shadow_lg};
-          
+
           /* Focus */
           --focus-ring: {focus_ring};
-          
+
           /* Content display */
           --content-bg: {content_bg};
           --content-text: {content_text};
           --citation-bg: {citation_bg};
           --citation-text: {citation_text};
-          
+
           /* Spacing */
           --space-xs: 4px;
           --space-sm: 8px;
@@ -114,14 +112,14 @@ def apply_theme() -> None:
           --space-lg: 24px;
           --space-xl: 32px;
           --space-2xl: 48px;
-          
+
           /* Border radius */
           --radius-sm: 6px;
           --radius-md: 10px;
           --radius-lg: 14px;
           --radius-xl: 20px;
           --radius-full: 9999px;
-          
+
           /* Transitions */
           --transition-fast: 0.1s ease;
           --transition-normal: 0.2s ease;
@@ -172,7 +170,7 @@ def apply_theme() -> None:
           font-weight: 600;
           letter-spacing: -0.02em;
         }}
-        
+
         h1 {{ font-size: 2rem; margin-bottom: var(--space-md); }}
         h2 {{ font-size: 1.5rem; margin-bottom: var(--space-sm); }}
         h3 {{ font-size: 1.25rem; margin-bottom: var(--space-sm); }}

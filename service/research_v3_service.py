@@ -16,8 +16,8 @@ from core.index_assets.store import get_doc_index_assets
 from core.rag import map_reduce_project_query
 from infra.db import get_connection
 from service.asset_service import create_asset_version
-from service.recent_activity_service import add_activity
 from service.chat_service import ChatConfigError, chat
+from service.recent_activity_service import add_activity
 
 
 def _now_iso() -> str:
